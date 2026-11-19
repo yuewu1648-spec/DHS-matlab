@@ -94,6 +94,13 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 - **完整性校验**：`scripts\check_agent.ps1`（版本一致性、MANIFEST、bundle 安装、MATLAB 后端、工具插件冒烟）。
 
 
+## 0.12.0（PDF 矢量插图 PyMuPDF）
+
+- `bma.io.extractPdfFigures` 默认走 **PyMuPDF**：提取嵌入位图，并把 figure-sized 矢量 drawing 聚类渲染为 `vector_render` PNG；返回 `figure_class=bitmap|vector|vector_or_mask|mixed`、`rasterized`、`renderer`。
+- 无图幅级矢量区域时标记 `figure_class=vector, reason=no_figure_region`；`render_pages=true` 可降级为整页渲染。
+- PyMuPDF/Python 不可用时回退纯 MATLAB 位图解析器（明确 warning）。
+- 回归 fixture：`tests/fixtures/upgrade/pdf/vector_figure.pdf`；`test_io_figures` 验证 890×723 矢量渲染。
+
 ## 0.11.0（NatRevMolCellBiol 复现 issues 修复）
 
 - **DDE**：修复 `ddesd/ddensd` “过去时刻 vs 延迟”约定；常量表达式延迟自动走 `dde23`；DDE fit/profile/codegen。
@@ -237,7 +244,7 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 
 | 验证层 | 结果 | 证据 |
 |---|---|---|
-| MATLAB 完整测试套件（fresh `matlab -batch`） | **38/38 PASS（817.5 s）** | `matlab/tests/run_all_tests.m`；含 spec/model/io/kb/fit/validate/report/integration/upgrade/PDE MOL/原生 PDE Toolbox/report 图片回归/经典相图/DDE 全谱/DAE/BVP/系统辨识/符号解/SDE/SSA/cases 汇总/模型选择 partial/无量纲时间/拟合图隔离；拟合类测试较慢但全部有限完成 |
+| MATLAB 完整测试套件（fresh `matlab -batch`） | **38/38 PASS（736.1 s）** | `matlab/tests/run_all_tests.m`；含 spec/model/io/kb/fit/validate/report/integration/upgrade/PDE MOL/原生 PDE Toolbox/report 图片回归/经典相图/DDE 全谱/DAE/BVP/系统辨识/符号解/SDE/SSA/cases 汇总/模型选择 partial/无量纲时间/拟合图隔离/PyMuPDF 矢量图；拟合类测试较慢但全部有限完成 |
 | 0.6.0 worker 隔离 | **15/15 PASS** | `bridge/test/worker-isolation.test.mjs`：analyze 走 worker、worker 阻塞时 control 138 ms 响应、cancel 只杀 worker、replacement 惰性启动 |
 | 0.8.3 后端空闲回收 | **1/1 PASS** | `bridge/test/idle-shutdown.test.mjs`：2 s 空闲后 control+worker 均退出；`ctx.effect` dispose 清理 |
 | 0.8.5 report 图片去重/宽度 | **1/1 PASS** | `matlab/tests/test_report_images.m`：shared/同名副本/独立图 → 3 个唯一 data URI；§11 不重复；全局 max-width + md fixed table |
@@ -245,6 +252,7 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 | 0.9.0 DDE/DAE/BVP/高级求解 | **4/4 PASS** | `test_dde_simulate`、`test_dae_mass`、`test_bvp_simulate`、`test_advanced_solve` |
 | 0.10.0 DDE 全谱/隐式 DAE/SSA | **5/5 PASS** | ddesd/ddensd + DDE fit/ident/codegen；BVP fit/ident；`test_dae_implicit`；SSA |
 | 0.11.0 复现 issues | **5/5 PASS** | DDE 表达式等价、phase species/phase3d、fit 图隔离、cases 汇总、模型选择 partial、无量纲时间 |
+| 0.12.0 PyMuPDF 矢量图 | **1/1 PASS** | vector_figure.pdf → 890×723 vector_render；真实综述 PDF 18 figures（mixed） |
 | 0.7.0 PDE/MOL 黄金值 | **1/1 PASS** | `matlab/tests/test_model_pde.m`：G1/G2 slab、G3 sphere、G4 Monod 柱；`initial.param`；PDE 报告小节 |
 | 0.8.0 原生 PDE Toolbox | **1/1 PASS** | `matlab/tests/test_pde_toolbox.m`：2D rectangle/双组分/circle、3D box、预算门；`plugin-smoke` 19/19 并跑通 2D 原生调用 |
 | 0.5.0 回归（analyze 降级/报告图片/artifact/gate/section confidence/KB） | **1/1 PASS** | `matlab/tests/test_upgrade_050.m`，6 组断言；`bridge/test/tool-params.test.mjs` PASS（路径当 JSON 的回归） |

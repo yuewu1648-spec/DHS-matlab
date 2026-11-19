@@ -1,13 +1,12 @@
 function out = extractPdfFigures(pdfPath, outDir, opts)
-%EXTRACTPDFFIGURES 从 PDF 中抽取位图插图（无外部依赖的最小实现）。
+%EXTRACTPDFFIGURES 抽取 PDF 插图：优先 PyMuPDF，失败回退纯 MATLAB 位图解析。
 %   out = bma.io.extractPdfFigures(pdfPath, outDir, opts)
 %
-% 支持：/DCTDecode（直接写 .jpg）与 /FlateDecode（Inflater 解压后写 .png）；
-% 8 位 DeviceRGB/DeviceGray/DeviceCMYK/ICCBased；1 位灰度；PNG Predictor 12/15。
-% 返回 struct：ok, count, figures(结构体数组), warnings, figures_json
-%
-% 说明：这是“够用”的抽取器：不渲染矢量图、不处理 JPX/CCITT，不对页面内容流做
-% 完整解释；页码按对象在文件中出现顺序估算，图注由 ingest 用正文 "Fig. N" 匹配。
+% PyMuPDF 路径：提取嵌入位图，并把 figure-sized 矢量 drawing 聚类后按 dpi
+% 渲染为 PNG（kind=vector_render），同时报告 figure_class/rasterized。
+% 纯 MATLAB 回退：/DCTDecode（JPG）与 /FlateDecode（PNG）；无法渲染矢量图。
+% 返回 struct：ok, count, figures(结构体数组), warnings, figures_json,
+%   figure_class, vector_only, rasterized, reason, renderer。
 
 if nargin < 3 || isempty(opts)
     opts = struct();
@@ -21,6 +20,16 @@ end
 outDir = char(outDir);
 bma.util.ensureDir(outDir);
 maxFigures = getOpt(opts, 'max_figures', 40);
+% Prefer PyMuPDF for both embedded bitmaps and vector drawings. It renders
+% figure-sized vector clusters to PNG and reports the original class, which
+% the pure-MATLAB fallback cannot do.
+if getOpt(opts, 'pymupdf', true)
+    pyOut = pyMuPdfFigures(pdfPath, outDir, opts, maxFigures);
+    if ~isempty(pyOut)
+        out = pyOut;
+        return
+    end
+end
 maxBytes = getOpt(opts, 'max_bytes', 25 * 1024 * 1024);
 skipSmall = getOpt(opts, 'min_pixels', 32);
 
@@ -436,4 +445,142 @@ if fid < 0
 end
 fwrite(fid, uint8(data), 'uint8');
 fclose(fid);
+end
+
+function out = pyMuPdfFigures(pdfPath, outDir, opts, maxFigures)
+%PYMUPDFFIGURES Use the bundled Python + PyMuPDF renderer. Returns [] if
+%Python/PyMuPDF is unavailable or the helper fails, so the caller can use the
+%pure-MATLAB fallback.
+out = [];
+exe = findPython(opts);
+if isempty(exe)
+    return
+end
+script = fullfile(fileparts(mfilename('fullpath')), 'private', 'pdf_figures_pymupdf.py');
+if ~isfile(script)
+    return
+end
+jsonPath = fullfile(outDir, 'figures_pymupdf.json');
+dpi = getOpt(opts, 'dpi', 200);
+minArea = getOpt(opts, 'min_cluster_area', 8000);
+renderPages = getOpt(opts, 'render_pages', false);
+cmd = sprintf(['"%s" "%s" --pdf "%s" --out-dir "%s" --out-json "%s" ' ...
+    '--dpi %d --max-figures %d --min-cluster-area %g'], ...
+    exe, script, pdfPath, outDir, jsonPath, round(dpi), round(maxFigures), minArea);
+if renderPages
+    cmd = [cmd ' --render-pages'];
+end
+try
+    [status, msg] = system(cmd);
+catch err
+    out = struct('ok', false, 'count', 0, 'figures', struct([]), ...
+        'warnings', {{sprintf('PyMuPDF 调用失败：%s', err.message)}}, ...
+        'figures_json', '', 'figure_class', 'unknown', 'vector_only', false, ...
+        'rasterized', false, 'reason', 'pymupdf_failed', 'mask_count', 0, ...
+        'mono_skipped', 0, 'renderer', 'pymupdf');
+    return
+end
+if status ~= 0 || ~isfile(jsonPath)
+    % Return [] rather than a failure object: the internal extractor may still
+    % recover bitmaps. Report the reason through a temporary warning only.
+    warning('bma:io:pymupdfUnavailable', 'PyMuPDF 抽取失败，回退内置解析器：%s', ...
+        strtrim(msg));
+    return
+end
+try
+    manifest = bma.util.readJson(jsonPath);
+catch err
+    warning('bma:io:pymupdfJson', 'PyMuPDF manifest 读取失败，回退内置解析器：%s', err.message);
+    return
+end
+out = struct();
+out.ok = isfield(manifest, 'count') && manifest.count > 0;
+out.count = getField(manifest, 'count', 0);
+out.figures = getField(manifest, 'figures', struct([]));
+if isempty(out.figures) || ~isstruct(out.figures)
+    out.figures = struct([]);
+end
+out.warnings = {};
+out.figures_json = jsonPath;
+out.figure_class = getField(manifest, 'figure_class', 'unknown');
+out.vector_only = logical(getField(manifest, 'vector_only', false));
+out.rasterized = logical(getField(manifest, 'rasterized', false));
+out.reason = getField(manifest, 'reason', '');
+out.mask_count = 0;
+out.mono_skipped = 0;
+out.renderer = 'pymupdf';
+out.bitmap_count = getField(manifest, 'bitmap_count', 0);
+out.vector_render_count = getField(manifest, 'vector_render_count', 0);
+out.page_render_count = getField(manifest, 'page_render_count', 0);
+if out.count == 0
+    if strcmp(out.figure_class, 'vector')
+        out.warnings{end+1} = ['PyMuPDF: PDF 有矢量内容，但未找到图幅级区域；' ...
+            '未栅格化（reason=no_figure_region）。可尝试 render_pages=true。'];
+    else
+        out.warnings{end+1} = 'PyMuPDF 未找到可抽取的插图。';
+    end
+end
+% Keep figures.json as the canonical manifest (same schema as the fallback).
+try
+    canonical = struct('schema', 'bma.literatureFigures.v1', ...
+        'source', pdfPath, 'figures', out.figures, 'count', out.count, ...
+        'figure_class', out.figure_class, 'vector_only', out.vector_only, ...
+        'rasterized', out.rasterized, 'reason', out.reason, ...
+        'renderer', 'pymupdf');
+    bma.util.writeJsonAtomic(fullfile(outDir, 'figures.json'), canonical);
+    out.figures_json = fullfile(outDir, 'figures.json');
+catch
+end
+end
+
+function exe = findPython(opts)
+%FINDPYTHON Find a Python that can import PyMuPDF. Prefer explicit opts,
+%then DSH runtime, then pyenv/PATH.
+cands = {};
+pythonOpt = getOpt(opts, 'python', '');
+if ~isempty(pythonOpt)
+    cands{end+1} = char(pythonOpt);
+end
+for v = {'BMA_PYTHON', 'DSH_PYTHON'}
+    p = getenv(v{1});
+    if ~isempty(p), cands{end+1} = p; end %#ok<AGROW>
+end
+try
+    pe = pyenv;
+    if ~isempty(pe.Executable) && pe.Status ~= "NotLoaded"
+        cands{end+1} = char(pe.Executable);
+    end
+catch
+end
+try
+    base = fullfile(getenv('USERPROFILE'), '.dsh', 'dsh-runtimes');
+    d = dir(fullfile(base, '*', 'dependencies', 'python', 'python.exe'));
+    for k = 1:numel(d)
+        cands{end+1} = fullfile(d(k).folder, d(k).name); %#ok<AGROW>
+    end
+catch
+end
+try
+    [st, txt] = system('where python');
+    if st == 0
+        lines = regexp(txt, '\r?\n', 'split');
+        for k = 1:numel(lines)
+            if ~isempty(strtrim(lines{k})), cands{end+1} = strtrim(lines{k}); end %#ok<AGROW>
+        end
+    end
+catch
+end
+cands = [cands, {'python', 'python3'}];
+for k = 1:numel(cands)
+    exe = char(cands{k});
+    [st, ~] = system(sprintf('"%s" -c "import pymupdf"', exe));
+    if st == 0
+        return
+    end
+end
+exe = '';
+end
+
+function v = getField(s, f, d)
+if isstruct(s) && isfield(s, f), v = s.(f); else, v = d; end
 end

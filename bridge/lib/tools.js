@@ -342,7 +342,7 @@ export const TOOL_SPECS = [
   {
     name: 'bma_literature_ingest',
     description:
-      'Parse a literature file (PDF, DOCX, TXT, Markdown, HTML) with MATLAB into a structured document: title, ordered sections with stable section ids AND sentence ids (section#sN, with character offsets), extracted numeric facts (value + unit + symbol + sentence_id + verbatim context), markdown/space-aligned tables, and embedded PDF figures. Use this as step 1 of every modeling task, then quote evidence with section/sentence ids.\n\nReturns: doc_id, title, format, char count, section outline, sentence count/path, numbers count/path, tables path, figures count/path (PDF bitmap extraction), and the top facts. Artifacts are written under <run_dir>/literature/<doc_id>/.\n\nNotes: PDF text extraction uses MATLAB Text Analytics; embedded bitmaps are extracted (DCTDecode JPG, FlateDecode PNG, indexed palettes); vector-only figures and JPX/CCITT cannot be rasterized without an external renderer (reported in warnings). Numbers are candidates — verify each in context.',
+      'Parse a literature file (PDF, DOCX, TXT, Markdown, HTML) with MATLAB into a structured document: title, ordered sections with stable section ids AND sentence ids (section#sN, with character offsets), extracted numeric facts (value + unit + symbol + sentence_id + verbatim context), markdown/space-aligned tables, and PDF figures. PDF figure extraction uses **PyMuPDF** when available: it extracts embedded bitmaps and renders figure-sized vector drawing clusters to PNG; if PyMuPDF is unavailable it falls back to the pure-MATLAB bitmap extractor. Use this as step 1 of every modeling task, then quote evidence with section/sentence ids.\n\nReturns: doc_id, title, format, char count, section outline, sentence count/path, numbers count/path, tables path, figures count/path, figure_class (bitmap/vector/vector_or_mask/mixed), rasterized, and the top facts. Artifacts are written under <run_dir>/literature/<doc_id>/.\n\nNotes: PDF text extraction uses MATLAB Text Analytics; vector figures become `vector_render` PNGs via PyMuPDF; JPX/CCITT or unavailable PyMuPDF are reported in warnings. Numbers are candidates — verify each in context.',
     timeoutMs: 300_000,
     method: 'literature.ingest',
     parameters: {
@@ -365,7 +365,7 @@ export const TOOL_SPECS = [
       `- numbers: ${r.numbers_path}`,
       r.sentences_path ? `- sentences (section#sN citations): ${r.sentences_path}` : '',
       r.figures_path ? `- figures: ${r.figures_path}` : '',
-      r.figure_class ? `- figure class: ${r.figure_class}${r.vector_only ? ' (vector/mask; rasterized=false, reason=' + (r.figure_reason || 'no_renderer') + ')' : ` (rasterized=${r.figures_rasterized})`}` : '',
+      r.figure_class ? `- figure class: ${r.figure_class}${r.figures_rasterized ? ' (rasterized=true)' : (r.vector_only ? ' (vector/mask; rasterized=false, reason=' + (r.figure_reason || 'no_renderer') + ')' : '')}` : '',
       r.truncated !== undefined ? `- text: ${r.text_chars ?? r.char_count ?? '?'}/${r.text_chars_total ?? r.text_chars ?? r.char_count ?? '?'} chars; truncated=${r.truncated}${r.truncation_reason ? ' (' + r.truncation_reason + ')' : ''}` : '',
       `- section outline:`,
       r.section_confidence

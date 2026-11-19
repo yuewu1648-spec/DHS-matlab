@@ -26,7 +26,19 @@ assert(~outVec.ok && outVec.count == 0 && ~isempty(outVec.warnings), ...
     '矢量 PDF 应返回 0 图 + 告警');
 assert(strcmp(outVec.figure_class, 'vector'), '矢量 PDF 应标记 figure_class=vector');
 assert(outVec.vector_only && ~outVec.rasterized, '矢量 PDF 应标记 vector_only/rasterized=false');
-fprintf('[PASS] vector-only PDF: 0 figure + figure_class=vector + explicit warning\n');
+fprintf('[PASS] vector-only PDF: 0 figure + figure_class=vector + PyMuPDF renderer=%s\n', outVec.renderer);
+
+% Vector figure rendering: PyMuPDF must render figure-sized drawing clusters.
+pdfVectorFig = fullfile(root, 'tests', 'fixtures', 'upgrade', 'pdf', 'vector_figure.pdf');
+outVF = bma.io.extractPdfFigures(pdfVectorFig, fullfile(outDir, 'vector_figure'), struct());
+assert(outVF.ok && outVF.count >= 1, '矢量图 PDF 应渲染出至少一张图');
+assert(strcmp(outVF.renderer, 'pymupdf'), '矢量图应由 PyMuPDF 渲染');
+assert(strcmp(outVF.figure_class, 'vector') && outVF.rasterized, ...
+    '矢量图应标记 figure_class=vector/rasterized=true');
+assert(strcmp(outVF.figures(1).kind, 'vector_render'), '应标记 vector_render');
+assert(isfile(fullfile(outDir, 'vector_figure', outVF.figures(1).file)), '矢量渲染 PNG 不存在');
+fprintf('[PASS] PyMuPDF vector render: %s (%dx%d)\n', outVF.figures(1).file, ...
+    outVF.figures(1).width, outVF.figures(1).height);
 
 % ingest 集成：图数量/清单/相对路径
 runDir = fullfile(root, '.bma', 'test_tmp', 'pdf_ingest');

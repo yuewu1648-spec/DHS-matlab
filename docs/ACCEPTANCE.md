@@ -3,7 +3,7 @@
 > 角色：qa-acceptance（独立验收与复核）· 依据：`docs/DESIGN.md` §10 验收标准、§11 协作边界
 > 状态：**通过** —— MATLAB 完整套件 38/38、原生 PDE Toolbox 1/1、PDE/MOL 黄金值 1/1、worker 隔离 15/15、0.5.0 回归 1/1、桥接韧性 11/11、工具层 E2E 31/31、插件冒烟 20/20；
 > 附环境限制（headless 需 API key，真实 LLM 走 desktop preset；SimBiology `.sbproj` 在沙箱下跳过保存）与已知限制，见 §7。
-> 最后更新：2026-11-19 11:50 +08:00（agent v0.11.0：NatRevMolCellBiol issues 修复：DDE 延迟、相图/phase3d、fit 稳定性、PDF 分类、cases/selection、无量纲时间、标签）
+> 最后更新：2026-11-19 23:05 +08:00（agent v0.12.0：PDF 矢量插图改由 PyMuPDF 渲染；0.11.0 issues 修复仍包含在内）
 
 ## 1. 验收环境
 
@@ -470,3 +470,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\fixtures\tools\convert
 | 模型选择 partial（ISSUE-004） | **PASS**：candidate_status 标记 failed，partial.json 保留 2/3 已完成行 |
 | 振荡指标（ISSUE-012A） | **PASS**：sin 周期 6.280/振幅 2.000 |
 | 完整套件 | **38/38 PASS，817.5 s** |
+
+### 7.23 0.12.0 PDF 矢量插图 PyMuPDF（2026-11-19）
+
+| 验收项 | 结果 |
+|---|---|
+| PyMuPDF 位图 | `test_io_figures`：fixture 10 张 bitmap，`renderer=pymupdf` |
+| PyMuPDF 矢量渲染 | `vector_figure.pdf` → `fig01_vec01.png` 890×723，`kind=vector_render`，`figure_class=vector`，`rasterized=true` |
+| 无图幅区域 | `s00421-026...pdf` → 0 图，`figure_class=vector`，`vector_only=true`，`rasterized=false`，`reason=no_figure_region` |
+| 真实综述 PDF | `Novak_Tyson_2008...pdf` → 18 figures（17 bitmap + 1 vector_render），`figure_class=mixed` |
+| 回退 | 无 Python/PyMuPDF 时保留纯 MATLAB 位图解析器并 warning |
+| 完整套件 | **38/38 PASS，736.1 s** |

@@ -20,6 +20,9 @@ p.addParameter('WorkDir', '', @(x)ischar(x) || isstring(x));
 p.addParameter('MaxBytes', 2 * 1024 * 1024, @(x)isnumeric(x) && isscalar(x));
 p.addParameter('ExtractFigures', true, @(x)islogical(x) || isnumeric(x));
 p.addParameter('MaxFigures', 40, @(x)isnumeric(x) && isscalar(x));
+p.addParameter('PyMuPDF', true, @(x)islogical(x) || isnumeric(x));
+p.addParameter('Python', '', @(x)ischar(x) || isstring(x));
+p.addParameter('RenderPages', false, @(x)islogical(x) || isnumeric(x));
 p.parse(varargin{:});
 opts = p.Results;
 
@@ -128,15 +131,18 @@ figures = struct('index', {}, 'file', {}, 'width', {}, 'height', {}, ...
 figureWarnings = {};
 figuresPath = '';
 figureClass = '';
+figureRenderer = '';
 vectorOnly = false;
 figuresRasterized = false;
 figureReason = '';
 if strcmpi(fmt.format, 'pdf') && logical(opts.ExtractFigures)
     try
         figOut = bma.io.extractPdfFigures(srcAbs, fullfile(docDir, 'figures'), ...
-            struct('max_figures', opts.MaxFigures));
+            struct('max_figures', opts.MaxFigures, 'pymupdf', logical(opts.PyMuPDF), ...
+            'python', char(opts.Python), 'render_pages', logical(opts.RenderPages)));
         figureWarnings = figOut.warnings;
         figureClass = figOut.figure_class;
+        figureRenderer = getFieldSafe(figOut, 'renderer', 'unknown');
         vectorOnly = figOut.vector_only;
         figuresRasterized = figOut.rasterized;
         figureReason = figOut.reason;
@@ -150,7 +156,8 @@ if strcmpi(fmt.format, 'pdf') && logical(opts.ExtractFigures)
         manifest = struct('schema', 'bma.literatureFigures.v1', ...
             'source', srcAbs, 'figures', figures, 'count', numel(figures), ...
             'figure_class', figureClass, 'vector_only', vectorOnly, ...
-            'rasterized', figuresRasterized, 'reason', figureReason);
+            'rasterized', figuresRasterized, 'reason', figureReason, ...
+            'renderer', getFieldSafe(figOut, 'renderer', 'unknown'));
         figuresPath = fullfile(docDir, 'figures.json');
         bma.util.writeJsonAtomic(figuresPath, manifest);
     catch err
@@ -172,6 +179,7 @@ doc.sentence_count = numel(sentences);
 doc.figures = figures;
 doc.figure_count = numel(figures);
 doc.figure_class = figureClass;
+doc.figure_renderer = figureRenderer;
 doc.vector_only = logical(vectorOnly);
 doc.figures_rasterized = logical(figuresRasterized);
 doc.figure_reason = figureReason;
@@ -373,4 +381,8 @@ for k = 1:numel(figures)
     end
     figures(k).caption = tail;
 end
+end
+
+function v = getFieldSafe(s, f, d)
+if isstruct(s) && isfield(s, f), v = s.(f); else, v = d; end
 end

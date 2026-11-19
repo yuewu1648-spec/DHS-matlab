@@ -170,3 +170,14 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 - DDE：表达式延迟用过去时刻约定；常量表达式自动 dde23；DDE `units_check` 标 not applicable；DDE codegen 同步。
 - PDF ingest：`figure_class`/`vector_only`/`rasterized`/`reason`；`text_chars/text_chars_total/truncated`；公式编号占位符告警。
 - 无量纲模型：`time.unit="1"`；长 output name 放标题换行，轴用短 id/unit。
+
+## 0.12.0 PyMuPDF PDF 插图
+
+- `bma.io.extractPdfFigures`（以及 `bma_literature_ingest` 内部）默认使用 PyMuPDF：
+  - 嵌入位图：`page.get_images` + `extract_image`；
+  - 矢量图：`page.get_drawings` 聚类为 figure-sized bbox，按 `dpi` 渲染为 `kind=vector_render` PNG；
+  - 返回 `figure_class=bitmap|vector|vector_or_mask|mixed`、`vector_only`、`rasterized`、`reason`、`renderer=pymupdf`；
+  - `figure_class=vector` 且无 figure cluster 时 `rasterized=false, reason=no_figure_region`；`render_pages=true` 可整页渲染；
+  - PyMuPDF 不可用 → 纯 MATLAB 位图解析器回退并 warning。
+- 环境：DSH 自带 Python 运行时含 PyMuPDF；MATLAB 通过 `pyenv`/`DSH_PYTHON`/`BMA_PYTHON`/DSH runtime 路径查找解释器。
+- 测试：`test_io_figures` 的 `vector_figure.pdf` 产出 890×723 `vector_render`。

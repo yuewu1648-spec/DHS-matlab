@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-bio-matlab",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "private": true,
   "description": "MATLAB-backed autonomous biological systems modeling: bma_* tools and the MATLAB 生物系统建模 agent preset for DeepSeek Harness.",
   "type": "module",

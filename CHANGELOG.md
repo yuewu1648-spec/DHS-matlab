@@ -4,6 +4,20 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [SemVer 2.0](https://semver.org/lang/zh-CN/)。
 更新纪律见 `docs/VERSIONING.md`。
 
+## [0.12.0] - 2026-11-19
+
+### Added
+- **PDF 矢量插图使用 PyMuPDF**：`bma.io.extractPdfFigures` 默认调用 Python + PyMuPDF；新增 `matlab/+bma/+io/private/pdf_figures_pymupdf.py`：
+  - 提取嵌入位图（PNG/JPG）；
+  - 对 `page.get_drawings()` 的 figure-sized 矢量 drawing 区域做 bbox 聚类，按 `dpi` 渲染为 `kind=vector_render` PNG；
+  - 返回 `figure_class=bitmap|vector|vector_or_mask|mixed`、`vector_only`、`rasterized`、`reason`、`renderer=pymupdf`；
+  - 页面无图幅级 cluster 时标记 `figure_class=vector, reason=no_figure_region`，可用 `render_pages=true` 渲染整页。
+  - PyMuPDF/ Python 不可用时回退内置纯 MATLAB 位图解析器，并保留明确 warning。
+
+### Tests
+- 新增矢量 PDF fixture `tests/fixtures/upgrade/pdf/vector_figure.pdf`；`test_io_figures` 断言 PyMuPDF `vector_render`、`figure_class=vector`、`rasterized=true`。
+- 完整套件见 `docs/ACCEPTANCE.md` §7.23。
+
 ## [0.11.1] - 2026-11-19
 
 ### Added
