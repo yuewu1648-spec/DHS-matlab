@@ -1,0 +1,130 @@
+{
+  "schema": "bma.fixture.expectations.v1",
+  "fixture_id": "enzyme_kinetics",
+  "title": "Kinetic characterization of a metagenome-derived short-chain dehydrogenase reveals a near-diffusion-limited catalytic efficiency",
+  "purpose": "Michaelis-Menten steady-state kinetics with a full progress-curve cross-validation. Exercises literature number extraction, param evidence tagging and ODE fitting.",
+  "formats": ["md", "txt", "html", "docx", "pdf"],
+  "expected_sections": [
+    "Abstract", "1. Introduction", "2. Materials and methods", "3. Results",
+    "4. Discussion", "5. References"
+  ],
+  "expected_model": {
+    "kind": "ode",
+    "archetype": "enzyme_michaelis_menten",
+    "archetype_synonyms": ["enzyme_kinetics", "michaelis_menten", "enzyme_mm", "enzyme"],
+    "suggested_name": "enzyme_kinetics",
+    "species": ["E", "S", "ES", "P"],
+    "time_unit": "s",
+    "time_span": [0, 600],
+    "mechanism_keywords": ["Michaelis", "Km", "kcat", "substrate", "product", "mass action"],
+    "expected_reaction_kinds": ["mass_action"]
+  },
+  "facts": [
+    {
+      "id": "Km", "role": "parameter", "symbol": "Km",
+      "names": ["Km", "K_m", "KM", "Michaelis constant", "Michaelis-Menten constant"],
+      "unit": "uM", "unit_aliases": ["µM", "μM", "micromolar", "umol/L"],
+      "value": 12.5, "tolerance": {"relative": 0.05},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "3.2 Substrate-velocity relationship",
+      "context_keywords": ["Km", "Michaelis"]
+    },
+    {
+      "id": "Vmax", "role": "parameter", "symbol": "Vmax",
+      "names": ["Vmax", "V_max", "maximal velocity"],
+      "unit": "uM/s", "unit_aliases": ["µM s^-1", "µM s−1", "µM/s", "uM/s"],
+      "value": 0.24, "tolerance": {"relative": 0.1},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "3.2 Substrate-velocity relationship",
+      "context_keywords": ["Vmax", "maximal velocity"]
+    },
+    {
+      "id": "kcat", "role": "parameter", "symbol": "kcat",
+      "names": ["kcat", "k_cat", "turnover number"],
+      "unit": "1/s", "unit_aliases": ["s^-1", "s−1", "1/s"],
+      "value": 4.8, "tolerance": {"relative": 0.1},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "3.2 Substrate-velocity relationship",
+      "context_keywords": ["kcat", "turnover"]
+    },
+    {
+      "id": "Etot", "role": "initial", "symbol": "E0",
+      "names": ["active-site concentration", "enzyme concentration", "E0", "Etot"],
+      "unit": "uM", "unit_aliases": ["µM", "μM"],
+      "value": 0.05, "tolerance": {"relative": 0.05},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.1 Enzyme expression and purification",
+      "context_keywords": ["active-site", "0.05"]
+    },
+    {
+      "id": "kf", "role": "parameter", "symbol": "kf",
+      "names": ["kf", "k_f", "association rate constant", "second-order association rate constant"],
+      "unit": "1/(uM*s)", "unit_aliases": ["µM^-1 s^-1", "µM−1 s−1", "1/(uM*s)"],
+      "value": 1.0, "tolerance": {"relative": 0.25},
+      "expected_in_spec": true, "expected_estimate": false,
+      "evidence_type_hint": "estimated",
+      "section_hint": "2.4 Progress-curve experiments",
+      "context_keywords": ["association rate constant", "1.0"]
+    },
+    {
+      "id": "kr", "role": "derived_parameter", "symbol": "kr",
+      "names": ["kr", "k_r", "dissociation rate constant"],
+      "unit": "1/s", "unit_aliases": ["s^-1", "s−1", "1/s"],
+      "value": 7.7, "tolerance": {"relative": 0.15},
+      "expected_in_spec": false, "expected_estimate": false,
+      "derivation": "kr = Km*kf - kcat",
+      "section_hint": "2.4 Progress-curve experiments",
+      "context_keywords": ["kr", "7.7"]
+    },
+    {
+      "id": "kcat_over_Km", "role": "derived", "symbol": "kcat/Km",
+      "names": ["catalytic efficiency", "kcat/Km", "specificity constant"],
+      "unit": "1/(M*s)", "unit_aliases": ["M^-1 s^-1", "M−1 s−1"],
+      "value": 384000.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Substrate-velocity relationship",
+      "context_keywords": ["catalytic efficiency", "3.8"]
+    },
+    {
+      "id": "half_conversion_time", "role": "observation", "symbol": "t1/2",
+      "names": ["half-conversion", "time to half-conversion"],
+      "unit": "s", "unit_aliases": ["s", "sec"],
+      "value": 141.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": false,
+      "section_hint": "3.3 Progress curves",
+      "context_keywords": ["half-conversion", "141"]
+    }
+  ],
+  "datasets": [
+    {
+      "file": "data/substrate_velocity.csv",
+      "role": "steady_state_kinetics",
+      "time_unit": null,
+      "columns": {"substrate_uM": "uM", "v0_uM_per_s": "uM/s"},
+      "rows": 11,
+      "note": "Initial-velocity saturation curve; use for extraction / MM cross-check, not for ODE time-course fitting."
+    },
+    {
+      "file": "data/progress_curve_S50.csv",
+      "role": "fit_target",
+      "time_unit": "s",
+      "columns": {"time_s": "s", "P_uM": "uM", "S_uM": "uM"},
+      "rows": 61,
+      "output_map": {"P_obs": "P_uM", "S_obs": "S_uM"},
+      "initial_conditions_hint": {"E": 0.05, "S": 50.0, "ES": 0.0, "P": 0.0},
+      "note": "Recommended fit data set (time-course ODE, 0-600 s sampled every 10 s)."
+    }
+  ],
+  "assertions": {
+    "report_must_contain": ["Km", "kcat", "assumptions", "Vmax"],
+    "report_must_contain_case_insensitive": ["michaelis"],
+    "spec_must_have_assumptions": true,
+    "parameter_evidence_required": true,
+    "expected_output_ids_any_of": ["P_obs", "S_obs"]
+  },
+  "notes": [
+    "Synthetic fixture: the paper text, authors, journal and DOI are fabricated for testing.",
+    "Generated by tests/fixtures/tools/make_fixtures.py; the CSV data match the numbers printed in the paper.",
+    "The paper deliberately gives an estimated kf (stopped-flow) so that individual mass-action rate constants are identifiable."
+  ]
+}

@@ -1,0 +1,107 @@
+{
+    "schema_version":  "bma.modelSpec.v1",
+    "name":  "pde_sphere256",
+    "title":  "spherical first-order",
+    "kind":  "pde",
+    "time":  {
+                 "unit":  "s",
+                 "start":  0,
+                 "end":  1000000,
+                 "n":  101
+             },
+    "variables":  [
+                      {
+                          "id":  "u",
+                          "name":  "substrate",
+                          "unit":  "1",
+                          "initial":  {
+                                          "value":  1
+                                      }
+                      }
+                  ],
+    "pde":  {
+                "dim":  1,
+                "domain":  {
+                               "geometry":  "sphere",
+                               "extent":  {
+                                              "value":  66,
+                                              "unit":  "um"
+                                          },
+                               "grid":  {
+                                            "type":  "uniform",
+                                            "n":  256
+                                        },
+                               "approximation":  "equivalent sphere"
+                           },
+                "diffusion":  [
+                                  {
+                                      "species":  "u",
+                                      "coeff":  "De"
+                                  }
+                              ],
+                "bc":  [
+                           {
+                               "face":  "x0",
+                               "type":  "neumann",
+                               "flux":  0
+                           },
+                           {
+                               "face":  "x1",
+                               "type":  "dirichlet",
+                               "value":  "Co"
+                           }
+                       ]
+            },
+    "parameters":  [
+                       {
+                           "id":  "De",
+                           "unit":  "um^2/s",
+                           "value":  {
+                                         "value":  1
+                                     }
+                       },
+                       {
+                           "id":  "Co",
+                           "unit":  "1",
+                           "value":  {
+                                         "value":  10.007
+                                     }
+                       },
+                       {
+                           "id":  "k1",
+                           "unit":  "1/s",
+                           "value":  {
+                                         "value":  0.00465
+                                     }
+                       }
+                   ],
+    "reactions":  [
+                      {
+                          "id":  "consume",
+                          "stoichiometry":  {
+                                                "u":  -1
+                                            },
+                          "rate":  {
+                                       "kind":  "expression",
+                                       "expression":  "k1*u"
+                                   }
+                      }
+                  ],
+    "outputs":  [
+                    {
+                        "id":  "u_center",
+                        "unit":  "1",
+                        "expression":  "u[1]"
+                    },
+                    {
+                        "id":  "u_edge",
+                        "unit":  "1",
+                        "expression":  "u[256]"
+                    },
+                    {
+                        "id":  "ratio",
+                        "unit":  "1",
+                        "expression":  "u[1]/u[256]"
+                    }
+                ]
+}

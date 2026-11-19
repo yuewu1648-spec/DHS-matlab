@@ -1,0 +1,171 @@
+{
+  "id": "pharmacokinetics",
+  "type": "archetype",
+  "name": "药代动力学（一室/二室、口服吸收与清除）",
+  "name_en": "Pharmacokinetics: one- and two-compartment models",
+  "domain": "pharmacokinetics",
+  "scale": "organism",
+  "model_class": "ode",
+  "summary": "把给药（静脉/口服）与消除抽象为房室间的一级转运：一室模型用消除速率常数 k、表观分布容积 V 描述 C(t)；口服加吸收室（ka）后出现 Cmax/Tmax；二室模型用中央/外周室描述快速分布相 + 慢消除相。核心输出量是半衰期 t1/2、清除率 CL=kV、AUC、生物利用度 F 与稳态浓度，它们是剂量方案设计的依据。",
+  "when_to_use": [
+    "文献报告血药浓度-时间曲线、Cmax、Tmax、t1/2、AUC、CL、Vd、生物利用度 F 或稳态浓度",
+    "出现「one-compartment」「two-compartment」「IV bolus」「oral administration」「first-pass effect」「flip-flop kinetics」",
+    "需要设计/评估给药方案（剂量、间隔、负荷剂量）或比较不同给药途径",
+    "治疗药物监测（TDM）、群体药代（popPK）、药物相互作用导致的清除改变",
+    "非线性药代（米氏消除、饱和吸收）、或多室 PBPK 的降阶模型"
+  ],
+  "tags": ["药代动力学", "PK", "一室", "二室", "清除率", "半衰期", "AUC", "给药方案"],
+  "keywords": ["药代动力学", "一室模型", "二室模型", "消除速率常数", "半衰期", "清除率", "表观分布容积", "生物利用度", "Cmax", "Tmax", "AUC", "口服吸收", "pharmacokinetics", "compartment model", "clearance", "volume of distribution"],
+  "equations": [
+    {
+      "name": "一室模型（静脉推注）",
+      "latex": "\\frac{dA}{dt}=-kA,\\qquad C(t)=\\frac{A(t)}{V}=C_0e^{-kt},\\qquad C_0=\\frac{D}{V}",
+      "plain": "dA/dt = -k*A; C(t)=A/V=C0*e^(-k*t); C0=D/V",
+      "terms": {
+        "A": "体内药量（mg）；D 为给药剂量",
+        "V": "表观分布容积（L）；不是真实解剖体积，可远大于体液体积（亲脂药可达数百 L）",
+        "k": "消除速率常数（1/h）",
+        "t_half": "半衰期 = ln2/k",
+        "CL": "清除率 CL = k*V（L/h），是独立于 V 的消除能力指标",
+        "AUC": "曲线下面积 AUC = D/CL = C0/k"
+      }
+    },
+    {
+      "name": "一室模型（口服/血管外给药）",
+      "latex": "\\frac{dA_g}{dt}=-k_aA_g,\\quad \\frac{dA_c}{dt}=k_aA_g-kA_c,\\quad C(t)=\\frac{F D k_a}{V(k_a-k)}\\left(e^{-kt}-e^{-k_at}\\right)",
+      "plain": "dAg/dt=-ka*Ag; dAc/dt=ka*Ag-k*Ac; C(t)=F*D*ka/(V*(ka-k))*(e^(-k*t)-e^(-ka*t))",
+      "terms": {
+        "Ag_Ac": "吸收室（胃肠道）与中央室药量（mg）",
+        "ka": "吸收速率常数（1/h）；吸收半衰期 ln2/ka",
+        "F": "生物利用度（0-1）；口服剂量 D 中进入体循环的比例",
+        "Cmax_Tmax": "Tmax = ln(ka/k)/(ka-k)，Cmax = C(Tmax)",
+        "flip_flop": "若 ka << k（吸收慢于消除），终末相斜率反映 ka 而非 k，称 flip-flop 动力学，常见于缓释制剂"
+      }
+    },
+    {
+      "name": "二室模型（静脉推注）",
+      "latex": "\\frac{dA_1}{dt}=-(k_{10}+k_{12})A_1+k_{21}A_2,\\quad \\frac{dA_2}{dt}=k_{12}A_1-k_{21}A_2,\\quad C(t)=Ae^{-\\alpha t}+Be^{-\\beta t}",
+      "plain": "dA1/dt=-(k10+k12)*A1+k21*A2; dA2/dt=k12*A1-k21*A2; C(t)=A*e^(-αt)+B*e^(-βt)",
+      "terms": {
+        "A1_A2": "中央室（血浆/灌注良好组织）与外周室药量（mg）",
+        "k10": "中央室消除速率常数（1/h）；k12、k21 为室间转运速率",
+        "alpha_beta": "快相（分布）与慢相（消除）的表观速率常数；β 决定终末半衰期",
+        "macro_vs_micro": "拟合通常得到 A、B、α、β（宏观），再由它们换算 k10、k12、k21；从稀疏数据直接拟合微观参数常不可辨识",
+        "Vss": "稳态分布容积 Vss = V1(1 + k12/k21)"
+      }
+    },
+    {
+      "name": "清除率、半衰期与稳态（线性 PK 核心关系）",
+      "latex": "CL=kV,\\quad t_{1/2}=\\frac{\\ln 2\\,V}{CL},\\quad AUC_{0-\\infty}=\\frac{F\\,D}{CL},\\quad C_{ss,avg}=\\frac{F D}{CL\\,\\tau}",
+      "plain": "CL=k*V; t1/2=ln2*V/CL; AUC=F*D/CL; 稳态平均浓度 Css,avg=F*D/(CL*τ)",
+      "terms": {
+        "tau": "给药间隔（h）",
+        "loading_dose": "达到稳态所需时间 ≈ 4-5 个 t1/2；负荷剂量 = C_target*V/F",
+        "implication": "CL 决定平均稳态浓度与 AUC；V 决定峰谷波动与负荷剂量；两者作用不同，报告必须分开",
+        "note": "清除率与分布容积是独立参数，不可由半衰期单独反推（半衰期 = 二者之比）"
+      }
+    },
+    {
+      "name": "非线性（饱和）消除",
+      "latex": "\\frac{dC}{dt}=-\\frac{V_{max}C}{K_m+C}",
+      "plain": "dC/dt = -Vmax*C/(Km+C)",
+      "terms": {
+        "Vmax": "最大消除速率（mg/L/h 或 mg/h 除以 V）",
+        "Km": "米氏常数（mg/L）；C<<Km 时退化为一级，C>>Km 时为零级（消除时间随剂量超比例延长）",
+        "clinical": "苯妥英、乙醇、水杨酸高剂量等；剂量翻倍血药浓度可翻数倍，需监测",
+        "criterion": "剂量归一化 AUC 随剂量上升而增大（非线性）；半衰期随浓度变化"
+      }
+    },
+    {
+      "name": "多次给药与蓄积",
+      "latex": "C_{min}^{ss}=\\frac{F D}{V}\\cdot\\frac{1}{1-e^{-k\\tau}},\\quad R_{ac}=\\frac{C_{max}^{ss}}{C_{max}^{first}}=\\frac{1}{1-e^{-k\\tau}}",
+      "plain": "Cmin,ss = (F*D/V)/(1-e^(-k*τ)); 蓄积因子 Rac = 1/(1-e^(-k*τ))",
+      "terms": {
+        "accumulation_factor": "t1/2 越长、τ 越短，蓄积越明显（Rac 趋近 1/(1-e^-...))",
+        "note": "线性 PK 下稳态 AUC 等于单次 AUC 的 1/(1-e^{-kτ}) 倍；非线性 PK 不成立"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "pk_one_compartment_oral",
+    "title": "一室药代模型（口服吸收 + 一级消除）",
+    "description": "口服剂量进入吸收室（胃肠道），以一级速率 ka 吸收入中央室，中央室以一级速率 k 消除；血药浓度 C = Ac/V。用于血药浓度-时间曲线拟合与 Cmax/Tmax/AUC 估计。",
+    "kind": "ode",
+    "time": { "unit": "h", "start": 0, "end": 48, "n": 481 },
+    "variables": [
+      { "id": "A_gut", "name": "吸收室药量（胃肠道）", "unit": "mg", "initial": { "value": 100, "note": "口服剂量；若 F<1，则有效剂量=F*D" } },
+      { "id": "A_c", "name": "中央室药量（体循环）", "unit": "mg", "initial": { "value": 0 } }
+    ],
+    "parameters": [
+      { "id": "ka", "name": "吸收速率常数", "unit": "1/h", "value": { "value": 1.0 }, "estimate": true, "bounds": [0.01, 50] },
+      { "id": "k", "name": "消除速率常数", "unit": "1/h", "value": { "value": 0.15 }, "estimate": true, "bounds": [0.001, 10] },
+      { "id": "V", "name": "表观分布容积", "unit": "L", "value": { "value": 20.0 }, "estimate": true, "bounds": [0.1, 2000] },
+      { "id": "dose", "name": "口服剂量", "unit": "mg", "value": { "value": 100.0 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "absorption", "name": "胃肠吸收", "stoichiometry": { "A_gut": -1, "A_c": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "ka" }, "species": { "A_gut": 1 } } },
+      { "id": "elimination", "name": "体循环消除", "stoichiometry": { "A_c": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "k" }, "species": { "A_c": 1 } } }
+    ],
+    "outputs": [
+      { "id": "C_obs", "name": "血药浓度", "unit": "mg/L", "expression": "A_c/V" },
+      { "id": "A_gut_obs", "name": "胃肠道残留药量", "unit": "mg", "expression": "A_gut" },
+      { "id": "cumulative_absorbed", "name": "累计吸收药量", "unit": "mg", "expression": "dose-A_gut" }
+    ],
+    "assumptions": [
+      "一室线性动力学：分布瞬时完成（或分布相与消除相比可忽略）",
+      "吸收为一级过程；无饱和吸收、无首过代谢（如需 F 或肝首过，乘到剂量/加效应室）",
+      "消除为一级（线性 PK）；无时间依赖性清除、无药物相互作用",
+      "血药浓度与中央室药量成正比（V 恒定）；采样时间准确"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。初值 100 mg 为剂量；F 未显式建模（默认 F=1），口服 F<1 时用有效剂量 F*D。R0 无关。" }
+  },
+  "spec_notes": [
+    "静脉推注版本：删除吸收反应与 A_gut，把 A_c 初值设为剂量，dAc/dt=-k*Ac；拟合 C(t)=C0*e^{-kt}。",
+    "二室版本：增加外周室 A_p 与两个室间反应（k12 中央→外周、k21 外周→中央），消除仍从中央室；参数 k10、k12、k21，V1、V2；输出 C=A1/V1。",
+    "生物利用度 F：线性 PK 下 F 与 V 只能以乘积出现在口服浓度中（C 正比于 F/V），因此口服数据只能估计 F/V 组合；要拆开 F 需与静脉数据联合拟合（IV 给 V）。",
+    "剂量已参数化：dose（mg）与 A_gut 初值需一致；cumulative_absorbed = dose - A_gut 量纲自洽。改变剂量时改 dose 与 A_gut 初值（或用 simulate_cases 覆盖）。",
+    "采样设计：富集采样（每个受试者 8-15 点，含峰前后与 ≥3 个终末相点）才能同时估 ka、k、V；稀疏数据用群体 PK（非线性混合效应）。",
+    "若数据含多个受试者/剂量，可分层拟合或加个体间随机效应；报告需给出群体典型值与变异。"
+  ],
+  "variables": [
+    { "id": "A_gut", "name": "吸收室药量", "unit": "mg", "typical_range": [0, 5000], "notes": "剂量 mg 级；大分子/生物药常以 nmol 或 mg/kg 计" },
+    { "id": "A_c", "name": "中央室药量", "unit": "mg", "typical_range": [0, 5000], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "ka", "symbol": "k_a", "unit": "1/h", "typical_range": [0.01, 50], "notes": "普通片 0.5-3 1/h；缓释制剂可低至 0.02-0.1 1/h" },
+    { "id": "k", "symbol": "k", "unit": "1/h", "typical_range": [0.001, 10], "notes": "t1/2=0.5-24 h 对应 0.03-1.4 1/h；有些药物 t1/2 数天" },
+    { "id": "V", "symbol": "V", "unit": "L", "typical_range": [0.1, 2000], "notes": "小分子 3-50 L（0.05-0.7 L/kg）；亲脂药可 >100 L；生物药接近血浆体积（3-8 L）" },
+    { "id": "dose", "symbol": "D", "unit": "mg", "typical_range": [0.1, 5000], "notes": "给药剂量；口服 F<1 时有效剂量=F*dose" }
+  ],
+  "assumptions": [
+    "线性、时间不变的消除（一级动力学）",
+    "快速分布均衡（一室）；若分布相明显则需二室",
+    "无首过代谢/无肠肝循环/无主动转运饱和（这些需要额外房室或非线性项）",
+    "血药浓度代表效应部位浓度（或需加效应室 ke0 的 PK/PD 模型）"
+  ],
+  "evidence_cues": [
+    "「plasma concentration-time curve」「Cmax = 1.2 ug/mL」「Tmax = 2 h」「t1/2 = 6 h」",
+    "「AUC0-inf」「clearance 12 L/h」「volume of distribution 80 L」「bioavailability 45%」",
+    "「one-compartment」「two-compartment」「IV bolus」「oral administration」「infusion」",
+    "「first-pass metabolism」「flip-flop kinetics」「enterohepatic recirculation」→ 需二室/多室或特殊吸收模型",
+    "「dose proportionality」「nonlinear pharmacokinetics」「Michaelis-Menten elimination」",
+    "「steady state」「loading dose」「accumulation ratio」→ 多次给药模型"
+  ],
+  "fitting_notes": "1) 浓度数据常跨 2-4 个数量级，用 log 尺度残差或加权 1/C²（近似常数相对误差），不要用未加权最小二乘；2) 先看半对数图判断相数（一相 vs 双相），再决定一室/二室；3) 一室口服拟合 ka、k、V/F：初值可由 Tmax、终末斜率、峰值给出；若 ka 与 k 接近，Tmax 公式数值不稳定，应固定一个或加先验；4) 终末相至少 3 个点且高于定量下限（LOQ）2 倍；低于 LOQ 用删失似然而非当 0；5) 二室模型对采样时间敏感：分布相需早期密集点（0.5、1、2、4 h）；6) 多剂量/多受试者数据用非线性混合效应（NLME）或分层拟合，报告典型值+BSV；7) 模型选择（一室 vs 二室）用 AICc 和残差图，不要只因拟合更好就加房室；8) 报告 F 时需说明与 IV 对照还是绝对生物利用度。",
+  "identifiability_notes": "1) 口服数据中 F 与 V 只以 F/V 出现：通常报告 V/F（表观分布容积），不能单独得 V 与 F；2) 一室口服的 ka 与 k 在 ka≈k 时不可分离（Tmax 公式退化），需早期密集采样或 IV 数据；3) 终末半衰期依赖采样时长：若只采样 2-3 个 t1/2，β 与 AUC 外推不准；4) 二室微观参数 k12、k21、k10 与宏观 A、B、α、β 一一对应但数值上对噪声敏感（指数和拟合病态），稀疏数据下建议只用宏观参数；5) 清除率与分布容积是独立参数，但若只有单次口服曲线，CL/F 可估而 CL 与 F 不可分；6) 非线性消除需多剂量数据才能辨识 Vmax 与 Km，单一剂量无法区分一级与饱和；7) 采样点少/时间不准（尤其是吸收相）会系统偏差 ka 与 Cmax。",
+  "references": [
+    { "citation": "Teorell T (1937). Kinetics of distribution of substances administered to the body. Archives Internationales de Pharmacodynamie et de Therapie 57:205-240.", "authors": ["Teorell T"], "year": 1937, "title": "Kinetics of distribution of substances administered to the body", "journal": "Archives Internationales de Pharmacodynamie et de Therapie", "volume": "57", "pages": "205-240", "note": "房室药代动力学的奠基工作" },
+    { "citation": "Gibaldi M, Perrier D (1982). Pharmacokinetics, 2nd ed. Marcel Dekker, New York.", "authors": ["Gibaldi M", "Perrier D"], "year": 1982, "title": "Pharmacokinetics", "journal": "Marcel Dekker", "note": "一室/二室模型、吸收、AUC 与矩分析的标准参考" },
+    { "citation": "Rowland M, Tozer TN (2011). Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications, 4th ed. Lippincott Williams & Wilkins.", "authors": ["Rowland M", "Tozer TN"], "year": 2011, "title": "Clinical Pharmacokinetics and Pharmacodynamics: Concepts and Applications", "journal": "Lippincott Williams & Wilkins", "note": "清除率/分布容积/半衰期的临床解释与给药方案设计" },
+    { "citation": "Wagner JG (1975). Fundamentals of Clinical Pharmacokinetics. Drug Intelligence Publications, Hamilton, IL.", "authors": ["Wagner JG"], "year": 1975, "title": "Fundamentals of Clinical Pharmacokinetics", "journal": "Drug Intelligence Publications" }
+  ],
+  "related": ["receptor_ligand_dose_response", "sir_seir", "metabolic_pathway"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

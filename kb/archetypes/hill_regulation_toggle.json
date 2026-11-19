@@ -1,0 +1,170 @@
+{
+  "id": "hill_regulation_toggle",
+  "type": "archetype",
+  "name": "Hill 调控与双稳态开关（Toggle switch）",
+  "name_en": "Hill regulation and bistable toggle switch",
+  "domain": "gene_regulation",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "Hill 函数把「转录因子浓度」映射为「启动子占据/转录速率」的 S 形响应，n>1 表示协同性；当两个因子互相阻遏且协同性足够强、合成速率足够高时，系统出现两个稳定稳态（双稳态）与滞后（hysteresis），是细胞命运决定、记忆与合成开关电路的最小模型。Hill 型速率用内建 hill 定律即可；一般协同/多聚结合可用 Monod-Wyman-Changeux 或 Hill 拟合。",
+  "when_to_use": [
+    "文献给出 S 形剂量-响应曲线并拟合 Hill 方程（EC50、Hill 系数 n、最大效应 Emax）",
+    "出现「mutual repression」「toggle switch」「bistable」「hysteresis」「alternative stable states」「cell fate decision」「memory」等关键词",
+    "数据呈双峰分布（流式/单细胞），或诱导-撤除后状态不可逆（滞后环）",
+    "合成生物学 cell-free/电路报告：lacI/tetR、CI/Cro 互斥开关、双稳态网络",
+    "协同结合、多聚体转录因子、正反馈自激活导致的阈值/开关样响应"
+  ],
+  "tags": ["Hill", "协同性", "双稳态", "开关", "滞后", "基因调控", "toggle_switch"],
+  "keywords": ["Hill 方程", "Hill 系数", "协同性", "双稳态", "开关", "滞后环", "阈值响应", "细胞命运", "bistability", "toggle switch", "hysteresis", "cooperativity", "switch-like", "mutual repression"],
+  "equations": [
+    {
+      "name": "Hill 激活与阻遏",
+      "latex": "f_{act}(R)=\\frac{R^{n}}{K^{n}+R^{n}},\\qquad f_{rep}(R)=\\frac{K^{n}}{K^{n}+R^{n}}=1-f_{act}(R)",
+      "plain": "f_act = R^n/(K^n+R^n); f_rep = K^n/(K^n+R^n) = 1 - f_act",
+      "terms": {
+        "R": "调节因子浓度/活性（nM 或任意活性单位）",
+        "K": "半效浓度（nM）= EC50（激活）或 IC50（阻遏）；n=1 时 K = Kd",
+        "n": "Hill 系数（无量纲）：n>1 正协同（开关样），n<1 负协同/Anti-cooperative，n=1 无协同",
+        "note": "Hill 方程是表观现象学描述；机制上 n 来自多聚体结合或下游零级超敏，不等于结合位点数"
+      }
+    },
+    {
+      "name": "互惠阻遏双稳态模型（toggle）",
+      "latex": "\\frac{du}{dt}=\\frac{\\alpha_1}{1+\\left(\\frac{v}{K_2}\\right)^{h}}-\\gamma_u u,\\qquad \\frac{dv}{dt}=\\frac{\\alpha_2}{1+\\left(\\frac{u}{K_1}\\right)^{h}}-\\gamma_v v",
+      "plain": "du/dt = alpha1/(1+(v/K2)^h) - gamma_u*u; dv/dt = alpha2/(1+(u/K1)^h) - gamma_v*v",
+      "terms": {
+        "u_v": "两个互相阻遏的因子浓度（nM）",
+        "alpha1_alpha2": "最大合成速率（nM/min）",
+        "K1_K2": "各自被对方半效阻遏的浓度（nM）",
+        "h": "协同 Hill 系数（两处共享或分开估计）",
+        "gamma_u_gamma_v": "一阶降解/稀释速率（1/min）",
+        "steady_branch": "零线交点给出 1 或 3 个稳态；3 个时外侧两个稳定，中间一个不稳定（鞍点）"
+      }
+    },
+    {
+      "name": "对称情形双稳态的解析判据",
+      "latex": "\\frac{du}{d\\tau}=\\frac{a}{1+v^{h}}-u,\\ \\frac{dv}{d\\tau}=\\frac{a}{1+u^{h}}-v;\\quad \\text{bistable} \\iff a>a_c=x^{*}\\left(1+\\frac{1}{h-1}\\right),\\ x^{*}=(h-1)^{-1/h}",
+      "plain": "无量纲化 x=u/K, tau=gamma*t, a=alpha/(gamma*K): 双稳当 a > a_c，a_c = x*(1+1/(h-1))，x* = (h-1)^(-1/h)",
+      "terms": {
+        "derivation": "对称稳态 x=u/K=v/K 满足 a=x(1+x^h)；其 Jacobian 特征值为 -1±(h*x^h/(1+x^h))，当 (h-1)x^h>1 时失稳、分岔出两个稳定节点",
+        "value": "h=2: a_c=2；h=3: a_c≈1.19；h=4: a_c≈0.85；h→大时 a_c→1",
+        "usage": "文献只给参数时快速判断是否可能双稳；也可反推实现开关所需的最小协同性/表达强度",
+        "note": "该判据假设对称（alpha、K、gamma 相同）；非对称时只能用数值 Jacobian/延拓判断"
+      }
+    },
+    {
+      "name": "滞后与分岔图（鞍结分岔）",
+      "latex": "\\text{saddle-node}:\\ \\det J=0\\ \\text{且}\\ J\\ \\text{有零特征值}",
+      "plain": "稳态随参数（如诱导剂）变化时，两个稳态经鞍结分岔合并后消失，形成滞后环；分岔点满足 det J = 0",
+      "terms": {
+        "procedure": "以单参数（如 alpha 或诱导剂剂量）为延续参数，追踪稳态；在折叠点切换分支即得滞后曲线",
+        "experiment": "诱导剂量上升沿与下降沿的切换阈值不同 -> 滞后；只测单一方向会漏掉双稳",
+        "matlab_equiv": "bma.model.analyze 给稳态与特征值；参数扫描用 simulate_cases；严格分岔追踪可用自写延拓或固定点迭代"
+      }
+    },
+    {
+      "name": "零级超敏产生的有效 Hill 系数",
+      "latex": "n_{eff}=\\frac{d\\ln\\left(x^{*}/(1-x^{*})\\right)}{d\\ln s}",
+      "plain": "n_eff = d ln(x*/(1-x*)) / d ln(s)",
+      "terms": {
+        "usage": "当 S 形来自共价修饰循环（Goldbeter-Koshland）而非结合协同时，用有效 Hill 系数描述陡度；Km<<Xtot 时 n_eff 可 >1（零级超敏）",
+        "meaning": "文献若无分子机制但观察到陡峭阈值，可用 Hill + 大 n 拟合；n_eff 是局部斜率，不是真正结合位点数"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "toggle_switch",
+    "title": "互惠阻遏双稳态开关（toggle switch）",
+    "description": "两个基因 u、v 互相以 Hill 型阻遏对方转录，各自一阶降解/稀释。用于双稳态、滞后与细胞命运决定的建模。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 600, "n": 1201 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "u", "name": "因子 u（如 lacI）", "unit": "nM", "initial": { "value": 0.1 } },
+      { "id": "v", "name": "因子 v（如 tetR）", "unit": "nM", "initial": { "value": 5.0 } }
+    ],
+    "parameters": [
+      { "id": "alpha1", "name": "u 的最大合成速率", "unit": "nM/min", "value": { "value": 5.0 }, "estimate": true, "bounds": [0.001, 100] },
+      { "id": "alpha2", "name": "v 的最大合成速率", "unit": "nM/min", "value": { "value": 5.0 }, "estimate": true, "bounds": [0.001, 100] },
+      { "id": "K1", "name": "u 抑制 v 的半效浓度", "unit": "nM", "value": { "value": 1.0 }, "estimate": true, "bounds": [0.001, 1000] },
+      { "id": "K2", "name": "v 抑制 u 的半效浓度", "unit": "nM", "value": { "value": 1.0 }, "estimate": true, "bounds": [0.001, 1000] },
+      { "id": "h", "name": "阻遏 Hill 系数", "unit": "1", "value": { "value": 2.5 }, "estimate": true, "bounds": [1, 8] },
+      { "id": "gamma_u", "name": "u 的降解/稀释速率", "unit": "1/min", "value": { "value": 0.05 }, "estimate": true, "bounds": [1e-05, 1] },
+      { "id": "gamma_v", "name": "v 的降解/稀释速率", "unit": "1/min", "value": { "value": 0.05 }, "estimate": true, "bounds": [1e-05, 1] }
+    ],
+    "reactions": [
+      { "id": "u_synthesis", "name": "u 合成（受 v 阻遏）", "stoichiometry": { "u": 1 },
+        "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha1", "k": "K2", "n": "h" },
+                  "species": { "regulator": "v" } } },
+      { "id": "u_decay", "name": "u 降解", "stoichiometry": { "u": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_u" }, "species": { "u": 1 } } },
+      { "id": "v_synthesis", "name": "v 合成（受 u 阻遏）", "stoichiometry": { "v": 1 },
+        "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha2", "k": "K1", "n": "h" },
+                  "species": { "regulator": "u" } } },
+      { "id": "v_decay", "name": "v 降解", "stoichiometry": { "v": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_v" }, "species": { "v": 1 } } }
+    ],
+    "outputs": [
+      { "id": "u_obs", "name": "u 水平（如荧光报告）", "unit": "nM", "expression": "u" },
+      { "id": "v_obs", "name": "v 水平（如荧光报告）", "unit": "nM", "expression": "v" },
+      { "id": "ratio_obs", "name": "u/v 比值（状态判别）", "unit": "1", "expression": "u/v" }
+    ],
+    "assumptions": [
+      "充分混合单细胞/群体平均；两个阻遏均可用 Hill 函数描述（快速结合 QSSA）",
+      "mRNA 动态被忽略（转录延迟远小于蛋白降解时间）或已并入有效 Hill 速率",
+      "降解为一阶、无主动降解饱和；无额外调控输入",
+      "初始条件决定落入哪个吸引域；双稳时群体平均可能掩盖双峰"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；自激活正反馈开关可把第二个方程改为 hill activation。" }
+  },
+  "spec_notes": [
+    "要演示双稳态与滞后：把 initial 分别设为 (0.1, 5) 与 (5, 0.1) 跑两个 case（simulate_cases），应看到分别收敛到两个不同稳态；对称参数 alpha=5/K=1/h=2.5/gamma=0.05 时无量纲 a=alpha/(gamma*K)=100 >> a_c≈1.2，双稳成立。",
+    "自激活（正反馈）开关：du/dt = alpha0 + alpha*u^h/(K^h+u^h) - gamma*u，只用 hill activation 单方程即可产生双稳，判据与 toggle 类似（鞍结分岔）。",
+    "若有诱导剂 IPTG/ATC 控制某个阻遏物，可加一个 hill/expression 调控项；或直接把 K 作为随诱导剂变化的参数做参数扫描（simulate_cases）。",
+    "输出 ratio 用作状态判别时加小常数避免除零；更好的做法是对 u、v 分别建模观测并让下游分类器判状态。",
+    "注意 hill 速率的 vmax 单位与 species 单位一致（nM/min 对 nM），若测量是相对荧光单位，先归一化或引入标定参数。"
+  ],
+  "variables": [
+    { "id": "u", "name": "因子 u", "unit": "nM", "typical_range": [0.001, 1000], "notes": "合成生物学中 lacI/CI 等；单细胞蛋白常 1-1000 nM" },
+    { "id": "v", "name": "因子 v", "unit": "nM", "typical_range": [0.001, 1000], "notes": "与 u 互斥表达的阻遏物" }
+  ],
+  "parameters": [
+    { "id": "alpha1", "symbol": "\\alpha_1", "unit": "nM/min", "typical_range": [0.001, 100], "notes": "强启动子 + 高拷贝质粒可达 10-100 nM/min" },
+    { "id": "alpha2", "symbol": "\\alpha_2", "unit": "nM/min", "typical_range": [0.001, 100], "notes": "" },
+    { "id": "K1", "symbol": "K_1", "unit": "nM", "typical_range": [0.001, 1000], "notes": "阻遏半效浓度；与 Kd 同量级但受协同/聚合影响" },
+    { "id": "K2", "symbol": "K_2", "unit": "nM", "typical_range": [0.001, 1000], "notes": "" },
+    { "id": "h", "symbol": "h", "unit": "1", "typical_range": [1, 8], "notes": "二聚体协同约 2；四聚体/多聚体可 3-4；>4 常提示超敏或表观拟合" },
+    { "id": "gamma_u", "symbol": "\\gamma_u", "unit": "1/min", "typical_range": [1e-05, 1], "notes": "含稀释：细菌 30 min 倍增 ≈ 0.023/min；哺乳 24 h ≈ 5e-4/min" },
+    { "id": "gamma_v", "symbol": "\\gamma_v", "unit": "1/min", "typical_range": [1e-05, 1], "notes": "" }
+  ],
+  "assumptions": [
+    "Hill 型阻遏已集总启动子结合动力学（快平衡），忽略 mRNA 动态",
+    "两个阻遏物之间只有直接互相抑制，无其他网络连接",
+    "降解速率不随状态变化（无饱和降解）",
+    "观测为浓度/荧光均值；双峰群体需单细胞数据或 mixture 模型"
+  ],
+  "evidence_cues": [
+    "「Hill coefficient n = 2.8」「EC50 = 12 nM」「sigmoidal dose-response」",
+    "「mutual repression」「toggle switch」「bistable」「hysteresis loop」「memory」",
+    "「bimodal」「bistable population」「flow cytometry two peaks」",
+    "「Gardner-Cantor-Collins」「lacI/tetR」「CI/Cro」等合成开关电路",
+    "「irreversible commitment」「cell fate decision」「differentiation threshold」",
+    "「positive feedback」「self-activation」→ 单基因自激活开关（Hill activation）"
+  ],
+  "fitting_notes": "1) 剂量-响应（稳态）数据拟合 Hill 的 K、n，并注意用 log10(剂量) 上的均匀采样；2) 双稳态参数（alpha、K、gamma、h）需要动态/双稳态数据才能约束：单分支稳态数据无法辨识另一分支；3) 做诱导上升/下降两个方向的实验（ramp 或 step-up/step-down）以获得滞后环，这是判别双稳的关键证据；4) 若只有群体平均数据，双稳会被平均成中间值，容易误判为单稳渐变响应：需流式单细胞或单细胞时间序列；5) 初值敏感性大，拟合用多起点（≥16）并对每个起点记录收敛分支；6) 无量纲组合 a=alpha/(gamma*K) 与 h 是决定双稳的主要参数，先固定 gamma（稀释）再拟合其余可改善条件数；7) 用 AICc 比较 Hill（3 参数/曲线）vs 4 参数 logistic vs 机制模型。",
+  "identifiability_notes": "1) 只测单分支稳态时，alpha/gamma/K 三者仅以组合 alpha/(gamma*K) 与 h 影响该分支，参数不可分离；2) 未标定荧光单位时整体尺度因子与 alpha 混淆；3) 在对称双稳点附近 Jacobian 有近零特征值，参数估计条件数极差，置信区间巨大（可用剖面似然展示）；4) h 与 K 在只有单剂量点时强相关；5) 滞后环宽度主要约束 h 和 alpha/(gamma*K)，不约束绝对 alpha；6) 若两个阻遏的降解率不同，可在双稳边界附近通过动力学差异辨识，但需要状态切换的时间序列；7) 群体平均数据无法辨识双峰比例与单细胞阈值分布。",
+  "references": [
+    { "citation": "Gardner TS, Cantor CR, Collins JJ (2000). Construction of a genetic toggle switch in Escherichia coli. Nature 403(6767):339-342.", "authors": ["Gardner TS", "Cantor CR", "Collins JJ"], "year": 2000, "title": "Construction of a genetic toggle switch in Escherichia coli", "journal": "Nature", "volume": "403", "pages": "339-342", "doi": "10.1038/35002131" },
+    { "citation": "Monod J, Wyman J, Changeux JP (1965). On the nature of allosteric transitions: a plausible model. Journal of Molecular Biology 12(1):88-118.", "authors": ["Monod J", "Wyman J", "Changeux JP"], "year": 1965, "title": "On the nature of allosteric transitions: a plausible model", "journal": "Journal of Molecular Biology", "volume": "12", "pages": "88-118" },
+    { "citation": "Hill AV (1910). The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves. Journal of Physiology 40(Suppl):iv-vii.", "authors": ["Hill AV"], "year": 1910, "title": "The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves", "journal": "Journal of Physiology", "volume": "40", "pages": "iv-vii" },
+    { "citation": "Cherry JL, Adler FR (2000). How to make a biological switch. Journal of Theoretical Biology 203(2):117-133.", "authors": ["Cherry JL", "Adler FR"], "year": 2000, "title": "How to make a biological switch", "journal": "Journal of Theoretical Biology", "volume": "203", "pages": "117-133" },
+    { "citation": "Angeli D, Ferrell JE Jr, Sontag ED (2004). Detection of multistability, bifurcations, and hysteresis in a large class of biological positive-feedback systems. Proceedings of the National Academy of Sciences USA 101(7):1822-1827.", "authors": ["Angeli D", "Ferrell JE Jr", "Sontag ED"], "year": 2004, "title": "Detection of multistability, bifurcations, and hysteresis in a large class of biological positive-feedback systems", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "101", "pages": "1822-1827" }
+  ],
+  "related": ["gene_expression", "negative_feedback_oscillator", "mapk_cascade", "enzyme_kinetics"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

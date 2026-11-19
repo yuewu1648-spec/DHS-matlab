@@ -1,0 +1,144 @@
+{
+  "id": "matlab_pde_toolbox_pitfalls",
+  "type": "principle",
+  "name": "MATLAB PDE 工具箱静默陷阱清单",
+  "name_en": "MATLAB PDE Toolbox silent-pitfall checklist",
+  "domain": "numerical_methods",
+  "scale": "tissue",
+  "model_class": "pde",
+  "keywords": ["MATLAB", "PDE", "PDE Toolbox", "decsg", "generateMesh", "specifyCoefficients", "solvepde", "assembleFEMatrices", "FEM", "geometry", "mesh", "silent failure", "PDE 工具箱", "网格", "几何", "系数", "静默失败", "源项"],
+  "tags": ["matlab", "pde", "fem", "numerical", "geometry", "mesh", "checklist"],
+  "summary": "MATLAB PDE 工具箱（decsg/geometryFromEdges/generateMesh/specifyCoefficients/solvepde/assembleFEMatrices）有一批“能跑完、能收敛、但物理结果是错的”静默陷阱。最危险的是 decsg 的集合运算只保留介质域而把内嵌区域挖成空洞、系数函数返回列向量被当成一列、state 依赖的 f 不重算、以及相切几何的退化。本条目把症状、根因、正确写法与最小自检固化为可检索清单；写任何自建 FEM/PDE 前先读它，并在写任何自写求解循环前完成 A2 雅可比方向导数与 A3 方程残差预检。",
+  "statement": "PDE 工具箱的 API 只保证“形式合法”，不保证“几何/系数/源项按物理意图进入装配”。在把 PDE 结果用于生物结论之前，必须独立验证：区域被网格化、系数方向正确、源项被重算、边界条件生效、算子零空间正确、网格收敛。任何一条无法验证，就应降级为自写装配 + Newton（或 1-D 解析对照），而不是相信 solvepde 的残差。自写装配/循环前，必须先通过 A2（J 与 R 同源）与 A3（只以方程残差验收）。",
+  "formulas": [
+    {
+      "name": "A2 雅可比方向导数（自写装配前）",
+      "latex": "e_J=\\frac{\\|R(u+\\epsilon\\,du)-R(u)-\\epsilon J\\,du\\|}{\\|R(u+\\epsilon\\,du)\\|}",
+      "plain": "err = norm(R(u+eps*du)-R(u)-eps*J*du)/norm(R(u+eps*du))",
+      "terms": {
+        "eps": "1e-8*max(1,norm(u))；du=randn(n,1)，rng(0)",
+        "pass": "<1e-8；>1e-5 判失败；中间区间换解析 J/中心差分/复数步复测",
+        "why": "J 与 R 不同源（漏乘单元权重/幅值因子/符号）时，牛顿方向极小或错误"
+      }
+    },
+    {
+      "name": "A3 方程残差验收",
+      "latex": "r_\\mathrm{rel}=\\frac{\\|R(u)\\|}{\\max(\\|F\\|,\\|K\\|\\,\\|u_\\mathrm{ref}\\|,\\epsilon_\\mathrm{mach})}",
+      "plain": "r_rel = norm(R(u))/max(norm(F),norm(K)*norm(u_ref),realmin)",
+      "terms": {
+        "clamp": "正性钳位/截断后重算 R(u_clamped)",
+        "pass": "默认 <=1e-6；不得用 ||u_new-u|| 或 |r|/c_amb"
+      }
+    },
+    {
+      "name": "稳态 PDE 与弱形式",
+      "latex": "-\\nabla\\cdot(c\\nabla u)+a u=f",
+      "plain": "-div(c*grad(u)) + a*u = f",
+      "terms": {
+        "c": "扩散系数（标量/矩阵/函数）；函数必须返回 1×npts 行向量",
+        "a": "吸收/反应系数；正 a 是汇，负 a 是源",
+        "f": "源项；消耗氧时 f 应为负（f=-R），而不是 +R",
+        "u": "浓度/温度等场变量"
+      }
+    },
+    {
+      "name": "反应体积检验",
+      "latex": "V_\\mathrm{isl}=\\sum_{e:\\,x_e\\in\\Omega_\\mathrm{isl}} V_e",
+      "plain": "sum of element volumes whose centroid lies in the islet region",
+      "terms": {
+        "usage": "decsg 的集合运算若把内嵌圆盘当成洞，V_isl=0，反应项体积为 0，解恒等于边界值",
+        "check": "网格生成后立刻计算 V_isl，并与解析面积/体积（πR² 或 4πR³/3）比较"
+      }
+    },
+    {
+      "name": "归一化残差",
+      "latex": "r_\\mathrm{rel}=\\frac{\\|K u-F\\|}{\\|K\\|\\,\\|u_\\mathrm{amb}\\|}",
+      "plain": "r_rel = norm(K*u-F) / (norm(K)*norm(u_amb))",
+      "terms": {
+        "usage": "用 |r|/c_amb 会把 10% 误差看成 1e-10；必须用算子范数×边界值归一化",
+        "check": "同时报告绝对残差、归一化残差和与解析解的相对误差"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "PDE 模型的“收敛”只说明线性/非线性求解器返回了残差小的点，不说明几何、源项、边界条件或符号约定正确；生物结论必须经过独立物理自检。",
+    "空间离散后的 ODE/FEM 模型应把网格、区域标记、反应体积、边界条件写入 metadata，报告里给出网格收敛或解析对照，而不是只给 solvepde 的 exitflag。",
+    "当 PDE 工具箱接口与物理意图冲突时，优先缩小问题到 1-D 板/球解析解，再决定是否自写装配；不要为了绕 API 连续更换四种求解策略。",
+    "decsg 的集合公式是“区域选择”而不是“区域相加”：R-I1 表示从 R 中挖去 I1；要把胰岛嵌入介质，应使用 R+I1（或把 I1 作为独立 face 保留），并用质心计数验证。"
+  ],
+  "how_to_apply": [
+    "写任何自写装配/Newton/Picard/时间/参数循环之前：先做 A2 方向导数（err<1e-8）与 A3 方程残差（r_rel<=1e-6，钳位后重算）；失败先修装配/边界/符号/权重，不要写循环或跑拟合。",
+    "几何：用 decsg(gd, formula, ns) 后立即检查返回的 face 数、每个 face 的质心、以及目标区域面积/体积；ns 必须是 cellstr（{'R','I1'}），char 矩阵会按列取名字。",
+    "网格：generateMesh 后统计单元质心落在目标区域的数量；若为 0，先修几何，不要继续求解。",
+    "系数：c/a/f 函数必须接受 (location, state) 并返回 1×npts 行向量；用 size(cFcn(location,state)) 验证是 1×n 而不是 n×1。",
+    "源项：f 依赖 state.u 时，确认 solvepde 的时间步确实重算 f；用 f=0 的无源检验和 R_max 翻倍的方向检验交叉验证。",
+    "初值：setInitialConditions 只接受标量或长度 PDESystemSize 的列向量；需要节点场延拓时，改用自写装配或分片标量初值，并记录该限制。",
+    "边界/相切：圆盘与边界相切是零角点退化；让内嵌区域嵌入板底 5% 或留微小间隙，再生成网格。",
+    "求解器：model.SolverOptions 是只读对象，逐字段赋值；assembleFEMatrices 的签名以当前版本文档/实测为准，不要照搬旧示例。",
+    "求解后：至少跑无源检验、算子零空间 norm(K*ones)、反应体积、方向检验、1-D/球解析对照；任何一项失败都先停下。"
+  ],
+  "pitfalls": [
+    "没做 A2 就写牛顿循环：J 与 R 不同源（单元权重/幅值因子/符号错误），方向极小、残差不动。",
+    "用相邻迭代差验收：正性钳位后的不动点会让 ||u_new-u|| 假性满足，方程残差仍 O(1)。",
+    "decsg(gd,'R-I1-I2-I3',ns) 只返回介质域，圆盘被挖成洞；网格/求解/残差都正常，但反应体积为 0，解恒为边界值。",
+    "系数函数返回列向量：报错 “should have returned a matrix with N columns”，实际是 1×npts 行向量约定。",
+    "state 依赖的 f 似乎从不重算：瞬态 solvepde 所有时刻都等于初值；非线性“收敛”其实只做了一次线性解。",
+    "setInitialConditions 只接受标量/列向量，无法注入节点场做延拓；不要用“多次 solvepde”伪装成延拓。",
+    "decsg 的 NS 传 char 矩阵：按列取名字，形状数对不上；必须用 cellstr。",
+    "圆盘与边界相切：零角点导致 geometry-mesh associativity 失败，错误信息却提示“mesh size insufficient”。",
+    "model.SolverOptions 整体赋值报“只读”；必须逐字段赋值。",
+    "assembleFEMatrices(model,'nullspace','off') 的第三参数签名与旧文档不一致；以实测签名为准。",
+    "把 PDE 的 f 当“反应速率”而不是“源项”：消耗氧应写 f=-R；写成 +R 会把氧生产到远超边界值。",
+    "用 |r|/c_amb 判断收敛：在 c_amb=0.2、K~1e-9 时，10% 相对误差看起来像 1e-10。"
+  ],
+  "matlab_notes": [
+    "A2：eps=1e-8*max(1,norm(u)); rng(0); du=randn(n,1); r1=R(u+eps*du); err=norm(r1-R(u)-eps*J*du)/max(norm(r1),realmin)。",
+    "A3：r_rel=norm(R(u))/max(norm(F),norm(K)*norm(u_ref),realmin)；钳位后重算；接受阈值 1e-6。",
+    "decsg 示例：gd 的每列是一个形状；R 是矩形，I1 是圆。若目标是“介质中包含胰岛”，用 R+I1 或保留 I1 为独立 face；用 R-I1 会得到带洞介质。",
+    "网格自检：elements 的节点坐标求质心，inpolygon 或圆方程判断质心是否在胰岛内，累加 element volume；V_isl 应与 πR²L（柱段）或 4πR³/3（球）同量级。",
+    "系数函数模板：function c = cFcn(location,state); n = size(location,2); c = zeros(1,n); c(:) = c0; end；返回行向量。",
+    "无源检验：f=0、边界 u=u_amb 时，K\\F 应在所有节点等于 u_amb；若不等，边界条件或坐标映射有误。",
+    "算子零空间：对纯扩散/反应稳态，K*ones 应接近 0（在无吸收项时）；有吸收项时为负，不应为正。",
+    "方向检验：把最大反应速率 R_max 翻倍，监测点浓度必须单调下降；若上升，检查 f 符号或化学计量方向。",
+    "解析对照：1-D 板 -D u'' = R 的闭式解 u(x)=u_amb - R/(2D)(L²-x²)（零通量中心）；先复现它，再上 2-D/3-D。",
+    "当接口缺陷过多时，自写 P1 装配 + 牛顿通常比继续试 API 更快；把 400 行装配代码视为可交付产物，并配上述自检。"
+  ],
+  "spec_mapping": "bma.modelSpec.v1 只支持 kind=\"ode\"；PDE 必须先在外部离散成 ODE（交换项）或用 metadata 记录 PDE 离散。若用自写 FEM 求解，把网格/区域/边界/自检结果写入 run_dir/artifacts 与 metadata；报告需明确“PDE 结果不是 bma_model_simulate 直接产生”。",
+  "diagnostics": [
+    "A2 方向导数 err < 1e-8（1e-8~1e-5 复测；>1e-5 判失败）。",
+    "A3 方程残差 r_rel <= 1e-6，且钳位/截断后重算；不得用 ||u_new-u||。",
+    "反应体积 V_isl > 0 且与解析面积/体积相差 < 10%（或给出网格收敛阶）。",
+    "无源检验 max|u-u_amb| < 1e-8·u_amb。",
+    "算子零空间 norm(K*ones)/norm(K) < 1e-10（纯扩散/无吸收时）。",
+    "方向检验：R_max 翻倍后监测点浓度单调下降。",
+    "归一化残差 r_rel < 1e-6，并同时报告绝对残差与解析对照误差。",
+    "网格加密 2 倍后监测点变化 < 5%，或报告收敛阶。"
+  ],
+  "references": [
+    {
+      "citation": "Buchwald P. A local glucose-and oxygen concentration-based insulin secretion model for pancreatic islets. Theor Biol Med Model. 2009;6:5.",
+      "authors": ["Buchwald P"],
+      "year": 2009,
+      "title": "A local glucose-and oxygen concentration-based insulin secretion model for pancreatic islets",
+      "journal": "Theoretical Biology and Medical Modelling",
+      "volume": "6",
+      "pages": "5",
+      "doi": "10.1186/1742-4682-6-5",
+      "note": "本次 issue 的复现对象；含无血管胰岛氧输运的球/柱几何与消耗项。"
+    },
+    {
+      "citation": "MATLAB R2024a PDE Toolbox documentation: decsg, generateMesh, specifyCoefficients, solvepde, assembleFEMatrices.",
+      "authors": ["MathWorks"],
+      "year": 2024,
+      "title": "Partial Differential Equation Toolbox User's Guide",
+      "journal": "MathWorks",
+      "note": "接口签名的权威来源；但错误信息不指向根因，需配合本清单的自检。"
+    }
+  ],
+  "metadata": {
+    "author": "bma-kb",
+    "version": "0.8.2",
+    "design_ref": "issue I4/I8 (Buchwald 2009 session)",
+    "source_issue": "tests/fixtures/upgrade/AGENT_ISSUE_buchwald2009.md"
+  }
+}

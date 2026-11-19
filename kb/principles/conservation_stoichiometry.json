@@ -1,0 +1,104 @@
+{
+  "id": "conservation_stoichiometry",
+  "type": "principle",
+  "name": "化学计量与守恒律（Stoichiometry and conservation laws）",
+  "name_en": "Stoichiometry and conservation laws",
+  "domain": "systems_biology",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "反应网络的动态由化学计量矩阵 S 与通量 v 完全决定：dx/dt = S·v。S 的左零空间给出守恒量（如酶总量、腺苷酸池、碳骨架），右零空间给出稳态通量模式；守恒量可降维、校验模型、发现缺失反应，稳态通量模式则是通量平衡分析（FBA）与通量守恒的基础。",
+  "statement": "若存在向量 l 使 lᵀS = 0，则 lᵀx(t) = 常数，即该线性组合是守恒量（moiety conserved）。rank(S) 决定独立反应数；自由度 = 物种数 − rank(S) − （外部约束数）。稳态时 S·v = 0，通量解空间 = S 的右零空间；守恒律与通量模式分别刻画「什么不变」与「哪些通量组合可行」。",
+  "formulas": [
+    {
+      "name": "化学计量形式的 ODE 与守恒量",
+      "latex": "\\frac{d\\mathbf{x}}{dt}=\\mathbf{S}\\mathbf{v},\\qquad \\mathbf{l}^{T}\\mathbf{S}=\\mathbf{0}\\ \\Rightarrow\\ \\mathbf{l}^{T}\\mathbf{x}(t)=\\mathbf{l}^{T}\\mathbf{x}(0)",
+      "plain": "dx/dt = S*v; 若 l^T*S = 0，则 l^T*x(t) = l^T*x(0)（守恒）",
+      "terms": {
+        "S": "m×n 化学计量矩阵（m 物种，n 反应）",
+        "l": "守恒向量（左零空间基）；每个守恒量对应一条不变线性组合",
+        "example": "酶 E+ES=E0；ATP+ADP+AMP=Atot；NAD+NADH=Ntot；碳骨架总量"
+      }
+    },
+    {
+      "name": "守恒量的个数与自由度",
+      "latex": "n_{cons}=\\dim\\left(\\ker\\mathbf{S}^{T}\\right)=m-\\mathrm{rank}(\\mathbf{S});\\qquad \\text{自由度数}=m-\\mathrm{rank}(\\mathbf{S})",
+      "plain": "守恒量个数 = m - rank(S)；状态空间的独立自由度数 = m - rank(S)",
+      "terms": {
+        "usage": "可把 m 维系统降到 rank(S) 维独立变量；拟合时固定守恒总量减少参数",
+        "note": "rank(S) 是「独立净反应数」；循环通路（如 A→B→A）不增加 rank，但可以承载通量"
+      }
+    },
+    {
+      "name": "稳态通量模式与零空间",
+      "latex": "\\mathbf{S}\\,\\mathbf{v}=0\\ \\Rightarrow\\ \\mathbf{v}\\in\\ker(\\mathbf{S});\\qquad \\mathbf{v}=\\sum_k\\alpha_k\\mathbf{e}_k",
+      "plain": "S*v=0（稳态质量平衡）；通量解 = S 右零空间的线性组合（基 e_k 为稳态通路/基本模式）",
+      "terms": {
+        "e_k": "基本通量模式（elementary flux modes）/ 极端通路；线性规划可行域的顶点",
+        "usage": "判断哪些通路可以独立运行；FBA 用目标函数在该零空间内优化",
+        "note": "内部循环若净通量为零但携带能量消耗，需热力学约束排除（见 thermodynamic_constraints）"
+      }
+    },
+    {
+      "name": "通量守恒（线性通路）与分支分配",
+      "latex": "\\text{线性链稳态：} v_1=v_2=\\cdots=v_n=J;\\qquad \\text{分支点：} v_{in}=\\sum_j v_{out,j}",
+      "plain": "线性链稳态各步通量相等 = J；分支点满足输入通量 = 各输出通量之和",
+      "terms": {
+        "meaning": "不是所有步骤都「限速」：稳态通量由整个系统与外部约束共同决定",
+        "measurement": "13C/14C 标记、摄取/分泌速率可给绝对通量；仅稳态浓度不能定通量"
+      }
+    },
+    {
+      "name": "化学计量一致性检查",
+      "latex": "\\mathbf{S}^{T}\\mathbf{m}=\\mathbf{a}\\ (\\text{元素/电荷/基团平衡})",
+      "plain": "S^T*m = a：每个反应在元素、电荷、基团层面必须平衡（m 为元素组成向量，a 为 0 表示反应内部平衡）",
+      "terms": {
+        "usage": "自动检查建模错误：漏写副产物、ATP 未平衡、电荷不守恒",
+        "if_a_nonzero": "说明反应与外部有交换（如质子、水、ATP 池），需显式写出或声明为外部通量"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "建模第一步先写化学计量矩阵而不是速率定律：结构对了，动态才可能对；结构错（漏守恒/电荷不平衡）时拟合会靠扭曲参数补偿。",
+    "守恒量是免费降维与校验工具：仿真前用守恒式检查初值是否自洽；仿真后检查守恒量漂移判断数值误差或机制缺失。",
+    "稳态通量守恒意味着「限速步」不是固定标签；用控制系数（MCA）而非直觉标注限速步。",
+    "封闭系统应趋于热力学平衡（所有净通量为零）；若模型在封闭系统中有持续内部循环，说明速率定律或结构违反细致平衡。",
+    "开放系统（有输入/输出/能量驱动）的守恒量会被打破，必须显式建模交换反应，否则模型会错误守恒。"
+  ],
+  "how_to_apply": [
+    "列出所有物种与反应，写 S 矩阵（spec 的 stoichiometry 即逐列）。",
+    "计算左零空间得到守恒量；用实验可测的总量（酶浓度、NAD 池）验证。",
+    "检查每个反应的元素/电荷平衡；把外部交换（质子、水、ATP 水解）显式化或标注为集总。",
+    "若稳态通量已知（如摄取率），用 S·v=0 检查是否与所有测量一致；不一致说明有未测量的分支/积累。",
+    "拟合时用守恒关系减少自由参数（例如固定 E_total 而非分别拟合 E 与 ES 初值）。"
+  ],
+  "pitfalls": [
+    "只写反应物→产物而漏掉副产物（如 NADH、ATP），导致守恒量错误、氧化还原无法平衡。",
+    "把「酶总量守恒」当成绝对：若酶会降解/合成，需显式建模其 turnover。",
+    "用线性通路直觉标注限速步，忽略分支/反馈导致的控制分布变化。",
+    "数值积分中守恒量漂移（尤其刚性系统）被误读为机制；应先检查 rtol/atol 与守恒律。",
+    "把稳态浓度等同于通量：浓度是状态，通量是速率，二者由动力学参数联系。",
+    "开放系统里仍套用封闭系统守恒式，导致模型与数据系统性不符。"
+  ],
+  "matlab_notes": [
+    "bma.model.analyze 会计算 S 的左零空间（有理基）并报告守恒量表达式；bma.spec.validate 会做化学计量/结构检查。",
+    "若模型有守恒量，ODE 的 Jacobian 必然有零特征值，稳定性分析要排除守恒方向后再判断。",
+    "降维实现：选一组独立变量，把守恒量代入消元，写到 spec 的 expression 速率中；或在拟合时把守恒总量作为固定参数。",
+    "FBA（若需要）可用 linprog：max c'v s.t. S*v=0, lb<=v<=ub；S 与通量边界可从 spec 的 reactions 生成。"
+  ],
+  "spec_mapping": "spec 中每个 reactions[].stoichiometry 定义 S 的一列；守恒律由 S 自动导出，不在 spec 中单独声明。external 通量（输入/输出）也写成 reactions 并给予对应 species 的化学计量。",
+  "diagnostics": [
+    "rank(S) 与守恒量个数是否与生物直觉一致（例如酶总量应守恒）",
+    "仿真前后 l^T x 的相对漂移（应 < 1e-6，刚性系统可放宽）",
+    "S·v 在稳态是否接近 0（质量平衡）",
+    "元素/电荷平衡：每个反应的 S^T m 是否为 0（内部平衡）"
+  ],
+  "keywords": ["化学计量矩阵", "守恒律", "摩尔守恒", "通量平衡", "零空间", "stoichiometry", "conservation law", "flux balance", "moiety conservation"],
+  "tags": ["systems_biology", "ode", "structural_analysis"],
+  "related": ["mass_action", "metabolic_pathway", "thermodynamic_constraints", "network_motifs"],
+  "references": [
+    { "citation": "Reder C (1988). Metabolic control theory: a structural approach. Journal of Theoretical Biology 135(2):175-201.", "authors": ["Reder C"], "year": 1988, "title": "Metabolic control theory: a structural approach", "journal": "Journal of Theoretical Biology", "volume": "135", "pages": "175-201" },
+    { "citation": "Orth JD, Thiele I, Palsson BO (2010). What is flux balance analysis? Nature Biotechnology 28(3):245-248.", "authors": ["Orth JD", "Thiele I", "Palsson BO"], "year": 2010, "title": "What is flux balance analysis?", "journal": "Nature Biotechnology", "volume": "28", "pages": "245-248", "doi": "10.1038/nbt.1614" },
+    { "citation": "Palsson BO (2015). Systems Biology: Constraint-based Reconstruction and Analysis. Cambridge University Press.", "authors": ["Palsson BO"], "year": 2015, "title": "Systems Biology: Constraint-based Reconstruction and Analysis", "journal": "Cambridge University Press", "note": "化学计量矩阵、零空间与网络能力的系统教材" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

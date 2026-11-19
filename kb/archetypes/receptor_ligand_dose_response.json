@@ -1,0 +1,173 @@
+{
+  "id": "receptor_ligand_dose_response",
+  "type": "archetype",
+  "name": "受体-配体结合与剂量响应（Kd/EC50/Bmax）",
+  "name_en": "Receptor-ligand binding and dose-response",
+  "domain": "receptor_pharmacology",
+  "scale": "molecule",
+  "model_class": "ode",
+  "summary": "配体 L 与受体 R 可逆结合为复合物 RL（kon/koff，Kd=koff/kon），RL 驱动下游响应 x。平衡剂量-响应由 Kd 与受体总量决定；有放大/受体储备时 EC50 可远小于 Kd，有配体耗竭时需用二次结合方程。该模型是从放射性配体结合、表面等离子共振、剂量-响应曲线中提取亲和力与动力学参数的最小框架。",
+  "when_to_use": [
+    "文献报告 Kd、Bmax、kon、koff、EC50、IC50、Emax、Hill 系数或「饱和结合曲线」「竞争结合实验」",
+    "方法学出现「radioligand binding」「Scatchard plot」「surface plasmon resonance (SPR)」「isothermal titration calorimetry (ITC)」「BRET/FRET 结合」",
+    "药理/毒理剂量-效应、受体占据与下游响应（cAMP、Ca2+、荧光素酶报告）",
+    "出现「spare receptors」「receptor reserve」「ligand depletion」「nonspecific binding」「ternary complex」",
+    "需要把体外亲和力（Kd）与细胞响应（EC50）联系起来，或解释 EC50 与 Kd 的差异"
+  ],
+  "tags": ["受体", "配体", "结合", "Kd", "EC50", "Bmax", "剂量响应", "药理"],
+  "keywords": ["受体-配体结合", "解离常数", "Kd", "EC50", "Bmax", "剂量-响应", "Hill 方程", "竞争结合", "受体储备", "配体耗竭", "receptor binding", "dose-response", "ligand depletion", "receptor occupancy"],
+  "equations": [
+    {
+      "name": "可逆结合动力学",
+      "latex": "L+R\\ \\underset{k_{off}}{\\overset{k_{on}}{\\rightleftharpoons}}\\ RL,\\qquad \\frac{d[RL]}{dt}=k_{on}[L][R]-k_{off}[RL],\\qquad K_d=\\frac{k_{off}}{k_{on}}",
+      "plain": "dRL/dt = kon*L*R - koff*RL; Kd = koff/kon",
+      "terms": {
+        "L_R_RL": "游离配体、游离受体、复合物浓度（nM）",
+        "kon": "结合速率常数 1/(nM*min)（常见 1e5-1e8 1/(M*s)）",
+        "koff": "解离速率常数 1/min；决定响应恢复速度",
+        "Kd": "平衡解离常数（nM）= koff/kon；越小亲和力越高（1 pM-10 uM）",
+        "conservation": "L + RL = L_tot，R + RL = R_tot；两个守恒量可把 3 变量降为 2"
+      }
+    },
+    {
+      "name": "平衡占据（无配体耗竭近似）",
+      "latex": "\\theta=\\frac{[RL]}{R_{tot}}=\\frac{[L]}{K_d+[L]}",
+      "plain": "occupancy theta = RL/Rtot = L/(Kd+L)",
+      "terms": {
+        "conditions": "L_tot >> R_tot（配体远过量）且达到平衡，自由配体≈总配体",
+        "saturation_binding": "RL = Bmax*L/(Kd+L)；Bmax = R_tot 是每细胞/每毫克蛋白的受体数",
+        "note": "低于 ~10 倍 R_tot 的 L 会出现配体耗竭，直接套此式会低估 Kd"
+      }
+    },
+    {
+      "name": "配体耗竭的二次结合方程",
+      "latex": "[RL]=\\frac{\\left(L_{tot}+R_{tot}+K_d\\right)-\\sqrt{\\left(L_{tot}+R_{tot}+K_d\\right)^2-4L_{tot}R_{tot}}}{2}",
+      "plain": "RL = ((Lt+Rt+Kd) - sqrt((Lt+Rt+Kd)^2 - 4*Lt*Rt))/2",
+      "terms": {
+        "usage": "竞争结合、SPR 高浓度受体、细胞内受体结合等 L 与 R 同量级场景必须使用",
+        "v1_impl": "用 expression 速率显式建 L、R、RL 三状态即可自动满足；若要直接拟合稳态公式，可把该式作为 output expression"
+      }
+    },
+    {
+      "name": "Hill 剂量-响应与 EC50",
+      "latex": "E=\\frac{E_{max}\\,[L]^{n}}{EC_{50}^{\\,n}+[L]^{n}}",
+      "plain": "E = Emax*L^n/(EC50^n + L^n)",
+      "terms": {
+        "Emax": "最大效应；由受体后信号放大决定，不一定等于受体占据",
+        "EC50": "半最大效应浓度；n=1 且无放大时 EC50 = Kd",
+        "n": "表观 Hill 系数；n>1 可来自结合协同或下游超敏（受体储备/阈值）",
+        "difference": "Kd 是热力学量（结合），EC50 是系统量（响应）；二者可相差 10-100 倍"
+      }
+    },
+    {
+      "name": "结合的时间尺度（达到平衡所需时间）",
+      "latex": "k_{obs}=k_{on}[L]+k_{off},\\qquad t_{1/2}^{eq}\\approx\\frac{\\ln 2}{k_{obs}}",
+      "plain": "kobs = kon*L + koff; 平衡半时 t1/2 = ln2/kobs",
+      "terms": {
+        "inference": "低浓度配体（L<<Kd）时平衡慢，需长时间孵育；若实验时间 < 3/koff 则未达平衡",
+        "experimental_design": "kon 由不同 [L] 下 kobs 对 [L] 的斜率得到；koff 由解离相（加过量竞争配体后）指数拟合得到"
+      }
+    },
+    {
+      "name": "受体储备/放大导致的 EC50-Kd 关系",
+      "latex": "\\frac{EC_{50}}{K_d}=\\frac{1}{1+\\phi/R_{tot}}\\ (\\text{spare receptors}) \\quad\\text{或}\\quad EC_{50}>K_d\\ (\\text{threshold/amplification})",
+      "plain": "有受体储备时 EC50 < Kd（响应在少量占据时已饱和）；有下游阈值/超敏时 EC50 > Kd",
+      "terms": {
+        "usage": "解释同一配体在不同细胞/组织中 EC50 与 Kd 不一致的原因，避免把 EC50 当 Kd",
+        "criterion": "比较响应曲线与占据曲线；若响应先饱和 → 受体储备/放大；若响应滞后 → 阈值"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "receptor_binding_response",
+    "title": "受体-配体结合与下游响应（Kd/EC50 模型）",
+    "description": "配体 L 与受体 R 可逆结合为 RL；RL 驱动下游响应 x 的产生（一级），x 一阶降解。用于饱和结合曲线、剂量-响应与结合动力学拟合。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 60, "n": 601 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "L", "name": "游离配体", "unit": "nM", "initial": { "value": 10.0, "note": "剂量-响应实验按 series 覆盖 0.01-1000 nM" } },
+      { "id": "R", "name": "游离受体", "unit": "nM", "initial": { "value": 2.0, "note": "约 1.2e6 受体/细胞（1 pL）" } },
+      { "id": "RL", "name": "配体-受体复合物", "unit": "nM", "initial": { "value": 0 } },
+      { "id": "x", "name": "下游响应信号", "unit": "nM", "initial": { "value": 0 } }
+    ],
+    "parameters": [
+      { "id": "kon", "name": "结合速率常数", "unit": "1/(nM*min)", "value": { "value": 0.6 }, "estimate": true, "bounds": [1e-06, 100] },
+      { "id": "koff", "name": "解离速率常数", "unit": "1/min", "value": { "value": 0.1 }, "estimate": true, "bounds": [1e-06, 100] },
+      { "id": "kx", "name": "响应产生速率", "unit": "1/min", "value": { "value": 2.0 }, "estimate": true, "bounds": [1e-06, 100] },
+      { "id": "gamma_x", "name": "响应信号降解速率", "unit": "1/min", "value": { "value": 0.2 }, "estimate": true, "bounds": [1e-06, 100] }
+    ],
+    "reactions": [
+      { "id": "binding", "name": "配体-受体结合", "stoichiometry": { "L": -1, "R": -1, "RL": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "kon" }, "species": { "L": 1, "R": 1 } } },
+      { "id": "unbinding", "name": "复合物解离", "stoichiometry": { "L": 1, "R": 1, "RL": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "koff" }, "species": { "RL": 1 } } },
+      { "id": "response_production", "name": "响应信号产生", "stoichiometry": { "x": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "kx" }, "species": { "RL": 1 } } },
+      { "id": "response_decay", "name": "响应信号降解", "stoichiometry": { "x": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_x" }, "species": { "x": 1 } } }
+    ],
+    "outputs": [
+      { "id": "RL_obs", "name": "受体占据量", "unit": "nM", "expression": "RL" },
+      { "id": "x_obs", "name": "下游响应（荧光/第二信使）", "unit": "nM", "expression": "x" },
+      { "id": "occupancy_obs", "name": "受体占据分数", "unit": "1", "expression": "RL/(R+RL)" }
+    ],
+    "assumptions": [
+      "单室充分混合、恒容恒温；受体总量守恒（R + RL = R_tot），配体总量守恒（L + RL = L_tot）",
+      "结合为简单双分子可逆反应，无协同、无多构象、无受体内化/降解",
+      "下游响应与占据量成正比（一级放大），无阈值/饱和",
+      "所有结合位点等价且独立"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；竞争性拮抗剂可通过额外平衡反应扩展。" }
+  },
+  "spec_notes": [
+    "剂量-响应扫描：把 L 的 initial 依次设为 0.01、0.03、0.1、0.3、1、3、10、30、100、300、1000 nM（simulate_cases 或循环），记录终态 RL/x；稳态数据即可拟合 Kd 与 EC50。",
+    "竞争结合：加入拮抗剂 I 的平衡反应（R + I <-> RI，Ki），此时 IC50 依赖 [L]、Kd 与 Ki（Cheng-Prusoff：Ki = IC50/(1+L/Kd)）。若需要，扩展第 5、6 个反应并按 Cheng-Prusoff 校验。",
+    "若响应是开关式的下游级联（如 MAPK 激活），把 response_production 换成 hill activation（regulator=RL）；此时 EC50 会明显偏离 Kd。",
+    "若实验测量的是细胞表面结合（全细胞）而受体可内化，需要加内化/再循环反应；否则长时间孵育会系统低估 R_tot。",
+    "SPR/ITC 直接给 kon/koff/ΔH；细胞实验常只给 EC50/Bmax。两类数据联合拟合时，注意体外缓冲液与细胞环境的差异。",
+    "输出 occupancy 加小常数避免除零；更稳健的做法是把 R_tot 作为单独参数输出。"
+  ],
+  "variables": [
+    { "id": "L", "name": "游离配体", "unit": "nM", "typical_range": [1e-05, 10000], "notes": "剂量常在 pM-uM；务必用 log 间距" },
+    { "id": "R", "name": "游离受体", "unit": "nM", "typical_range": [1e-05, 1000], "notes": "1 受体/细胞（1 pL）≈ 1.7e-3 nM；1e5 受体/细胞 ≈ 170 nM" },
+    { "id": "RL", "name": "配体-受体复合物", "unit": "nM", "typical_range": [0, 1000], "notes": "受体浓度高（如膜蛋白过表达）时 L 与 R 同量级，必须用配体耗竭方程" },
+    { "id": "x", "name": "下游响应", "unit": "nM", "typical_range": [0, 1000], "notes": "可为第二信使、报告基因或电生理响应（需标定）" }
+  ],
+  "parameters": [
+    { "id": "kon", "symbol": "k_{on}", "unit": "1/(nM*min)", "typical_range": [1e-06, 100], "notes": "常见蛋白-蛋白 1e5-1e7 1/(M*s) = 0.006-0.6 1/(nM*min)；小分子药物 1e6-1e8" },
+    { "id": "koff", "symbol": "k_{off}", "unit": "1/min", "typical_range": [1e-06, 100], "notes": "1e-4-10 1/min；慢解离（<0.001/min）导致长时程药效" },
+    { "id": "kx", "symbol": "k_x", "unit": "1/min", "typical_range": [1e-06, 100], "notes": "下游放大增益；应由响应动力学数据约束" },
+    { "id": "gamma_x", "symbol": "\\gamma_x", "unit": "1/min", "typical_range": [1e-06, 100], "notes": "响应信号衰减（磷酸酶、降解、稀释）" }
+  ],
+  "assumptions": [
+    "质量作用动力学（双分子结合、单分子解离）；无扩散限制（溶液中充分混合）",
+    "配体/受体在观测窗内不降解、不内化、不合成",
+    "单一受体类型、单一结合位点；无 G 蛋白/辅因子依赖的亲和力状态切换",
+    "响应与占据呈线性关系；无阈值、无饱和、无适应性"
+  ],
+  "evidence_cues": [
+    "「Kd = 0.8 nM」「Bmax = 120 fmol/mg protein」「kon = 2.5e6 M-1 s-1」「koff = 0.003 s-1」",
+    "「saturation binding」「competition binding」「Scatchard」「Cheng-Prusoff」「radioligand」",
+    "「EC50 = 45 nM」「Emax」「dose-response curve」「sigmoidal」「Hill slope」",
+    "「spare receptors」「receptor reserve」「ligand depletion」「nonspecific binding」",
+    "「IC50 shifted with substrate/agonist concentration」→ 竞争性机制",
+    "「biphasic dissociation」→ 多构象/多受体亚型，需双位点模型"
+  ],
+  "fitting_notes": "1) 剂量-响应数据在 log10(剂量) 上拟合 Hill/4 参数 logistic；不要线性化（Scatchard 会系统性偏差）；2) 饱和结合：同时拟合 Bmax 与 Kd，扣除 nonspecific（加一个线性项或平行实验）；3) 若 [L] 与 R_tot 同量级，用显式 ODE 或二次结合方程拟合，否则 Kd 偏差可达数倍；4) 结合动力学数据：association 相拟合 kobs vs [L] 得 kon、koff；dissociation 相直接拟合 koff；5) 全细胞实验注意内化/降解：用 4 ℃ 阻断内化测表面结合；6) 响应 EC50 与结合 Kd 分别拟合并报告差异，必要时用 receptor reserve 模型解释；7) 多受体亚型/多结合位点用混合物模型（两组 Kd/Bmax 或双指数），并用 AICc 与单位点模型比较；8) 报告拟合参数时给出 CI 与实验条件（缓冲液、温度、pH、细胞系）。",
+  "identifiability_notes": "1) 平衡数据只可辨识 Kd（或 1/Kd），kon 与 koff 不可分别辨识；必须有动力学数据或 SPR/stopped-flow 才能拆分；2) 饱和曲线未到平台时 Bmax 与 Kd 强相关（只能给下界/上界）；3) 未做 nonspecific 对照时 Bmax 系统性偏高；4) 配体耗竭时用简单 Hill 拟合会使 Kd 与 Bmax 双向偏差且不可辨识；5) EC50 是 Kd、R_tot、下游增益的复合函数，只测 EC50 无法反推 Kd；6) 细胞表面受体可内化时，长时间数据的表观 Kd 漂移，需把内化速率纳入模型并测受体总量随时间；7) 受体过表达（R_tot >> Kd）时占据曲线接近阶跃，Kd 不可辨识（只知远小于 R_tot）。",
+  "references": [
+    { "citation": "Langmuir I (1918). The adsorption of gases on plane surfaces of glass, mica and platinum. Journal of the American Chemical Society 40(9):1361-1403.", "authors": ["Langmuir I"], "year": 1918, "title": "The adsorption of gases on plane surfaces of glass, mica and platinum", "journal": "Journal of the American Chemical Society", "volume": "40", "pages": "1361-1403", "note": "Langmuir 等温线是受体占据模型的原型" },
+    { "citation": "Hill AV (1910). The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves. Journal of Physiology 40(Suppl):iv-vii.", "authors": ["Hill AV"], "year": 1910, "title": "The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves", "journal": "Journal of Physiology", "volume": "40", "pages": "iv-vii" },
+    { "citation": "Stephenson RP (1956). A modification of receptor theory. British Journal of Pharmacology and Chemotherapy 11(4):379-393.", "authors": ["Stephenson RP"], "year": 1956, "title": "A modification of receptor theory", "journal": "British Journal of Pharmacology and Chemotherapy", "volume": "11", "pages": "379-393" },
+    { "citation": "De Lean A, Stadel JM, Lefkowitz RJ (1980). A ternary complex model explains the agonist-specific binding properties of the adenylate cyclase-coupled beta-adrenergic receptor. Journal of Biological Chemistry 255(15):7108-7117.", "authors": ["De Lean A", "Stadel JM", "Lefkowitz RJ"], "year": 1980, "title": "A ternary complex model explains the agonist-specific binding properties of the adenylate cyclase-coupled beta-adrenergic receptor", "journal": "Journal of Biological Chemistry", "volume": "255", "pages": "7108-7117" },
+    { "citation": "Motulsky HJ, Christopoulos A (2004). Fitting Models to Biological Data Using Linear and Nonlinear Regression: A Practical Guide to Curve Fitting. Oxford University Press.", "authors": ["Motulsky HJ", "Christopoulos A"], "year": 2004, "title": "Fitting Models to Biological Data Using Linear and Nonlinear Regression: A Practical Guide to Curve Fitting", "journal": "Oxford University Press", "note": "剂量-响应/结合曲线拟合的实用指南" }
+  ],
+  "related": ["enzyme_kinetics", "hill_regulation_toggle", "mapk_cascade", "pharmacokinetics"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

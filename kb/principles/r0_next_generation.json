@@ -1,0 +1,122 @@
+{
+  "id": "r0_next_generation",
+  "type": "principle",
+  "name": "R0 与下一代矩阵（Basic reproduction number and next-generation matrix）",
+  "name_en": "Basic reproduction number and next-generation matrix",
+  "domain": "epidemiology",
+  "scale": "population",
+  "model_class": "ode",
+  "summary": "R0 = 单个感染者在全易感人群中造成的二代病例数的期望。对多室/异质人群模型，R0 = 下一代矩阵 FV⁻¹ 的谱半径，其中 F 描述新感染的产生、V 描述感染状态的转移与清除。R0>1 时无病平衡失稳、疫情可暴发；R0<1 时无病平衡局部稳定。报道 R0 必须同时给定义、模型结构与代际时间，因为不同模型可以有相同 R0 但不同增长速度。",
+  "statement": "设感染相关状态为向量 x，无病平衡（DFE）处线性化：dx/dt=(F−V)x，F 为非负的新感染矩阵，V 为转移（离开感染态）矩阵且 V⁻¹≥0。下一代矩阵 K=FV⁻¹ 的谱半径 ρ(K) 即 R0。R0<1 ⇔ 所有特征值实部 <0（DFE 局部稳定）；R0>1 ⇔ DFE 失稳。有效再生数 R_t=R0·S(t)/N（或按易感比例调整）决定当前疫情趋势；群体免疫阈值为 1−1/R0。",
+  "formulas": [
+    {
+      "name": "下一代矩阵定义",
+      "latex": "R_0=\\rho\\left(\\mathbf{F}\\mathbf{V}^{-1}\\right),\\qquad \\mathbf{F},\\mathbf{V}\\ \\text{在无病平衡处求值}",
+      "plain": "R0 = 谱半径(F*V^-1)；F、V 在无病平衡（DFE）处取值",
+      "terms": {
+        "F": "新感染矩阵：F_ij = 单位时间由感染态 j 产生的新感染态 i 人数（只含「新感染」项）",
+        "V": "转移矩阵：V_ij = 离开感染态 j 的速率（i=j）与从 j 转入 i 的速率（i≠j，带负号），V 可逆且 V⁻¹≥0",
+        "rho": "谱半径 = 最大特征值（非负矩阵的 Perron 根）",
+        "why_ngm": "多室/年龄结构/媒介传播时，简单的「β/γ」不再适用；NGM 给出统一定义"
+      }
+    },
+    {
+      "name": "SIR/SEIR 的 R0",
+      "latex": "\\text{SIR: } R_0=\\frac{\\beta}{\\gamma};\\quad \\text{SEIR: } F=\\begin{pmatrix}0&\\beta S_0/N\\\\0&0\\end{pmatrix},\\ V=\\begin{pmatrix}\\sigma&0\\\\-\\sigma&\\gamma\\end{pmatrix}\\Rightarrow R_0=\\frac{\\beta S_0}{\\gamma N}",
+      "plain": "SIR: R0=β/γ；SEIR（按 [E,I] 排序）：F=[[0,βS0/N],[0,0]]，V=[[σ,0],[-σ,γ]] → R0=βS0/(γN)",
+      "terms": {
+        "frequency_dependent": "感染率 βSI/N 时 R0=β/γ，与人口规模 N 无关",
+        "density_dependent": "感染率 βSI 时 R0=βN/γ，随人口规模线性增大（小人群适用）",
+        "SEIR": "潜伏期 σ 不改变 R0，但改变代际时间与增长速度（同等 R0 下 SEIR 增长更慢）"
+      }
+    },
+    {
+      "name": "异质人群（多类型/年龄结构）",
+      "latex": "K_{ij}=\\frac{\\beta_{ij}S_j}{\\gamma_j}\\ (j\\to i);\\qquad R_0=\\rho(\\mathbf{K})",
+      "plain": "K_ij = β_ij*S_j/γ_j（类型 j 感染者对类型 i 的期望传播）；R0=ρ(K)",
+      "terms": {
+        "beta_ij": "接触/传播矩阵；同质混合时 β_ij=β/N_j",
+        "usage": "年龄结构、风险分组、多地区、宿主-媒介（按类型拆 K）都用同一框架",
+        "note": "R0 不是各类型 R0 的简单平均；由接触矩阵谱半径决定，超级传播者/核心群体可显著抬高 R0"
+      }
+    },
+    {
+      "name": "R0 与指数增长率（Euler-Lotka）",
+      "latex": "1=R_0\\int_0^{\\infty}e^{-\\lambda\\tau}g(\\tau)\\,d\\tau;\\qquad R_0\\approx1+\\lambda\\,T_{gen}\\ (\\text{近似})",
+      "plain": "1 = R0*∫e^{-λτ}*g(τ)dτ；近似 R0 ≈ 1 + λ*T_gen（λ 为早期指数增长率，g 为代际时间分布）",
+      "terms": {
+        "g_tau": "代际时间分布（感染发生到下一代感染发生的时间）；SIR 中约指数(γ)",
+        "sir_exact": "λ=β-γ=γ(R0-1) → R0=1+λ/γ，此时 T_gen=1/γ",
+        "SEIR": "T_gen≈1/σ+1/γ，R0≈1+λT_gen 为近似；严格关系由 g 的分布决定",
+        "usage": "只有病例曲线时用 λ + 文献代际时间反推 R0；报告需给 T_gen 或 g 的来源"
+      }
+    },
+    {
+      "name": "有效再生数与群体免疫",
+      "latex": "R_t=R_0\\frac{S(t)}{N}=R_0\\left(1-p\\right);\\qquad H_c=1-\\frac{1}{R_0}",
+      "plain": "Rt=R0*S/N=R0*(1-p)；群体免疫阈值 Hc=1-1/R0",
+      "terms": {
+        "p": "已免疫比例（感染康复或接种，需乘疫苗有效力）",
+        "trend": "Rt>1 上升、=1 平台、<1 下降；干预目标是 Rt<1",
+        "threshold": "R0=2→50%；3→67%；5→80%；12（麻疹）→92%"
+      }
+    },
+    {
+      "name": "DFE 稳定性判据",
+      "latex": "R_0<1\\iff \\text{DFE 局部渐近稳定};\\qquad R_0>1\\iff \\text{DFE 不稳定（疫情可入侵）}",
+      "plain": "R0<1 ⇔ 无病平衡局部渐近稳定；R0>1 ⇔ 无病平衡不稳定，疫情可入侵",
+      "terms": {
+        "proof_tool": "V 稳定（所有特征值实部 >0）时，FV⁻¹ 的谱半径决定 (F−V) 的特征值实部符号",
+        "note": "R0<1 只保证局部稳定；双稳/Allee 效应下可能出现「后向分岔」（小规模疫情也能暴发）",
+        "stochasticity": "R0>1 时早期爆发概率约 1−1/R0（分支过程），不是必然暴发"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "多室/异质模型的 R0 必须用下一代矩阵计算，不能用主感染室的 β/γ 近似；报告应给出 F、V 矩阵与谱半径。",
+    "R0 不是模型参数，而是由参数组合出的量；同一 R0 可以对应不同 β、γ、σ 组合（不同代际时间），不能只报 R0 就认为模型唯一。",
+    "干预分析要区分「降低 β」（传播）与「减少 S」（免疫）：前者直接缩放 R0，后者通过 S/N 影响 Rt。",
+    "随机早期传播中 R0>1 也可能灭绝（爆发概率 1−1/R0）；确定性模型不能回答小规模暴发的概率问题。",
+    "媒介传播（疟疾、登革热）的 R0 含媒介数量/叮咬率平方项；必须用 NGM 按宿主-媒介分块构建。"
+  ],
+  "how_to_apply": [
+    "写下模型的感染相关状态与无病平衡（DFE）；确定哪些项是「新感染」、哪些是状态转移/清除。",
+    "构造 F 与 V 矩阵，计算 K=FV⁻¹ 的谱半径（符号或数值）。",
+    "检查 R0 公式与文献一致；若论文给了 R0 表达式，用 NGM 推导验证（常见符号错误来源）。",
+    "用 λ（早期增长率）与 T_gen 交叉验证 R0 数量级；报告 T_gen 的定义与来源。",
+    "情景分析：用 R0 或 Rt 与疫苗覆盖/干预强度联系，报告峰值、最终规模与群体免疫阈值。"
+  ],
+  "pitfalls": [
+    "把不同定义的 R0 直接比较：频率依赖 vs 密度依赖、按代 vs 按时间、是否含潜伏期，数值不可直接比。",
+    "用简单 β/γ 代替 NGM 计算分层/媒介模型的 R0，忽略接触矩阵的谱半径效应。",
+    "漏掉 V 矩阵中的转移项（如 E→I）导致 R0 公式错误。",
+    "用早期增长率 λ 反推 R0 时未说明代际时间/分布，或在不同干预阶段混用 λ。",
+    "把 R0>1 当作「必然暴发」，忽略随机灭绝、群体结构、行为变化。",
+    "报告 R0 时不同时给模型结构、代际时间与数据拟合区间，导致不可复现。"
+  ],
+  "matlab_notes": [
+    "NGM 只需在 DFE 处计算 F、V 的数值矩阵，用 eig(F/V) 或 eig(F*inv(V)) 求谱半径；符号推导可用 Symbolic 工具箱。",
+    "bma.model.analyze 的稳态与 Jacobian 可用于检验 DFE 稳定性；R0 作为派生量写入报告而不是 spec 参数。",
+    "情景分析用 simulate_cases 扫描 β（或疫苗覆盖 p），报告 Rt(t) 与峰值/最终规模。",
+    "多群体模型可在 spec 中每群一组 S/E/I/R 变量，接触矩阵以参数给出，R0 由 MATLAB 计算并写入报告。"
+  ],
+  "spec_mapping": "R0 不在 spec 中作为独立字段：由 β、γ、σ 等参数组合得到；报告/模型卡中给出 R0 公式与数值。群体分层用多个变量组 + 接触矩阵参数表达。",
+  "diagnostics": [
+    "R0 公式与文献/教科书的对照（符号、平方项、S0/N 因子）",
+    "DFE 处 Jacobian 最大特征值与 R0−1 的符号一致性",
+    "λ 与 T_gen 反推的 R0 与 NGM 值是否一致（不一致说明代际时间假设有误）",
+    "Rt(t) 曲线与病例曲线转折是否对应",
+    "随机模拟的爆发概率是否接近 1−1/R0（早期、大 population）"
+  ],
+  "keywords": ["R0", "基本再生数", "下一代矩阵", "有效再生数", "群体免疫", "代际时间", "basic reproduction number", "next-generation matrix", "herd immunity"],
+  "tags": ["epidemiology", "population", "analysis"],
+  "related": ["sir_seir", "stability_hopf", "population_dynamics"],
+  "references": [
+    { "citation": "Diekmann O, Heesterbeek JAP, Metz JAJ (1990). On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations. Journal of Mathematical Biology 28(4):365-382.", "authors": ["Diekmann O", "Heesterbeek JAP", "Metz JAJ"], "year": 1990, "title": "On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations", "journal": "Journal of Mathematical Biology", "volume": "28", "pages": "365-382" },
+    { "citation": "van den Driessche P, Watmough J (2002). Reproduction numbers and sub-threshold endemic equilibria for compartmental models of disease transmission. Mathematical Biosciences 180(1-2):29-48.", "authors": ["van den Driessche P", "Watmough J"], "year": 2002, "title": "Reproduction numbers and sub-threshold endemic equilibria for compartmental models of disease transmission", "journal": "Mathematical Biosciences", "volume": "180", "pages": "29-48" },
+    { "citation": "Heesterbeek JAP, Dietz K (1996). The concept of R0 in epidemic theory. Statistica Neerlandica 50(1):89-110.", "authors": ["Heesterbeek JAP", "Dietz K"], "year": 1996, "title": "The concept of R0 in epidemic theory", "journal": "Statistica Neerlandica", "volume": "50", "pages": "89-110" },
+    { "citation": "Wallinga J, Lipsitch M (2007). How generation intervals shape the relationship between growth rates and reproductive numbers. Proceedings of the Royal Society B 274(1609):599-604.", "authors": ["Wallinga J", "Lipsitch M"], "year": 2007, "title": "How generation intervals shape the relationship between growth rates and reproductive numbers", "journal": "Proceedings of the Royal Society B", "volume": "274", "pages": "599-604" },
+    { "citation": "Anderson RM, May RM (1991). Infectious Diseases of Humans: Dynamics and Control. Oxford University Press.", "authors": ["Anderson RM", "May RM"], "year": 1991, "title": "Infectious Diseases of Humans: Dynamics and Control", "journal": "Oxford University Press" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

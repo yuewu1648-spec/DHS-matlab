@@ -1,0 +1,146 @@
+{
+  "schema": "bma.fixture.expectations.v1",
+  "fixture_id": "epidemic_sir",
+  "title": "Dynamics of a respiratory outbreak in an isolated island community: a susceptible-infectious-removed analysis of 120 days of surveillance data",
+  "purpose": "SIR compartmental epidemic: beta/gamma/R0, closed population, cumulative and daily incidence data. Exercises expression-based rate law, conservation law analysis and cumulative-output fitting.",
+  "formats": ["md", "txt", "html", "docx", "pdf"],
+  "expected_sections": [
+    "Abstract", "1. Introduction", "2. Materials and methods", "3. Results",
+    "4. Discussion", "5. Data availability", "6. References"
+  ],
+  "expected_model": {
+    "kind": "ode",
+    "archetype": "sir_epidemic",
+    "archetype_synonyms": ["sir", "epidemic_sir", "compartmental_epidemic", "sir_model"],
+    "suggested_name": "epidemic_sir",
+    "species": ["S", "I", "R"],
+    "time_unit": "day",
+    "time_span": [0, 120],
+    "mechanism_keywords": ["SIR", "susceptible", "infectious", "removed", "R0", "transmission"],
+    "expected_reaction_kinds": ["expression", "mass_action"]
+  },
+  "facts": [
+    {
+      "id": "beta", "role": "parameter", "symbol": "beta",
+      "names": ["beta", "transmission rate", "transmission coefficient"],
+      "unit": "1/day", "unit_aliases": ["day^-1", "day−1", "1/day", "per day"],
+      "value": 0.45, "tolerance": {"relative": 0.08},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "3.1 Estimated parameters",
+      "context_keywords": ["transmission rate", "0.45"]
+    },
+    {
+      "id": "gamma", "role": "parameter", "symbol": "gamma",
+      "names": ["gamma", "removal rate", "recovery rate"],
+      "unit": "1/day", "unit_aliases": ["day^-1", "day−1", "1/day", "per day"],
+      "value": 0.16, "tolerance": {"relative": 0.08},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "3.1 Estimated parameters",
+      "context_keywords": ["removal rate", "0.16"]
+    },
+    {
+      "id": "R0", "role": "derived", "symbol": "R0",
+      "names": ["R0", "R_0", "basic reproduction number", "basic reproduction ratio"],
+      "unit": "1", "unit_aliases": ["dimensionless", "1"],
+      "value": 2.81, "tolerance": {"relative": 0.1},
+      "expected_in_spec": false,
+      "derivation": "R0 = beta/gamma",
+      "section_hint": "3.1 Estimated parameters",
+      "context_keywords": ["R0", "2.8"]
+    },
+    {
+      "id": "N", "role": "parameter", "symbol": "N",
+      "names": ["N", "total population", "population size"],
+      "unit": "person", "unit_aliases": ["individuals", "people", "persons"],
+      "value": 1200.0, "tolerance": {"relative": 0.01},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.1 Setting and surveillance",
+      "context_keywords": ["population", "1,200"]
+    },
+    {
+      "id": "S0", "role": "initial", "symbol": "S(0)",
+      "names": ["S(0)", "initial susceptible", "initial susceptibles"],
+      "unit": "person", "unit_aliases": ["individuals", "people"],
+      "value": 1188.0, "tolerance": {"relative": 0.02},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.3 Model",
+      "context_keywords": ["1,188", "S(0)"]
+    },
+    {
+      "id": "I0", "role": "initial", "symbol": "I(0)",
+      "names": ["I(0)", "initial infectious", "initial infections"],
+      "unit": "person", "unit_aliases": ["individuals", "people"],
+      "value": 12.0, "tolerance": {"relative": 0.05},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.3 Model",
+      "context_keywords": ["12", "index cases"]
+    },
+    {
+      "id": "mean_infectious_period", "role": "derived", "symbol": "1/gamma",
+      "names": ["mean infectious period", "infectious period"],
+      "unit": "day", "unit_aliases": ["days"],
+      "value": 6.3, "tolerance": {"relative": 0.1},
+      "expected_in_spec": false,
+      "derivation": "1/gamma",
+      "section_hint": "3.1 Estimated parameters",
+      "context_keywords": ["infectious period", "6.3"]
+    },
+    {
+      "id": "peak_day", "role": "observation", "symbol": "t_peak",
+      "names": ["peaked on day", "peak timing"],
+      "unit": "day", "unit_aliases": ["days"],
+      "value": 18.0, "tolerance": {"absolute": 1.5},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Course of the outbreak",
+      "context_keywords": ["day 18", "336"]
+    },
+    {
+      "id": "peak_active", "role": "observation", "symbol": "I_peak",
+      "names": ["peak of 336", "maximum active infections"],
+      "unit": "person", "unit_aliases": ["individuals", "cases"],
+      "value": 336.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Course of the outbreak",
+      "context_keywords": ["336"]
+    },
+    {
+      "id": "final_attack_rate", "role": "observation", "symbol": "c",
+      "names": ["final cumulative incidence", "final attack rate"],
+      "unit": "%", "unit_aliases": ["percent", "%"],
+      "value": 92.7, "tolerance": {"absolute": 1.0},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Course of the outbreak",
+      "context_keywords": ["1,112", "92.7"]
+    }
+  ],
+  "datasets": [
+    {
+      "file": "data/community_cases.csv",
+      "role": "fit_target",
+      "time_unit": "day",
+      "columns": {
+        "day": "day",
+        "new_cases": "person/day",
+        "active_infections": "person",
+        "cumulative_infections": "person",
+        "cumulative_removed": "person"
+      },
+      "rows": 121,
+      "output_map": {"I_obs": "active_infections", "R_obs": "cumulative_removed"},
+      "initial_conditions_hint": {"S": 1188.0, "I": 12.0, "R": 0.0},
+      "note": "Cumulative infections equal I + R (total ever infected); fit active_infections and/or cumulative_removed. new_cases is the daily difference of cumulative_infections."
+    }
+  ],
+  "assertions": {
+    "report_must_contain": ["R0", "beta", "gamma", "assumptions"],
+    "report_must_contain_case_insensitive": ["sir", "susceptible"],
+    "spec_must_have_assumptions": true,
+    "parameter_evidence_required": true,
+    "expected_output_ids_any_of": ["I_obs", "R_obs"]
+  },
+  "notes": [
+    "Synthetic fixture: the paper text, authors, journal and DOI are fabricated for testing.",
+    "The infection reaction is naturally written as an 'expression' rate: beta*S*I/N; recovery is mass_action with gamma.",
+    "The paper explicitly states a conservation law (S + I + R = N), which model.analyze should recover."
+  ]
+}

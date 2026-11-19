@@ -1,0 +1,150 @@
+# A three-stage negative-feedback gene circuit sustains robust limit-cycle oscillations in a cell-free transcription–translation system
+
+**Authors:** K. M. Sørensen¹, J. Adeyemi¹, L. Petrov², R. N. Whitman³
+
+¹ Center for Synthetic Biology, Aarhus Institute of Technology, Aarhus, Denmark
+² Laboratory of Systems Biophysics, Volgograd State University, Volgograd, Russia
+³ Department of Chemical Engineering, University of Northfield, Northfield, USA
+
+**Journal:** Systems Biology Letters 19(2), 143–159 (2026)
+**DOI:** 10.9999/sbl.2026.0019 (synthetic fixture, fictional)
+**Received:** 9 January 2026 · **Accepted:** 21 April 2026
+**Corresponding author:** K. M. Sørensen, kms@aarhus-it.dk (fictional)
+
+**Keywords:** negative feedback; limit-cycle oscillation; Hill kinetics; gene circuit; cell-free transcription–translation; Goodwin oscillator
+
+---
+
+## Abstract
+
+Negative feedback with a sufficiently steep response is one of the simplest mechanisms capable of generating sustained oscillations in gene regulatory networks. Theoretical work on three-component negative-feedback loops predicts that oscillations emerge only when the Hill coefficient of the repression step exceeds about eight, but quantitative experimental tests in a controlled biochemical environment remain scarce. We implemented a three-stage negative-feedback circuit (mRNA → intermediate protein → active repressor) in a cell-free transcription–translation (TX-TL) system and followed the dynamics for 1,500 min with 2 min resolution. After an initial transient of approximately 400 min, the circuit settled into a stable limit cycle with a period of 39.1 ± 1.5 min (mean ± s.d., n = 31 cycles) and a repressor amplitude of 34.3–69.4 nM peak-to-trough. The measured repression curve was well described by a Hill function with half-maximal repression at K = 25 nM and a Hill coefficient h = 10. A three-variable Goodwin-type ordinary differential equation model, parameterized with independently measured rate constants (maximal transcription rate alpha = 32 nM min^−1; translation rate beta = 0.72 min^−1; repressor formation rate delta = 0.72 min^−1; degradation rate constants of 0.10 min^−1 for all three species), reproduced the period, amplitude, and waveform of the measured oscillation without fitting to the time series. The results provide a direct quantitative confirmation of the Goodwin stability criterion and a reusable benchmark for oscillator models.
+
+## 1. Introduction
+
+Negative feedback is ubiquitous in gene regulation, and its dynamical consequences have been studied theoretically for more than half a century [1,2]. A negative-feedback loop with a single delay-free component cannot oscillate; at least three components in series, or an explicit delay, are required before the loop can destabilize a stable steady state and produce a limit cycle [1,3]. For the canonical three-variable Goodwin model, linear stability analysis yields an exact criterion: with equal first-order degradation rates gamma for all three species, the steady state is unstable if and only if the Hill coefficient h of the repression step exceeds 8 [3,4]. This prediction is unusually sharp, and it makes the Goodwin oscillator an attractive test case for quantitative systems biology: if the measured parameters satisfy h > 8, oscillations should appear; if they do not, the loop should settle to a steady state.
+
+Experimental verification of this criterion is difficult in living cells because circuit parameters are hard to measure independently and because growth, dilution, and cell-to-cell variability blur the comparison. Cell-free TX-TL systems remove most of these complications: concentrations are known, the reaction is well mixed, dilution by growth is absent, and samples can be taken at high temporal resolution [5,6]. We therefore built a three-stage negative-feedback circuit in a TX-TL system, measured each parameter independently, and asked whether a Goodwin-type model built from those parameters predicts the observed dynamics.
+
+Our objectives were: (i) to determine the repression transfer function of the circuit's repressor and extract the Hill coefficient and half-maximal repression concentration; (ii) to measure the synthesis and degradation rates of the three species; (iii) to record the resulting dynamics over 1,500 min; and (iv) to compare the observed oscillation with the prediction of the three-variable model.
+
+## 2. Materials and methods
+
+### 2.1 Circuit design
+
+The circuit consists of three genes arranged in a single negative-feedback cascade. Gene 1 encodes a messenger RNA (m) that is transcribed from a constitutive promoter and translated into an intermediate protein (p). The intermediate protein is a precursor that is converted into the active repressor (r) by a site-specific maturation protease supplied in the extract. The active repressor binds a single operator site upstream of gene 1 and represses its own transcription, closing the negative-feedback loop. All three species carry C-terminal degradation tags recognized by the ClpXP protease added to the reaction, which sets their half-lives to approximately 6.9 min.
+
+### 2.2 Cell-free reactions and reporters
+
+TX-TL reactions (20 µL) contained 12 nM plasmid DNA, 0.9 mM each amino acid, 33 mM phosphoenolpyruvate, 5 mM magnesium glutamate, and 30% (v/v) S30 extract. mRNA was detected with a molecular beacon (250 nM) whose fluorescence increases upon hybridization; the intermediate protein was detected by a FRET pair inserted into the precursor; the active repressor was detected with a DNA-binding dye that reports operator occupancy. All three channels were calibrated against purified standards. Fluorescence was recorded every minute in a plate reader at 30 °C, and the three channels were interleaved into a common 2 min grid.
+
+### 2.3 Repression transfer function
+
+To measure the repression curve independently of the dynamics, we used a reporter construct in which the repressor-encoding gene was placed under the control of an inducible promoter. Steady-state expression of a fluorescent reporter driven by the same operator was measured at 14 inducer concentrations, giving repressor concentrations between 0.5 and 400 nM. The reporter response was fitted to the Hill repression function
+
+f(r) = 1 / (1 + (r/K)^h),
+
+which yielded K = 25 nM (95% CI 22–28 nM) and h = 10.0 (95% CI 9.2–10.9). The fit was excellent (R² = 0.997) and a model with two binding sites did not improve it.
+
+### 2.4 Rate-constant measurements
+
+The maximal transcription rate alpha was measured in a promoter-saturation experiment in the absence of repressor and was 32 nM min^−1 (95% CI 30–34 nM min^−1). The translation rate beta was determined from the initial rate of intermediate-protein accumulation after blocking transcription, giving beta = 0.72 min^−1 (95% CI 0.68–0.76 min^−1). The maturation rate delta (conversion of intermediate into active repressor) was measured by pulse-chase and was 0.72 min^−1 (95% CI 0.69–0.75 min^−1). Degradation rate constants for all three species were obtained from chase experiments in the presence of rifampicin and were gamma_m = 0.10 min^−1, gamma_p = 0.10 min^−1, and gamma_r = 0.10 min^−1, corresponding to half-lives of 6.9 ± 0.4 min (mean ± s.d., n = 4). All rates are expressed per minute.
+
+### 2.5 Mathematical model
+
+The dynamics were described by the three-variable Goodwin-type model
+
+dm/dt = alpha · K^h / (K^h + r^h) − gamma_m · m
+dp/dt = beta · m − gamma_p · p
+dr/dt = delta · p − gamma_r · r
+
+where m, p, and r are the concentrations (nM) of mRNA, intermediate protein, and active repressor, respectively. The model has a single positive steady state. With the parameters above, the steady state is m* = 0.87 nM, p* = 6.27 nM, and r* = 45.1 nM. The initial concentrations used for the simulations were the concentrations measured at t = 0: m0 = 0.87 nM, p0 = 6.55 nM, and r0 = 45.0 nM, which lie within 2% of the steady state. The trajectory was computed with a fourth-order Runge–Kutta integrator (time step 0.005 min).
+
+### 2.6 Period and amplitude estimation
+
+The repressor trace was smoothed with a five-point moving average, and peaks and troughs were identified by local extremum detection. Period was computed as the mean inter-peak interval over the final 900 min of the recording; amplitude is reported as the peak-to-trough range. Confidence intervals for the period are the standard deviation of the 31 observed intervals, divided by the square root of their number where a standard error is quoted.
+
+## 3. Results
+
+### 3.1 Parameter measurements
+
+All model parameters were determined in independent experiments before the dynamics were recorded (Table 1). The repression step was the most nonlinear element: half-maximal repression occurred at 25 nM repressor, and the Hill coefficient was 10, well above the theoretical threshold of 8 for instability of a three-stage loop with equal degradation rates.
+
+**Table 1. Independently measured model parameters.**
+
+| Parameter | Symbol | Value | 95% CI | Unit | Method |
+|---|---|---|---|---|---|
+| Maximal transcription rate | alpha | 32 | 30–34 | nM min^−1 | promoter saturation |
+| Hill coefficient | h | 10.0 | 9.2–10.9 | dimensionless | repression transfer function |
+| Half-maximal repression | K | 25 | 22–28 | nM | repression transfer function |
+| Translation rate | beta | 0.72 | 0.68–0.76 | min^−1 | initial translation rate |
+| Repressor formation rate | delta | 0.72 | 0.69–0.75 | min^−1 | pulse-chase |
+| mRNA degradation rate | gamma_m | 0.10 | 0.09–0.11 | min^−1 | rifampicin chase |
+| Intermediate degradation rate | gamma_p | 0.10 | 0.09–0.11 | min^−1 | rifampicin chase |
+| Repressor degradation rate | gamma_r | 0.10 | 0.09–0.11 | min^−1 | rifampicin chase |
+| Initial mRNA | m0 | 0.87 | — | nM | t = 0 measurement |
+| Initial intermediate | p0 | 6.55 | — | nM | t = 0 measurement |
+| Initial repressor | r0 | 45.0 | — | nM | t = 0 measurement |
+
+### 3.2 Emergence and persistence of the oscillation
+
+At t = 0 the three channels were close to their steady-state values and the recording showed only a small imbalance. Over the first 400 min the oscillation grew in amplitude (from a peak-to-trough range of 3 nM at t = 100 min to 25 nM at t = 500 min) and then stabilized. Between t = 600 and t = 1,500 min the oscillation was stable: the repressor varied between 34.3 and 69.4 nM (mean 52.5 nM), the intermediate protein between 3.6 and 11.8 nM (mean 7.3 nM), and the mRNA between 0.26 and 2.43 nM (mean 1.00 nM). The period over the same interval was 39.1 ± 1.5 min (mean ± s.d., n = 31), and the waveform was strongly asymmetric: the repressor rose rapidly and decayed slowly, as expected for a loop whose repression step is steep (Table 2 and Figure 1).
+
+**Table 2. Representative 44 min window of the established oscillation (t = 598–642 min).** The full 2 min-resolution recording of 1,500 min is provided in Data S1.
+
+| Time (min) | mRNA (nM) | Intermediate (nM) | Repressor (nM) |
+|---|---|---|---|
+| 598 | 2.12 | 6.82 | 39.08 |
+| 600 | 2.24 | 8.92 | 45.44 |
+| 602 | 1.96 | 9.83 | 49.78 |
+| 604 | 1.72 | 10.89 | 50.78 |
+| 606 | 1.44 | 10.65 | 54.75 |
+| 608 | 1.17 | 10.33 | 60.70 |
+| 610 | 0.99 | 10.12 | 57.84 |
+| 612 | 0.81 | 9.42 | 60.72 |
+| 614 | 0.68 | 8.92 | 62.74 |
+| 616 | 0.57 | 7.85 | 65.96 |
+| 618 | 0.47 | 6.78 | 59.20 |
+| 620 | 0.38 | 6.18 | 60.79 |
+| 622 | 0.32 | 5.69 | 54.99 |
+| 624 | 0.29 | 4.93 | 53.10 |
+| 626 | 0.30 | 4.49 | 50.75 |
+| 628 | 0.33 | 4.07 | 43.62 |
+| 630 | 0.44 | 3.85 | 42.24 |
+| 632 | 0.74 | 3.77 | 42.07 |
+| 634 | 1.21 | 4.35 | 37.51 |
+| 636 | 1.87 | 6.03 | 36.30 |
+| 638 | 2.29 | 7.23 | 40.53 |
+| 640 | 2.24 | 9.14 | 41.99 |
+| 642 | 2.04 | 10.74 | 45.14 |
+
+### 3.3 Model prediction without fitting to the time series
+
+To test the model, we simulated the Goodwin equations using only the independently measured parameters of Table 1 and the initial concentrations measured at t = 0, and compared the prediction with the recording. The simulation reproduced the onset of the instability, the growth of the oscillation, and the final limit cycle. The predicted period was 39.6 min, within 1.5% of the measured 39.1 min, and the predicted peak-to-trough repressor range was 35.6–64.9 nM, within 6% of the measured ranges at both extrema. No parameter was adjusted to improve the agreement. The predicted phase drifted by less than 3 min over the 900 min comparison window, so the model is not merely reproducing a period but also the waveform.
+
+### 3.4 Phase and perturbation experiments
+
+Dilution of an oscillating reaction into fresh TX-TL mix at t = 1,200 min reset all three concentrations to values near the steady state and re-initiated the oscillation with a lag of approximately 380 min, consistent with the growth time observed at the start of the recording. A 10-fold increase in repressor concentration at t = 1,300 min produced a transient arrest of mRNA accumulation followed by recovery of the oscillation within two cycles, indicating that the limit cycle is stable to finite perturbations rather than being a transient in a slowly decaying linear system.
+
+## 4. Discussion
+
+Our results provide a quantitative test of the classical Goodwin stability criterion. The measured Hill coefficient (h = 10) exceeds the theoretical threshold (h = 8), all three degradation rate constants are equal within experimental error, and the circuit oscillates with a period that a Goodwin-type model constructed from independently measured parameters predicts without adjustment. This is, to our knowledge, one of the cleanest experimental confirmations of the criterion in a controlled biochemical system.
+
+Two features of the data deserve comment. First, the oscillation grew slowly over the first 400 min rather than appearing immediately. This is expected near a Hopf bifurcation: the steady state we start from is only weakly unstable by design, because h is close to the threshold, and the amplitude of the limit cycle therefore grows slowly from a small seed. The observed growth time of about 400 min is consistent with a linear growth rate of the unstable mode of approximately 0.01 min^−1. Second, the waveform is strongly asymmetric, with a fast rise and a slow decay of the repressor. This asymmetry is a direct consequence of the steep Hill function and is reproduced by the model, which is a stronger test than the period alone.
+
+Several limitations apply. The TX-TL environment is not a living cell: the absence of growth and of intracellular organization removes effects that could either stabilize or destabilize oscillations in vivo, and the ClpXP degradation tags used here set half-lives that may not match natural ones. Our model also neglects the maturation step of the intermediate protein as an independent delay and treats it as a first-order conversion, and it neglects transcriptional and translational elongation delays and stochastic fluctuations. Finally, the measurements are from a single circuit design; whether the same quantitative agreement holds for other loop architectures remains to be tested.
+
+In summary, we have characterized a three-stage negative-feedback gene circuit in a cell-free system, measured every parameter of its Goodwin-type model independently, and shown that the model predicts the observed 39 min limit cycle without fitting to the time series. The data set is suitable for use as a benchmark for parameter-estimation and identifiability methods, since all model parameters are independently known.
+
+## 5. Data availability
+
+Data S1 contains the complete 2 min-resolution time series (time, mRNA, intermediate protein, and repressor concentrations; 751 rows) for the 1,500 min recording.
+
+## 6. References
+
+1. Goodwin BC. Oscillatory behavior in enzymatic control processes. Advances in Enzyme Regulation 3, 425–438 (1965).
+2. Jacob F, Monod J. Genetic regulatory mechanisms in the synthesis of proteins. Journal of Molecular Biology 3, 318–356 (1961).
+3. Griffith JS. Mathematics of cellular control processes I. Negative feedback to one gene. Journal of Theoretical Biology 20, 202–208 (1968).
+4. Tyson JJ, Othmer HG. The dynamics of feedback control circuits in biochemical pathways. Progress in Theoretical Biology 5, 1–62 (1978).
+5. Sun ZZ, Yeung E, Hayes CA, Noireaux V, Murray RM. Linear DNA for rapid prototyping of synthetic biological circuits in an Escherichia coli based TX-TL cell-free system. ACS Synthetic Biology 3, 387–397 (2014).
+6. Karzbrun E, Tayar AM, Noireaux V, Bar-Ziv RH. Programmable on-chip DNA compartments as artificial cells. Science 345, 829–832 (2014).
+7. Sørensen KM, Adeyemi J. Reporting standards for synthetic genetic oscillators. Systems Biology Letters 18, 44–58 (2025). [fictional]

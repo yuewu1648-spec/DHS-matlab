@@ -1,0 +1,119 @@
+{
+  "id": "stability_hopf",
+  "type": "principle",
+  "name": "稳定性与振荡条件（Jacobian、Hopf 分岔、极限环）",
+  "name_en": "Stability and oscillations: Jacobian, Hopf bifurcation and limit cycles",
+  "domain": "dynamical_systems",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "在稳态处线性化得到 Jacobian J，特征值实部决定局部稳定性：全为负则稳定，任一为正则失稳，复特征值成对穿越虚轴（Re λ=0 且横截）即 Hopf 分岔，系统从稳态转为极限环（持续振荡）。鞍结分岔（det J=0）对应双稳态的出现/消失。该原理给出「模型能否振荡/双稳」的快速判据与参数扫描方法，但线性分析只给必要条件，极限环的稳定性与振幅需数值仿真确认。",
+  "statement": "对 dx/dt=f(x,p)，稳态 x* 满足 f(x*,p)=0；令 A=J(x*)，则 x* 局部渐近稳定当且仅当所有特征值实部 <0。随参数 μ 变化，当一对共轭特征值 λ=±iω 穿越虚轴（Re λ=0、dRe λ/dμ≠0）且其余特征值实部为负时发生 Hopf 分岔，产生小振幅周期解；周期 T=2π/ω。二维单调负反馈系统不能振荡（需要 3 个以上变量或显式时滞）；守恒量会引入零特征值，判断稳定性前应先降维。",
+  "formulas": [
+    {
+      "name": "线性化与稳定性判据",
+      "latex": "\\frac{d\\delta\\mathbf{x}}{dt}=\\mathbf{J}\\delta\\mathbf{x},\\quad \\mathbf{J}_{ij}=\\frac{\\partial f_i}{\\partial x_j}\\bigg|_{\\mathbf{x}^{*}};\\quad \\text{稳定}\\iff\\mathrm{Re}\\,\\lambda_i<0\\ \\forall i",
+      "plain": "dδx/dt = J*δx；J_ij = ∂f_i/∂x_j（在稳态处求值）；稳定 ⇔ 所有特征值实部 <0",
+      "terms": {
+        "J": "Jacobian 矩阵（n×n）",
+        "eigenvalue": "决定局部稳定性；实特征值 <0 稳定，>0 失稳；复特征值对的实部决定振荡的衰减/增长",
+        "usage": "bma.model.analyze 在稳态处计算 Jacobian 特征值并判断稳定性"
+      }
+    },
+    {
+      "name": "二维判据（trace/det）",
+      "latex": "\\det J>0,\\ \\mathrm{tr}\\,J<0\\Rightarrow\\text{稳定};\\quad \\det J<0\\Rightarrow\\text{鞍点};\\quad \\mathrm{tr}\\,J=0,\\ \\det J>0\\Rightarrow\\text{Hopf}",
+      "plain": "det J>0 且 tr J<0 → 稳定；det J<0 → 鞍点；tr J=0 且 det J>0 → Hopf 分岔点",
+      "terms": {
+        "trace_det": "tr J = λ1+λ2，det J = λ1λ2；复特征值时 tr=2Reλ",
+        "oscillation": "二维中复特征值实部 >0 需要 tr J>0 且 det J>0；此时从稳定稳态分岔出极限环",
+        "note": "二维单个负反馈（单调）无法振荡；需要 3+ 变量/时滞/正反馈参与"
+      }
+    },
+    {
+      "name": "三维 Routh-Hurwitz 判据",
+      "latex": "\\lambda^{3}+a_1\\lambda^{2}+a_2\\lambda+a_3=0;\\quad \\text{稳定}\\iff a_1>0,\\ a_3>0,\\ a_1a_2>a_3",
+      "plain": "λ³ + a1λ² + a2λ + a3 = 0；稳定 ⇔ a1>0 且 a3>0 且 a1*a2>a3",
+      "terms": {
+        "usage": "三变量模型（Goodwin/repressilator）的解析稳定性分析；a1a2=a3 是 Hopf 边界",
+        "frequency": "在 Hopf 点 ω² = a2（由特征方程虚部）",
+        "goodwin_result": "三变量线性降解链 + Hill 抑制需 Hill 系数 n>8 才能满足 Hopf 条件（各级降解率相等时）"
+      }
+    },
+    {
+      "name": "Hopf 分岔条件",
+      "latex": "\\lambda_{1,2}(\\mu_c)=\\pm i\\omega,\\quad \\mathrm{Re}\\,\\lambda_{1,2}(\\mu_c)=0,\\quad \\frac{d}{d\\mu}\\mathrm{Re}\\,\\lambda_{1,2}\\big|_{\\mu_c}\\neq0",
+      "plain": "在 μc 处一对特征值为 ±iω（实部为零），且实部对参数的导数非零（横截条件），其余特征值实部 <0",
+      "terms": {
+        "supercritical_subcritical": "横截方向与非线性项决定极限环稳定（超临界，平滑出现）或不稳定（亚临界，跳跃/滞后）",
+        "frequency": "ω 给出线性化周期 T=2π/ω（非线性极限环周期略有偏移）",
+        "implementation": "参数扫描（simulate_cases 或自写延拓）找 Re λ_max 变号点；bma.model.analyze 给特征值"
+      }
+    },
+    {
+      "name": "鞍结分岔与双稳态",
+      "latex": "\\det\\mathbf{J}=0\\ (\\text{零特征值})\\ \\Rightarrow\\ \\text{鞍结分岔：一对稳态合并消失}",
+      "plain": "det J=0（零特征值）→ 鞍结分岔：稳定与不稳定稳态合并消失，参数来回变化形成滞后（双稳态区间）",
+      "terms": {
+        "usage": "判断双稳态/滞后：参数扫描记录稳态数量与稳定性变化",
+        "bistability": "存在两个稳定稳态 + 一个鞍点；初值决定吸引域",
+        "vs_hopf": "鞍结是实特征值过零（不振荡）；Hopf 是复特征值过虚轴（振荡）"
+      }
+    },
+    {
+      "name": "极限环的数值确认（Poincaré-Bendixson 与仿真）",
+      "latex": "\\text{2D：有界轨道 + 无稳定稳态}\\Rightarrow\\text{极限环};\\quad \\text{高维：需数值仿真/延续}",
+      "plain": "二维：若轨迹有界且内部无稳定平衡点，则存在极限环（Poincaré-Bendixson）；高维只能用数值仿真/分岔延续确认",
+      "terms": {
+        "confirmation": "仿真长时间（≥10 个周期）看振幅是否饱和；用 Poincaré 截面/周期检测估计周期与稳定性",
+        "note": "Hopf 分岔只保证小振幅周期解存在；其稳定性与振幅由非线性决定"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "在拟合振荡/双稳数据前，先用参数初值检查模型能否产生该定性行为（特征值/稳态扫描），否则拟合会收敛到错误机制。",
+    "守恒量导致零特征值：分析稳定性时先降维（用守恒关系消元），否则会误判为临界稳定。",
+    "「负反馈就能振荡」是错误直觉：二维单调负反馈不能振荡；需要 ≥3 变量、显式时滞或正反馈/超敏放大。",
+    "Hopf 分岔点附近参数估计条件数差、振幅小、噪声敏感；报告振荡数据时需给出分岔图与参数区间。",
+    "双稳态模型必须说明两个吸引域与初值依赖；只给一条轨迹无法验证双稳，需双向扫描（滞后）。"
+  ],
+  "how_to_apply": [
+    "先求稳态（symbolic 或数值 fsolve 多起点）。",
+    "在稳态处计算 Jacobian（解析或有限差分），求特征值；记录最大实部与对应特征向量。",
+    "参数扫描：改变关键参数（如合成速率、Hill 系数、降解率），记录 Re λ_max 变号点 → Hopf 候选。",
+    "在候选点附近仿真，检查振幅是否饱和（极限环）或衰减（稳定焦点）。",
+    "若怀疑双稳：做参数双向扫描与不同初值仿真，绘制滞后环/分岔图。",
+    "报告：稳态、特征值、分岔点、极限环周期/振幅、参数区间与不稳定性结论。"
+  ],
+  "pitfalls": [
+    "把局部稳定性结论外推到全局（非线性系统可能有远处吸引子）。",
+    "忽略守恒量/快慢时间尺度导致的零/近零特征值，误判临界稳定。",
+    "在二维负反馈系统上强行拟合振荡（结构上不可能），或错误归因于参数。",
+    "Hopf 分岔附近振幅很小、噪声大，却报告「显著振荡」。",
+    "稳态数值求解收敛到非物理解（负浓度）；需检查物理可行性。",
+    "参数扫描步长过大错过窄的稳定/振荡窗口；用对数扫描或自适应步长。"
+  ],
+  "matlab_notes": [
+    "bma.model.analyze 返回稳态（symbolic 失败则 fsolve 多起点）与 Jacobian 特征值/稳定性；守恒律同时给出。",
+    "参数扫描用 bma.model.simulate_cases（覆盖参数）或自写循环；记录每个参数点的稳态/特征值/振幅。",
+    "特征值计算用 eig(J)；近零特征值需用 SVD/秩判断区分守恒方向与真正临界方向。",
+    "周期估计：对仿真输出做峰值检测或 FFT；至少覆盖 10 个周期并丢弃瞬态。"
+  ],
+  "spec_mapping": "稳定性分析不需要 spec 额外字段；用 variables/parameters/reactions 构建模型后由 MATLAB 计算 Jacobian。初始条件影响双稳结论，所以 spec 中 initial 应明确来源与用途（例如用于展示不同吸引域）。",
+  "diagnostics": [
+    "稳态处 max Re(λ) 的符号与大小（接近 0 时报告病态性）",
+    "参数扫描中 Re λ_max 变号点与仿真振荡区间是否一致",
+    "守恒量个数（零特征值个数）是否与降维后的维度一致",
+    "极限环振幅是否与初值无关（有界/饱和）",
+    "双稳区间的滞后宽度与初值敏感性"
+  ],
+  "keywords": ["稳定性", "Jacobian", "特征值", "Hopf 分岔", "极限环", "双稳态", "鞍结分岔", "stability", "eigenvalue", "limit cycle", "bifurcation"],
+  "tags": ["dynamical_systems", "ode", "analysis"],
+  "related": ["negative_feedback_oscillator", "hill_regulation_toggle", "mapk_cascade", "conservation_stoichiometry"],
+  "references": [
+    { "citation": "Hopf E (1942). Abzweigung einer periodischen Lösung von einer stationären Lösung eines Differentialsystems. Berichte der Mathematisch-Physikalischen Klasse der Sächsischen Akademie der Wissenschaften zu Leipzig 94:1-22.", "authors": ["Hopf E"], "year": 1942, "title": "Abzweigung einer periodischen Lösung von einer stationären Lösung eines Differentialsystems", "journal": "Berichte der Sächsischen Akademie der Wissenschaften zu Leipzig", "volume": "94", "pages": "1-22" },
+    { "citation": "Strogatz SH (2015). Nonlinear Dynamics and Chaos: With Applications to Physics, Biology, Chemistry, and Engineering, 2nd ed. Westview Press.", "authors": ["Strogatz SH"], "year": 2015, "title": "Nonlinear Dynamics and Chaos: With Applications to Physics, Biology, Chemistry, and Engineering", "journal": "Westview Press", "note": "线性稳定性、分岔与极限环的标准教材" },
+    { "citation": "Murray JD (2003). Mathematical Biology I: An Introduction, 3rd ed. Springer.", "authors": ["Murray JD"], "year": 2003, "title": "Mathematical Biology I: An Introduction", "journal": "Springer", "note": "生物模型中的稳定性与振荡分析" },
+    { "citation": "Novak B, Tyson JJ (2008). Design principles of biochemical oscillators. Nature Reviews Molecular Cell Biology 9(12):981-991.", "authors": ["Novak B", "Tyson JJ"], "year": 2008, "title": "Design principles of biochemical oscillators", "journal": "Nature Reviews Molecular Cell Biology", "volume": "9", "pages": "981-991", "doi": "10.1038/nrm2530" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

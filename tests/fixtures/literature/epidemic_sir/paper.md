@@ -1,0 +1,158 @@
+# Dynamics of a respiratory outbreak in an isolated island community: a susceptible–infectious–removed analysis of 120 days of surveillance data
+
+**Authors:** E. M. Haddad¹, P. Fiorelli², S. N. Andersen³, D. Okoye¹
+
+¹ School of Public Health, University of Calder Vale, Calder Vale, UK
+² Department of Mathematics, University of San Benedetto, San Benedetto, Italy
+³ Institute of Epidemiology, Northsea University, Northsea, Norway
+
+**Journal:** Journal of Theoretical Epidemiology 31(4), 289–305 (2026)
+**DOI:** 10.9999/jte.2026.0031 (synthetic fixture, fictional)
+**Received:** 2 February 2026 · **Accepted:** 30 May 2026
+**Corresponding author:** E. M. Haddad, e.haddad@caldervale.ac.uk (fictional)
+
+**Keywords:** SIR model; reproduction number; outbreak; incidence data; parameter estimation; closed population
+
+---
+
+## Abstract
+
+Isolated communities provide unusually clean settings for testing compartmental epidemic models: the population is closed, mixing is approximately homogeneous, and case ascertainment can be close to complete. We analysed a 120-day respiratory outbreak in a closed island community of N = 1,200 inhabitants that began with 12 index cases on day 0. Daily surveillance recorded new infections, active (currently infectious) cases, and cumulative infections, with no vaccination or pharmaceutical intervention during the observation period. Fitting a standard susceptible–infectious–removed (SIR) model to the first 60 days of data gave a transmission rate beta = 0.45 day^−1 (95% CI 0.42–0.48 day^−1) and a removal rate gamma = 0.16 day^−1 (95% CI 0.15–0.17 day^−1), corresponding to a basic reproduction number R0 = 2.8 (95% CI 2.6–3.1) and a mean infectious period of 6.3 days. The outbreak peaked on day 18 with 336 simultaneously infectious individuals (28.0% of the population) and a maximum daily incidence of 72 new cases on day 14. By day 90 the outbreak had burned out, with a final cumulative incidence of 1,112 infections (92.7% of the population), matching the analytic final-size prediction of the fitted model (92.4%). A model in which the transmission term used frequency-dependent rather than density-dependent scaling gave an identical fit, as expected for a closed population with constant N. We discuss the implications for estimating R0 and for the interpretation of peak prevalence in small isolated populations.
+
+## 1. Introduction
+
+The SIR model introduced by Kermack and McKendrick [1] remains the workhorse of mathematical epidemiology. Its three compartments track susceptible (S), infectious (I), and removed (R) individuals, and its dynamics are governed by two parameters: the transmission rate beta and the removal rate gamma [2]. The basic reproduction number R0 = beta/gamma, together with the initial susceptible fraction, determines whether an outbreak grows and how large it ultimately becomes [3,4]. Despite its simplicity, the model's quantitative predictions — the peak height and timing, the final attack rate — are frequently used in public-health planning, so careful tests in well-observed populations remain valuable [5].
+
+Island communities offer a natural laboratory. Because the population is closed (no births, deaths, or migration on the time scale of an outbreak), because contacts are approximately homogeneous, and because a single public-health team can observe every case, the assumptions of the model are unusually well satisfied. We therefore analysed a 120-day outbreak of a respiratory pathogen in a closed island community of 1,200 people. Our aims were (i) to estimate beta and gamma from the surveillance data, (ii) to derive R0 and the expected final attack rate, and (iii) to ask whether the model's prediction of peak timing, peak prevalence, and final size is consistent with the observed epidemic.
+
+## 2. Materials and methods
+
+### 2.1 Setting and surveillance
+
+The outbreak occurred in a single island community with a resident population of N = 1,200. The island had a single point of entry, which was closed on day 0 (the day of the first laboratory-confirmed case). There was no vaccination, antiviral treatment, school closure, or other intervention during the study period. Surveillance used a standardized case definition: fever plus cough or dyspnoea, with laboratory confirmation by nucleic-acid testing. Active (currently infectious) cases were counted until 5 days after symptom onset, consistent with the local isolation policy. Every resident was contacted daily by the community health team for the entire 120-day period, so the surveillance data are believed to be complete.
+
+### 2.2 Data
+
+The data consist of 121 daily observations (days 0–120). For each day we recorded the number of new infections, the number of active infections, the cumulative number of infections, and the cumulative number of removed (recovered or deceased) individuals. On day 0 there were 12 active infections, all confirmed index cases; no other infections were detected before day 0. The full data set is provided in Data S1.
+
+### 2.3 Model
+
+We used the standard SIR model with total population N:
+
+dS/dt = −beta · S · I / N
+dI/dt =  beta · S · I / N − gamma · I
+dR/dt =  gamma · I
+
+with initial conditions S(0) = 1,188, I(0) = 12, R(0) = 0, so that S + I + R = N at all times. The model has two parameters: the transmission rate beta (units day^−1) and the removal rate gamma (units day^−1). The basic reproduction number is R0 = beta/gamma, and the mean infectious period is 1/gamma. The cumulative number of infections is N − S.
+
+Because N is constant in a closed population, the model is equivalent to the frequency-dependent formulation in which the force of infection is beta · I. We verified this equivalence in the sensitivity analysis and report only the density-scaled version.
+
+### 2.4 Parameter estimation
+
+Parameters were estimated by maximum likelihood, using a Poisson likelihood for the daily incidence counts and a normal likelihood for the active-case prevalence under a standard deviation proportional to the square root of the mean. Fitting was performed on the first 60 days only, so that the last 60 days could serve as an out-of-sample test of the model's prediction of the final size. Optimization used a bounded quasi-Newton algorithm with 50 random starting points to guard against local minima. Confidence intervals were obtained from a chi-square profile likelihood with one degree of freedom. The final-size equation
+
+1 − c = exp(−R0 · c),
+
+where c is the final fraction infected, was solved numerically for comparison with the observed final cumulative incidence.
+
+## 3. Results
+
+### 3.1 Estimated parameters
+
+The fit converged to beta = 0.45 day^−1 (95% CI 0.42–0.48 day^−1) and gamma = 0.16 day^−1 (95% CI 0.15–0.17 day^−1) (Table 1). The corresponding basic reproduction number was R0 = beta/gamma = 2.8 (95% CI 2.6–3.1), and the mean infectious period was 1/gamma = 6.3 days (95% CI 5.9–6.7 days). The percentage of the population that therefore needed to be immune to block transmission, 1 − 1/R0, was 64%.
+
+**Table 1. Estimated and derived epidemiological parameters.**
+
+| Parameter | Symbol | Estimate | 95% CI | Unit |
+|---|---|---|---|---|
+| Total population | N | 1,200 | — | individuals |
+| Initial susceptible | S(0) | 1,188 | — | individuals |
+| Initial infectious | I(0) | 12 | — | individuals |
+| Transmission rate | beta | 0.45 | 0.42–0.48 | day^−1 |
+| Removal rate | gamma | 0.16 | 0.15–0.17 | day^−1 |
+| Basic reproduction number | R0 | 2.81 | 2.6–3.1 | dimensionless |
+| Mean infectious period | 1/gamma | 6.3 | 5.9–6.7 | days |
+| Final attack rate (observed) | c | 92.7 | — | % |
+| Final attack rate (model prediction) | c | 92.4 | — | % |
+
+### 3.2 Course of the outbreak
+
+The epidemic grew exponentially for the first two weeks. Daily incidence rose from 12 cases on day 0 to 72 cases on day 14, and active prevalence peaked on day 18 at 336 individuals (Table 2). After the peak, prevalence declined rapidly: active cases fell below 100 by day 34 and below 10 by day 52. The last new infection was recorded on day 61, and no active cases were present after day 84. The cumulative number of infections was 1,112 (92.7% of the population) by day 90 and remained constant thereafter (Table 3).
+
+**Table 2. Daily surveillance data, days 0–25.** Only the first 26 days are shown; the full 121-day data set is provided in Data S1.
+
+| Day | New infections | Active infections | Cumulative infections | Cumulative removed |
+|---|---|---|---|---|
+| 0 | 12 | 12 | 12 | 0 |
+| 1 | 6 | 16 | 18 | 2 |
+| 2 | 8 | 20 | 26 | 6 |
+| 3 | 11 | 28 | 37 | 9 |
+| 4 | 14 | 36 | 51 | 15 |
+| 5 | 18 | 48 | 69 | 21 |
+| 6 | 23 | 62 | 92 | 30 |
+| 7 | 29 | 80 | 121 | 41 |
+| 8 | 36 | 101 | 157 | 56 |
+| 9 | 43 | 127 | 200 | 73 |
+| 10 | 52 | 155 | 252 | 97 |
+| 11 | 59 | 187 | 311 | 124 |
+| 12 | 65 | 220 | 376 | 156 |
+| 13 | 70 | 252 | 446 | 194 |
+| 14 | 72 | 280 | 518 | 238 |
+| 15 | 71 | 306 | 589 | 283 |
+| 16 | 68 | 323 | 657 | 334 |
+| 17 | 63 | 333 | 720 | 387 |
+| 18 | 57 | 336 | 777 | 441 |
+| 19 | 50 | 332 | 827 | 495 |
+| 20 | 43 | 323 | 870 | 547 |
+| 21 | 37 | 311 | 907 | 596 |
+| 22 | 31 | 292 | 938 | 646 |
+| 23 | 27 | 274 | 965 | 691 |
+| 24 | 22 | 253 | 987 | 734 |
+| 25 | 18 | 233 | 1,005 | 772 |
+
+**Table 3. Weekly summary of the outbreak.** Cumulative values are as recorded at the end of each week.
+
+| Day | New infections | Active infections | Cumulative infections |
+|---|---|---|---|
+| 0 | 12 | 12 | 12 |
+| 7 | 29 | 80 | 121 |
+| 14 | 72 | 280 | 518 |
+| 21 | 37 | 311 | 907 |
+| 28 | 11 | 174 | 1,045 |
+| 35 | 4 | 80 | 1,088 |
+| 42 | 1 | 35 | 1,103 |
+| 49 | 1 | 14 | 1,109 |
+| 56 | 0 | 6 | 1,111 |
+| 63 | 0 | 3 | 1,112 |
+| 90 | 0 | 0 | 1,112 |
+
+### 3.3 Model validation
+
+The model fitted to the first 60 days predicted a peak of 338 active infections on day 17.6, compared with the observed peak of 336 on day 18 (peak timing error 0.4 days, peak magnitude error 0.6%). The model's out-of-sample prediction of the final cumulative incidence was 1,109 (92.4% of N), compared with the observed 1,112 (92.7%); the relative error was 0.3%. The analytic final-size equation for R0 = 2.81 gives c = 92.4%, in excellent agreement with both the dynamic fit and the observed data. The coefficient of determination for active prevalence over the full 120 days was R² = 0.987, and the root-mean-square error of the daily incidence prediction was 3.1 cases.
+
+### 3.4 Sensitivity analysis
+
+Varying R0 from 2.6 to 3.1 changed the predicted final attack rate from 90.1% to 94.8% and the predicted peak prevalence from 296 to 372 active cases. The model was therefore more sensitive to R0 for the final size than for the peak height. Fixing gamma at the literature value of 0.15 day^−1 changed the estimated beta by less than 3%, so the two parameters are not strongly correlated in this data set; the correlation coefficient between beta and gamma estimates was −0.42.
+
+## 4. Discussion
+
+This outbreak provides a close-to-ideal test of the SIR model. The population was closed, mixing was approximately homogeneous, ascertainment was complete, and no interventions were applied. Under these conditions, the standard two-parameter model reproduced the observed epidemic curve with high accuracy, including out-of-sample predictions of the final size and peak timing. The estimated R0 of 2.8 is typical of respiratory pathogens with no pre-existing immunity, and the estimated infectious period of 6.3 days is consistent with the surveillance definition used here.
+
+Two observations are worth emphasizing. First, the final attack rate (92.7%) was far above the herd-immunity threshold (64%): in a homogeneous closed population an outbreak that is not interrupted runs to the final-size equilibrium rather than stopping at the herd-immunity threshold, because transmission continues while the effective reproduction number remains above one. This is a common source of confusion in public communication and is worth stating explicitly. Second, the model was more sensitive to R0 for the final size than for the peak, so the total number infected is an informative but demanding target for model evaluation.
+
+Several limitations should be noted. Case ascertainment, although thorough, may have missed mild or asymptomatic infections, in which case the true final attack rate and R0 would be lower than reported. The population, though small and isolated, was not perfectly homogeneous: households and the single communal dining hall created local contact structure that the SIR model ignores. Finally, the outbreak was short enough that demographic processes (births, deaths, and migration) can be neglected, but not so short that the assumption of a well-mixed population is exact.
+
+In conclusion, the SIR model with beta = 0.45 day^−1 and gamma = 0.16 day^−1 (R0 = 2.8) quantitatively describes a complete, closed-population respiratory outbreak, correctly predicting the peak time, the peak prevalence, and the final cumulative incidence.
+
+## 5. Data availability
+
+Data S1 contains the complete daily surveillance data (day, new infections, active infections, cumulative infections, and cumulative removed; 121 rows).
+
+## 6. References
+
+1. Kermack WO, McKendrick AG. A contribution to the mathematical theory of epidemics. Proceedings of the Royal Society A 115, 700–721 (1927).
+2. Anderson RM, May RM. Infectious Diseases of Humans: Dynamics and Control. Oxford University Press, Oxford (1991). [classic textbook]
+3. Diekmann O, Heesterbeek JAP, Metz JAJ. On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations. Journal of Mathematical Biology 28, 365–382 (1990).
+4. van den Driessche P, Watmough J. Reproduction numbers and sub-threshold endemic equilibria for compartmental models of disease transmission. Mathematical Biosciences 180, 29–48 (2002).
+5. Bjørnstad ON, Shea K, Krzywinski M, Altman N. Modeling infectious epidemics. Nature Methods 17, 455–456 (2020).
+6. Haddad EM, Fiorelli P. Final-size estimates in small closed populations: a cautionary note. Journal of Theoretical Epidemiology 30, 112–127 (2025). [fictional]

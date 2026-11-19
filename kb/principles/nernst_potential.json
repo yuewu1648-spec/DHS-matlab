@@ -1,0 +1,113 @@
+{
+  "id": "nernst_potential",
+  "type": "principle",
+  "name": "Nernst 方程与膜电位（Nernst equation and membrane potential）",
+  "name_en": "Nernst equation and membrane potential",
+  "domain": "biophysics",
+  "scale": "cell",
+  "model_class": "ode",
+  "summary": "离子在膜两侧的平衡电位由 Nernst 方程给出 E_X = (RT/zF)ln([X]ₒ/[X]ᵢ)；多离子通透性下的静息膜电位用 Goldman-Hodgkin-Katz（GHK）方程。膜电位是电生理模型的「电压轴」，离子电流由电导与驱动力 (V-E_X) 决定；细胞外离子浓度改变（如高钾血症）会按 Nernst 关系移动 E_X，从而改变兴奋性。",
+  "statement": "电化学平衡时离子的净通量为零：化学势梯度与电梯度相互抵消，此时膜电位等于该离子的 Nernst 电位。当膜对多种离子有通透性时，稳态膜电位是各离子 Nernst 电位的通透性加权平均（GHK）。Nernst 电位随温度与离子浓度变化：37 ℃ 时单价离子约为 61.5 mV/decade（浓度比 10 倍 ≈ 61.5 mV），20 ℃ 约 58 mV/decade。",
+  "formulas": [
+    {
+      "name": "Nernst 方程",
+      "latex": "E_X=\\frac{RT}{zF}\\ln\\frac{[X]_{out}}{[X]_{in}}=\\frac{2.303RT}{zF}\\log_{10}\\frac{[X]_{out}}{[X]_{in}}",
+      "plain": "EX = (RT/(zF))*ln([X]out/[X]in) = (2.303RT/(zF))*log10([X]out/[X]in)",
+      "terms": {
+        "E_X": "离子 X 的平衡（反转）电位（V 或 mV）",
+        "R": "气体常数 8.314 J/(mol·K)",
+        "T": "绝对温度（K）；37 ℃=310.15 K，20 ℃=293.15 K",
+        "z": "离子价数（Na+、K+ 为 +1，Ca²+ 为 +2，Cl- 为 -1）",
+        "F": "法拉第常数 96485 C/mol",
+        "rt_f_over_f": "37 ℃ 约 61.5 mV；20 ℃ 约 58 mV（单价离子）"
+      }
+    },
+    {
+      "name": "电化学驱动力与离子电流",
+      "latex": "\\Delta\\bar{\\mu}_X=zF\\left(V_m-E_X\\right),\\qquad I_X=g_X\\left(V_m-E_X\\right)",
+      "plain": "Δμ_X = zF*(Vm - EX)；IX = gX*(Vm - EX)",
+      "terms": {
+        "driving_force": "Vm-E_X 是欧姆形式的驱动力；为零时无净离子流",
+        "current_direction": "阳离子在 Vm<E_X 时内流（负电流，按电生理约定）；注意符号约定（内流为负）在文献中常见",
+        "usage": "HH 模型中每个离子电流都写成 g(V,t)*(V-E_X) 的形式"
+      }
+    },
+    {
+      "name": "Goldman-Hodgkin-Katz 电压方程",
+      "latex": "V_m=\\frac{RT}{F}\\ln\\frac{P_K[K]_{out}+P_{Na}[Na]_{out}+P_{Cl}[Cl]_{in}}{P_K[K]_{in}+P_{Na}[Na]_{in}+P_{Cl}[Cl]_{out}}",
+      "plain": "Vm = (RT/F)*ln((PK*[K]out + PNa*[Na]out + PCl*[Cl]in)/(PK*[K]in + PNa*[Na]in + PCl*[Cl]out))",
+      "terms": {
+        "P_X": "各离子相对通透性（不是电导）；静息时 P_K 占优 → Vm 接近 E_K",
+        "chloride": "因 z=-1，浓度项位置与其他离子相反（out 在分母对应项）",
+        "usage": "由离子浓度与通透性预测静息电位；解释细胞外 K+ 升高导致的去极化",
+        "limitation": "假设恒定电场、独立离子、无主动转运；泵电流可加 I_pump 项"
+      }
+    },
+    {
+      "name": "电荷守恒与电中性（Donnan 平衡）",
+      "latex": "\\sum_i z_i[X_i]_{in}+\\sum_j z_j[Y_j]_{in}=0\\ (\\text{胞内电中性，除膜附近 Debye 层外})",
+      "plain": "胞内电中性：Σ z_i*[X_i]in + Σ z_j*[Y_j]in = 0（膜附近 Debye 层外）",
+      "terms": {
+        "Donnan": "含不可透大分子阴离子的平衡：可透离子按 Nernst 分布，产生 Donnan 电位",
+        "usage": "检查模型里离子浓度是否物理可行；解释细胞肿胀/渗透压",
+        "debye_length": "生理盐水中约 0.7-1 nm，电场集中在此尺度，故可用膜电位近似整个跨膜电位差"
+      }
+    },
+    {
+      "name": "主动转运与稳态膜电位",
+      "latex": "I_{pump}=I_{NaK}=\\text{const}\\ (\\text{Na}^+/\\text{K}^+\\text{-ATPase});\\qquad \\sum I_X+I_{pump}=0\\ (\\text{稳态})",
+      "plain": "稳态时跨膜净电流为零：ΣI_X + I_pump = 0；Na+/K+-ATPase 维持离子梯度（每 ATP 泵出 3 Na+、泵入 2 K+）",
+      "terms": {
+        "meaning": "没有主动泵，离子梯度会耗散，Nernst 电位无法长期维持；泵电流本身对膜电位有小贡献（生电性）",
+        "metabolic_inhibition": "缺氧/代谢抑制剂使泵停摆 → 梯度耗散、膜去极化（病理机制建模）",
+        "energy": "维持梯度消耗 ATP，是热力学非平衡态的典型例（与 thermodynamic_constraints 配合）"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "HH/电生理模型中的 E_Na、E_K、E_L 不是自由参数：E_Na/E_K 应由离子浓度按 Nernst 计算（或作为有文献依据的参数），E_L 作为混合漏电流反转电位可拟合。",
+    "改变细胞外离子浓度（低钠、高钾、低钙实验）时，应重算 E_X 而不是改初始膜电位；这是模型预测与实验对照的关键。",
+    "静息膜电位由 GHK 的通透性加权决定，不能只用单一离子 Nernst 电位代替；泵电流在高精度模型中需显式加入。",
+    "电生理模型的时间单位通常是 ms、电压 mV、电导 mS/cm²；单位一致性直接影响 Nernst 项的数值（RT/F 用 mV 表达）。",
+    "膜电位与离子浓度是耦合的：长时间仿真/高发放频率下，离子浓度会变化（胞内 Na+ 升高、K+ 外流），需把离子浓度作为状态变量（HH 的扩展）。"
+  ],
+  "how_to_apply": [
+    "列出模型涉及的离子及内/外浓度（mM 或 nM），用 Nernst 算 E_X；记录温度。",
+    "对多离子系统用 GHK 估计静息电位，或把静息电位作为数据拟合参数并报告与 GHK 的一致性。",
+    "在 spec 中把 E_Na、E_K 写成 parameters（单位 mV），并在 assumptions/report 中给出 Nernst 计算依据与离子浓度。",
+    "若研究离子浓度变化（病理、长时间发放），把胞内/外离子浓度设为变量，离子电流改变浓度（每摩尔电荷转移量），并加泵/交换体。",
+    "验证：用电压钳数据检查 I-V 关系是否在 E_X 处过零；偏差提示漏电流/液接电位/空间钳制问题。"
+  ],
+  "pitfalls": [
+    "把 E_K 当作固定常数而忽略细胞外 K+ 变化（高钾血症模型常见错误）。",
+    "log 与 log10 混用（差 2.303 倍）。",
+    "忘记 z（二价离子 Ca²+ 的 E_X 是单价的一半）。",
+    "用浓度代替活度（高离子强度/胞内环境），产生几 mV 偏差。",
+    "液接电位/电极校准误差（几 mV）在精确拟合中被误读为通道参数。",
+    "忽略泵电流与离子浓度耗散，长时间仿真出现非生理漂移。",
+    "空间钳制不良时，实测「膜电位」并非均匀，Nernst 关系被表观参数吸收。"
+  ],
+  "matlab_notes": [
+    "Nernst 计算是一行表达式：常数 RT/F 可在 MATLAB 中按温度计算（或直接用 61.5 mV/decade @37 ℃）。",
+    "HH 模型的 E_Na/E_K 在 spec 中作为 parameters（unit mV）；若要做离子浓度变化情景，用 simulate_cases 覆盖 E 值，或把浓度设为变量并用 expression 计算 E。",
+    "单位用 mV；若模型时间用 ms，则速率函数 1/ms 与电导 mS/cm² 的换算必须一致（见 hodgkin_huxley archetype）。",
+    "温度变化（Q10）同时影响 Nernst 项与门控速率，报告需分别说明。"
+  ],
+  "spec_mapping": "E_X 作为 parameter（unit mV），或由离子浓度参数经 expression 计算；离子电流写成 g*(V-E) 形式，g 为 parameter（mS/cm²），V 为 state（mV）。",
+  "diagnostics": [
+    "E_X 数值是否在生理范围（E_Na≈+50~+65 mV，E_K≈-90~-100 mV @37 ℃）",
+    "静息 Vm 是否落在 E_K 与 E_Na 之间，且接近 GHK 预测",
+    "I-V 曲线是否在 E_X 处过零",
+    "离子浓度变化情景下 Vm 变化方向是否符合 Nernst 预测（K+ 升高 → 去极化）"
+  ],
+  "keywords": ["Nernst 方程", "膜电位", "平衡电位", "GHK 方程", "离子梯度", "电化学驱动力", "membrane potential", "equilibrium potential", "Goldman equation"],
+  "tags": ["biophysics", "electrophysiology", "membrane"],
+  "related": ["hodgkin_huxley", "fick_diffusion", "thermodynamic_constraints"],
+  "references": [
+    { "citation": "Nernst W (1888). Zur Theorie der in Lösung befindlichen Körper. Zeitschrift für Physikalische Chemie 2:613-637.", "authors": ["Nernst W"], "year": 1888, "title": "Zur Theorie der in Lösung befindlichen Körper", "journal": "Zeitschrift für Physikalische Chemie", "volume": "2", "pages": "613-637" },
+    { "citation": "Goldman DE (1943). Potential, impedance, and rectification in membranes. Journal of General Physiology 27(1):37-60.", "authors": ["Goldman DE"], "year": 1943, "title": "Potential, impedance, and rectification in membranes", "journal": "Journal of General Physiology", "volume": "27", "pages": "37-60" },
+    { "citation": "Hodgkin AL, Katz B (1949). The effect of sodium ions on the electrical activity of the giant axon of the squid. Journal of Physiology 108(1):37-77.", "authors": ["Hodgkin AL", "Katz B"], "year": 1949, "title": "The effect of sodium ions on the electrical activity of the giant axon of the squid", "journal": "Journal of Physiology", "volume": "108", "pages": "37-77" },
+    { "citation": "Hille B (2001). Ion Channels of Excitable Membranes, 3rd ed. Sinauer Associates.", "authors": ["Hille B"], "year": 2001, "title": "Ion Channels of Excitable Membranes", "journal": "Sinauer Associates", "note": "Nernst/GHK、电化学驱动力与通道生理的权威教材" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

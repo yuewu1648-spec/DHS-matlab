@@ -1,0 +1,12 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "dde_neutral",
+  "kind": "dde",
+  "dde_mode": "neutral",
+  "time": {"unit": "h", "start": 2, "end": 20, "n": 201},
+  "variables": [{"id": "x", "unit": "1", "initial": {"value": 1}}],
+  "delays": [{"id": "tau", "lag": 1, "unit": "h"}],
+  "parameters": [{"id": "k", "unit": "1/h", "value": {"value": 1}}],
+  "reactions": [{"id": "r", "stoichiometry": {"x": 1}, "rate": {"kind": "expression", "expression": "-k*x + 0.5*delay_deriv(x,tau)"}}],
+  "outputs": [{"id": "x", "unit": "1", "expression": "x"}]
+}

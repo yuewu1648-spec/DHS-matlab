@@ -1,0 +1,109 @@
+{
+  "id": "network_motifs",
+  "type": "principle",
+  "name": "网络基序（Network motifs：反馈、前馈、自调控）",
+  "name_en": "Network motifs: feedback, feed-forward loops and autoregulation",
+  "domain": "systems_biology",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "生物调控网络中反复出现的少数小连通模式（基序）通常对应特定的信息处理功能：正/负反馈决定双稳与振荡；前馈环（FFL）实现延迟、噪声过滤、脉冲/适应（incoherent FFL 可做 fold-change detection）；自调控（尤其是负自调控）加速响应并降低噪声。识别文献中的基序是选择 ODE 模板的捷径，也是从网络结构预测动态行为的核心方法。",
+  "statement": "基序是网络中显著富集的小子图（相对度数匹配的随机网络）。三类最常用：自调控（节点调控自身）、双节点反馈（正/负）、三节点前馈环（X→Y、X→Z、Y→Z）。功能取决于符号组合（coherent/incoherent）、调控逻辑（AND/OR）与参数区间；同一基序在不同参数下可表现出不同功能，因此「结构」只提供候选假设，必须用动力学模型验证。",
+  "formulas": [
+    {
+      "name": "前馈环（FFL）结构",
+      "latex": "X\\to Y,\\quad X\\to Z,\\quad Y\\to Z\\ (\\text{coherent type-1：三步均为激活；incoherent：Y 抑制 Z})",
+      "plain": "FFL：X→Y、X→Z、Y→Z；coherent type-1 三步都激活；incoherent type-1：X 激活 Z、X 激活 Y、Y 抑制 Z",
+      "terms": {
+        "coherent": "两条路径符号一致 → 延迟开启 + 对短脉冲噪声过滤（AND 逻辑更严格）",
+        "incoherent": "两条路径符号相反 → 脉冲响应/完美适应；可对输入做 fold-change 检测（响应倍数而非绝对值）",
+        "key_parameters": "各边的 Hill 阈值、协同性、时间尺度（Y 的动力学决定延迟）"
+      }
+    },
+    {
+      "name": "Coherent type-1 FFL 的响应（AND 逻辑）",
+      "latex": "Z_{prod}=\\beta_z\\,f_X(X)\\,f_Y(Y),\\qquad Y=\\beta_y\\frac{X^{h}}{K_x^{h}+X^{h}}",
+      "plain": "Z 产生 = βz*fX(X)*fY(Y)；Y = βy*X^h/(Kx^h+X^h)（f 为 Hill 激活函数）",
+      "terms": {
+        "function": "只有当 X 足够高且持续足够久（Y 积累到阈值）才开启 Z → 过滤短脉冲、延迟响应",
+        "delay": "约由 Y 的降解/积累时间决定（1/γ_Y 量级）",
+        "noise": "AND 逻辑压缩输入噪声的通过（尤其高频噪声）",
+        "single_step": "用 hill 速率：Z 的合成速率 = vmax*f(X)*f(Y) 需 expression 速率（Hill 乘积）"
+      }
+    },
+    {
+      "name": "Incoherent type-1 FFL 的脉冲/适应",
+      "latex": "\\frac{dZ}{dt}=\\beta_z f_X(X)\\cdot\\frac{1}{1+\\left(Y/K_y\\right)^{p}}-\\gamma_z Z,\\qquad Y=\\text{由 X 激活}",
+      "plain": "dZ/dt = βz*fX(X)/(1+(Y/Ky)^p) - γz*Z；Y 由 X 激活",
+      "terms": {
+        "pulse": "X 阶跃上升 → Z 先快速上升（经 fX），随后 Y 积累把 Z 压回 → 瞬态脉冲",
+        "adaptation": "稳态 Z 与 X 的绝对水平弱相关（响应变化而非绝对量）；严格适应需要参数匹配",
+        "usage": "解释信号通路中的快速瞬态响应（如 ERK 脉冲）、趋化适应、发育中的短暂模式"
+      }
+    },
+    {
+      "name": "自调控与负反馈的噪声/响应",
+      "latex": "\\text{负自调控：} \\frac{dx}{dt}=\\frac{\\alpha}{1+(x/K)^{h}}-\\gamma x;\\qquad \\text{噪声降低} \\sim\\frac{1}{1+\\text{loop gain}},\\quad \\text{响应加快}",
+      "plain": "负自调控：dx/dt = α/(1+(x/K)^h) - γx；负反馈降低内禀噪声、加快响应；正自调控 → 双稳/滞后、减慢响应",
+      "terms": {
+        "loop_gain": "反馈强度（∂ln(产生)/∂ln x 的绝对值）；越大噪声抑制越强",
+        "response_time": "负反馈缩短达到新稳态的时间；正反馈延长并产生滞后",
+        "note": "负反馈也可能放大外禀噪声；噪声结论需区分内外禀（见 stochasticity_noise）"
+      }
+    },
+    {
+      "name": "基序统计富集（motif detection）",
+      "latex": "Z_{motif}=\\frac{N_{obs}-\\langle N_{rand}\\rangle}{\\sigma_{rand}}",
+      "plain": "Z_motif = (N_obs - <N_rand>)/σ_rand",
+      "terms": {
+        "randomized_network": "保持各节点入/出度分布不变的随机化网络（degree-preserving randomization）",
+        "explanation": "Z>2-3 视为显著富集；但富集 ≠ 功能，功能需动力学验证",
+        "usage": "从文献提供的调控网络识别需要建模的基序，匹配 kb 中 archetype（toggle/oscillator/FFL）"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "看到「A 抑制 B、B 激活/抑制 C、A 也调控 C」的调控描述，应识别为 FFL，并优先选择 FFL 的 ODE 结构（含时间尺度分离）而非通用网络。",
+    "看到互斥双向抑制 → toggle（双稳）；看到环形抑制/级联负反馈 → 振荡；看到负自调控 → 噪声抑制 + 快速响应；正自调控 → 双稳/滞后。",
+    "基序功能依赖参数区间：同一 FFL 在 AND vs OR 逻辑、不同 Hill 系数下功能不同；建模时应把逻辑/参数作为假设并在报告中说明。",
+    "网络结构推断（相关性/扰动）可能产生伪边；基序建模前应确认调控是直接且符号可靠。",
+    "多基序组合（如 FFL + 负反馈）会产生新功能（脉冲振荡），需要整合模型而不是单独套模板。"
+  ],
+  "how_to_apply": [
+    "从文献整理调控边（激活/抑制、直接/间接）与时间尺度；识别基序类型。",
+    "选择对应 kb archetype 的 spec_template（toggle/oscillator/gene_expression），按基序结构增删边。",
+    "对 FFL：用 Hill 速率写两条路径，注意 Y 的动力学与 Z 的 AND/OR 逻辑（乘积 vs 求和）。",
+    "做阶跃/脉冲输入仿真，验证预测功能（延迟、脉冲、适应、双稳）。",
+    "报告：基序图、符号、逻辑假设、参数来源、预测与实验数据的对照；若功能未复现，说明参数区间问题。"
+  ],
+  "pitfalls": [
+    "把统计富集的基序直接当功能证据（结构 ≠ 功能）。",
+    "忽略间接调控（A→B→C 被误记为 A→C 直接边），导致基序结构错误。",
+    "FFL 的 AND/OR 逻辑不加说明；逻辑选择改变定性预测。",
+    "时间尺度未匹配：FFL 的延迟功能要求 Y 的动力学慢于 X；若参数相反，功能消失。",
+    "把网络中的单向边当可逆/双向；调控强度与符号需要数据支持。",
+    "在含负反馈的系统中把振荡归因于单个基序，忽略时滞/多级耦合。"
+  ],
+  "matlab_notes": [
+    "bma.modelSpec 的 hill/expression 速率可直接实现 FFL 的 AND（乘积）或 OR（求和，需 expression 速率）。",
+    "FFL 延迟由 Y 的降解/合成速率控制；用 simulate_cases 扫 γ_Y 观察脉冲/延迟是否出现。",
+    "基序识别可在 MATLAB 里用邻接矩阵枚举三节点子图（自写脚本）；kb 中已有对应 archetype，可直接取模板。",
+    "与随机模型结合：FFL/负反馈对噪声的过滤作用需 SSA 模拟（见 stochasticity_noise）。"
+  ],
+  "spec_mapping": "自调控：hill activation/repression 单速率 + 降解；toggle：两个互抑 hill 速率；FFL：两条 hill 速率（Z 的产生用 expression 速率做乘积/求和）。全部用参数 id 引用，避免硬编码。",
+  "diagnostics": [
+    "阶跃输入下输出是否出现延迟/脉冲/适应（与基序预测一致）",
+    "参数扫描（Y 的降解速率、Hill 系数）下功能是否稳健",
+    "基序结构是否与调控证据的时间尺度一致",
+    "噪声过滤效果（SSA 下 Fano 变化）"
+  ],
+  "keywords": ["网络基序", "前馈环", "反馈", "自调控", "coherent FFL", "incoherent FFL", "network motif", "feed-forward loop", "autoregulation"],
+  "tags": ["systems_biology", "network", "regulation"],
+  "related": ["hill_regulation_toggle", "negative_feedback_oscillator", "gene_expression", "mapk_cascade"],
+  "references": [
+    { "citation": "Milo R, Shen-Orr S, Itzkovitz S, Kashtan N, Chklovskii D, Alon U (2002). Network motifs: simple building blocks of complex networks. Science 298(5594):824-827.", "authors": ["Milo R", "Shen-Orr S", "Itzkovitz S", "Kashtan N", "Chklovskii D", "Alon U"], "year": 2002, "title": "Network motifs: simple building blocks of complex networks", "journal": "Science", "volume": "298", "pages": "824-827", "doi": "10.1126/science.298.5594.824" },
+    { "citation": "Shen-Orr SS, Milo R, Mangan S, Alon U (2002). Network motifs in the transcriptional regulation network of Escherichia coli. Nature Genetics 31(1):64-68.", "authors": ["Shen-Orr SS", "Milo R", "Mangan S", "Alon U"], "year": 2002, "title": "Network motifs in the transcriptional regulation network of Escherichia coli", "journal": "Nature Genetics", "volume": "31", "pages": "64-68" },
+    { "citation": "Mangan S, Alon U (2003). Structure and function of the feed-forward loop network motif. Proceedings of the National Academy of Sciences USA 100(21):11980-11985.", "authors": ["Mangan S", "Alon U"], "year": 2003, "title": "Structure and function of the feed-forward loop network motif", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "100", "pages": "11980-11985" },
+    { "citation": "Alon U (2007). Network motifs: theory and experimental approaches. Nature Reviews Genetics 8(6):450-461.", "authors": ["Alon U"], "year": 2007, "title": "Network motifs: theory and experimental approaches", "journal": "Nature Reviews Genetics", "volume": "8", "pages": "450-461", "doi": "10.1038/nrg2102" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

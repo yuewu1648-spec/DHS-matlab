@@ -1,0 +1,105 @@
+{
+  "id": "dimensional_analysis",
+  "type": "principle",
+  "name": "量纲分析与无量纲化（Dimensional analysis）",
+  "name_en": "Dimensional analysis and nondimensionalization",
+  "domain": "applied_mathematics",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "物理方程必须量纲齐次：两边单位相同、加减项同量纲。单位检查能抓住大部分建模错误（时间单位混用、浓度与速率混淆、漏乘体积）。进一步做无量纲化可把参数组合成少数无量纲群（如 Hill 比、Damköhler 数、Péclet 数、QSSA 小参数 ε），揭示模型的真正自由度与动力学区域，并显著改善拟合条件数。",
+  "statement": "若方程 f(x₁,…,xₙ)=0 涉及 n 个有量纲量与 r 个独立基本量纲，则可用 Buckingham π 定理组合出 n−r 个无量纲群，方程等价地只依赖这些群。生物建模中基本量纲取「浓度、时间、长度」即可覆盖绝大多数模型；无量纲化后同一组方程可对应无数物理实现（尺度不变性），这是参数不可辨识的常见根源。",
+  "formulas": [
+    {
+      "name": "量纲齐次性",
+      "latex": "[v]=\\frac{[x]}{[t]},\\qquad [k_n]=\\frac{[x]^{1-n}}{[t]}",
+      "plain": "[v] = [x]/[t]；n 级速率常数 [k_n] = [x]^(1-n)/[t]",
+      "terms": {
+        "example": "一级 k：1/min；二级 k：1/(uM*min)；Michaelis-Menten 的 Vmax：uM/min；Km：uM",
+        "usage": "写 spec 时逐个参数核对单位；bma.spec.validate 的 units_check 会据此报错",
+        "note": "无量纲量（Hill 系数、R0、比例）单位写 \"1\""
+      }
+    },
+    {
+      "name": "Buckingham π 定理",
+      "latex": "n\\ \\text{个有量纲变量},\\ r\\ \\text{个独立量纲}\\ \\Rightarrow\\ n-r\\ \\text{个无量纲群}\\ \\pi_1,\\dots,\\pi_{n-r}",
+      "plain": "n 个有量纲变量、r 个独立量纲 → n-r 个无量纲群；方程可写成 Φ(π₁,…,π_{n-r})=0",
+      "terms": {
+        "usage": "减少参数个数；发现隐藏的尺度不变性与参数组合（如 R0=β/γ、a=α/(γK)）",
+        "operation": "选特征浓度 x*、特征时间 t*、特征长度 L* 为尺度，把变量写成无量纲量再代入"
+      }
+    },
+    {
+      "name": "无量纲化示例（Logistic 与 Hill）",
+      "latex": "x=\\frac{N}{K},\\ \\tau=rt:\\ \\frac{dx}{d\\tau}=x(1-x);\\qquad f=\\frac{R^{n}}{K^{n}+R^{n}}=\\frac{\\rho^{n}}{1+\\rho^{n}},\\ \\rho=\\frac{R}{K}",
+      "plain": "Logistic: x=N/K, τ=r*t → dx/dτ=x(1-x)（只剩 1 个无量纲群）；Hill: ρ=R/K → f=ρ^n/(1+ρ^n)",
+      "terms": {
+        "conclusion": "Logistic 的形状只由初值 x0=N0/K 决定，r 与 K 只影响时间/幅度尺度；Hill 响应由 ρ 与 n 决定，K 只是尺度参数",
+        "meaning": "文献只给形状/归一化数据时，r、K、α 等绝对参数不可辨识，只能估比值"
+      }
+    },
+    {
+      "name": "生物建模常用无量纲群",
+      "latex": "Da=\\frac{k_{cat}E_0}{k_{on}L}\\ (\\text{Damköhler});\\quad Pe=\\frac{vL}{D};\\quad \\varepsilon=\\frac{E_0}{S_0+K_m};\\quad \\frac{D_h}{D_a};\\quad R_0=\\frac{\\beta}{\\gamma}",
+      "plain": "Da = kcat*E0/(kon*L)（反应/传质）；Pe = vL/D（对流/扩散）；ε=E0/(S0+Km)（QSSA 小参数）；Dh/Da（Turing）；R0=β/γ（流行病）",
+      "terms": {
+        "damkohler": "Da<<1 反应限制；Da>>1 传质限制",
+        "peclet": "Pe<<1 扩散主导；Pe>>1 对流/趋化主导",
+        "qssa_epsilon": "ε<<1 时准稳态近似可靠；ε~1 时必须用全机制",
+        "usage": "报告应给出这些群的值，用它们判断模型所处的动力学区域"
+      }
+    },
+    {
+      "name": "尺度不变性与参数不可辨识",
+      "latex": "t\\to\\lambda t,\\ \\mathbf{x}\\to\\mu\\mathbf{x}\\ \\Rightarrow\\ \\text{速率按}\\ \\lambda^{-1}\\mu^{1-n}\\ \\text{缩放后轨迹形状不变}",
+      "plain": "同时缩放时间轴与浓度轴，轨迹形状可保持不变（只改变参数数值）",
+      "terms": {
+        "implication": "仅凭一条归一化时间序列无法同时确定绝对速率常数与浓度标尺；必须有独立标定（已知半衰期、绝对浓度、或不同尺度的实验）",
+        "effect_on_fitting": "参数高度相关、条件数大；应固定一个尺度参数再拟合其余"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "单位错误是最廉价又最致命的错误：先做量纲检查，再谈拟合。spec 中每个 parameter/variable/output 的 unit 都应为 kb/units.json 中的 id。",
+    "无量纲化能显著减少需要拟合的参数数量，并把「不可辨识」问题暴露为参数组合（如 α/(γK)），从而指导实验设计。",
+    "不同文献常用不同单位（mM vs uM、min vs h、cm²/s vs um²/s）；建模前统一到一套单位再换算，报告保留原始单位与换算系数。",
+    "log 变换的参数（Kd、Km、K）跨度大，bounds 应对数尺度；但 log 本身无量纲，变换后不要再带单位做运算。",
+    "量纲检查也能发现机制错误：若某反应的「速率」量纲不是浓度/时间，说明漏了体积、面积或物种数换算。"
+  ],
+  "how_to_apply": [
+    "把 spec 中全部参数/变量/output 的 unit 写成 kb/units.json 的 id；逐个检查 diff eq 两边量纲一致。",
+    "选定全局时间单位（s/min/h/day）与浓度单位（uM/nM），把文献数据与参数统一换算，记录换算系数。",
+    "对模型做无量纲化：选特征浓度/时间/长度，写出无量纲方程与无量纲群，并在报告中列出各群的数值。",
+    "用无量纲群判断近似是否成立（QSSA ε、Péclet、Damköhler、D_h/D_a），并把判断写成 assumptions。",
+    "若拟合条件数大/参数相关，检查是否存在尺度不变性，固定一个尺度参数或改用无量纲参数化。"
+  ],
+  "pitfalls": [
+    "时间单位混用（k 用 1/min、数据 t 用 h），导致参数差 60 倍而不易察觉。",
+    "浓度单位换算错误（1 uM = 1e-6 M；1 uM = 1000 nM），尤其跨文献比较时。",
+    "把速率单位写成浓度单位（Vmax 写成 uM 而非 uM/min）。",
+    "对 log10 浓度做线性拟合后又用原单位解释参数。",
+    "忽略 σ 型复合单位（uA/cm²、mS/cm²、um²/s）的换算（如 1 mS/cm² = 10 S/m²）。",
+    "无量纲化后忘记把参数估回物理单位，报告值无法与文献比较。"
+  ],
+  "matlab_notes": [
+    "bma.spec.validate 的 units_check 用于检查 unit id 与量纲；bma.model.checkUnits 在 build 后再次核对。",
+    "kb/units.json 提供 dim/factor/base：可写脚本把任意单位换算到 base 后比较（例如 mS/cm² → S/m²、1/(nM*min) → 1/(M*s)）。",
+    "拟合前用 log10 参数化并检查 bounds 的单位与数量级；报告里同时给物理单位与无量纲群。",
+    "跨温度/跨物种比较时，用 Arrhenius/Q10 或无量纲时间（如细胞周期倍数）归一化，而不是直接比绝对速率。"
+  ],
+  "spec_mapping": "spec 的 unit 字段全部取自 kb/units.json；time.unit 指定全局时间单位。复合单位（mS/cm^2、uA/cm^2、um^2/s）已在词表中声明，validate 应通过词表查找而非现场解析。",
+  "diagnostics": [
+    "每个 diff eq 的左边量纲是否等于各通量之和的量纲",
+    "参数初值是否在 bounds 内、bounds 是否跨合适数量级",
+    "无量纲群数值是否落在文献预期区间（如 ε<0.1、D_h/D_a>1、R0>1）",
+    "拟合参数的相关系数矩阵是否显示尺度不变性（多参数同向、条件数>1e6）"
+  ],
+  "keywords": ["量纲分析", "单位检查", "无量纲化", "Buckingham π", "尺度不变性", "Damköhler 数", "Péclet 数", "dimensional analysis", "nondimensionalization", "unit consistency"],
+  "tags": ["applied_mathematics", "ode", "quality_control"],
+  "related": ["qssa_approximation", "mass_action", "stability_hopf", "fick_diffusion"],
+  "references": [
+    { "citation": "Buckingham E (1914). On physically similar systems; illustrations of the use of dimensional equations. Physical Review 4(4):345-376.", "authors": ["Buckingham E"], "year": 1914, "title": "On physically similar systems; illustrations of the use of dimensional equations", "journal": "Physical Review", "volume": "4", "pages": "345-376" },
+    { "citation": "Barenblatt GI (1996). Scaling, Self-Similarity, and Intermediate Asymptotics. Cambridge University Press.", "authors": ["Barenblatt GI"], "year": 1996, "title": "Scaling, Self-Similarity, and Intermediate Asymptotics", "journal": "Cambridge University Press", "note": "量纲分析与自相似性的系统教材" },
+    { "citation": "Segel LA (1972). Simplification of mathematical models of chemical reaction systems. Chemical Reviews 72(2):89-102.", "authors": ["Segel LA"], "year": 1972, "title": "Simplification of mathematical models of chemical reaction systems", "journal": "Chemical Reviews", "volume": "72", "pages": "89-102", "note": "无量纲化与时间尺度分析在生化模型中的应用" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

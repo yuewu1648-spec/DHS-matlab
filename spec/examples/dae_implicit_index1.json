@@ -1,0 +1,21 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "dae_implicit_probe",
+  "kind": "dae",
+  "time": {"unit": "s", "start": 0, "end": 5, "n": 101},
+  "variables": [
+    {"id": "x", "unit": "uM", "initial": {"value": 0}},
+    {"id": "y", "unit": "uM", "initial": {"value": 0}}
+  ],
+  "parameters": [
+    {"id": "k", "unit": "1/s", "value": {"value": 1}, "estimate": true, "bounds": [0.2, 3]}
+  ],
+  "dae": {
+    "residuals": ["xdot - k*(1-y)", "x-y"],
+    "initial_derivative": [1, 1]
+  },
+  "outputs": [
+    {"id": "x", "unit": "uM", "expression": "x"},
+    {"id": "y", "unit": "uM", "expression": "y"}
+  ]
+}

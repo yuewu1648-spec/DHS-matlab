@@ -1,0 +1,20 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "bvp_probe",
+  "kind": "bvp",
+  "domain": {"x0": 0, "x1": 1, "n": 101, "unit": "1"},
+  "variables": [
+    {"id": "u", "unit": "1", "initial": {"value": 0}},
+    {"id": "v", "unit": "1", "initial": {"value": 0}}
+  ],
+  "parameters": [],
+  "reactions": [
+    {"id": "du", "stoichiometry": {"u": 1}, "rate": {"kind": "expression", "expression": "v"}},
+    {"id": "dv", "stoichiometry": {"v": 1}, "rate": {"kind": "expression", "expression": "-1"}}
+  ],
+  "bc": [
+    {"side": "left", "expression": "u"},
+    {"side": "right", "expression": "u"}
+  ],
+  "outputs": [{"id": "u", "unit": "1", "expression": "u"}]
+}

@@ -1,0 +1,211 @@
+{
+  "id": "reaction_diffusion_turing",
+  "type": "archetype",
+  "name": "反应-扩散与 Turing 斑图（空间离散 ODE 实现）",
+  "name_en": "Reaction-diffusion and Turing patterns (spatially discretized ODE)",
+  "domain": "spatial_pattern",
+  "scale": "tissue",
+  "model_class": "pde",
+  "summary": "局部的短程自激活（activator）与长程抑制（inhibitor）耦合扩散，当抑制子扩散远快于激活子（D_h >> D_a）时，均匀稳态对空间扰动失稳，自发形成条纹/斑点等 Turing 斑图。标准方程为 Gierer-Meinhardt 型 PDE；v1 只支持 ODE，故本模板给出「3 节点环」的空间离散（method of lines）系统：扩散写成一阶交换通量，可被 bma.spec/build/simulate 直接使用，并可扩展为 N 节点。",
+  "when_to_use": [
+    "文献报告空间周期图案（斑点/条纹/毛发/指趾/色素纹）、波长或模式随区域尺寸变化",
+    "出现「Turing pattern」「reaction-diffusion」「activator-inhibitor」「morphogen」「local activation and long-range inhibition」「Gierer-Meinhardt」",
+    "实验显示抑制子扩散/降解速度影响图案间距，或改变组织尺寸会改变斑点数",
+    "发育生物学中「位置信息」「模式形成」「侧向抑制」机制假设需要空间模型检验",
+    "时间-空间成像数据（荧光报告物浓度剖面随时间的演化）"
+  ],
+  "tags": ["反应扩散", "Turing", "斑图", "空间模式", "激活子", "抑制子", "PDE", "morphogen"],
+  "keywords": ["Turing 斑图", "反应-扩散", "激活子-抑制子", "模式形成", "空间周期", "波长", "形态发生素", "扩散驱动不稳定", "reaction-diffusion", "Turing pattern", "activator-inhibitor", "morphogen", "pattern formation"],
+  "equations": [
+    {
+      "name": "Gierer-Meinhardt 反应-扩散方程",
+      "latex": "\\frac{\\partial a}{\\partial t}=D_a\\nabla^2a+\\rho\\frac{a^2}{h}-\\mu_a a+\\rho_0,\\qquad \\frac{\\partial h}{\\partial t}=D_h\\nabla^2h+\\rho_h a^2-\\mu_h h",
+      "plain": "da/dt = Da*∇²a + rho*a^2/h - mu_a*a + rho0; dh/dt = Dh*∇²h + rho_h*a^2 - mu_h*h",
+      "terms": {
+        "a": "激活子浓度（nM）；短程自催化（a^2 项）",
+        "h": "抑制子浓度（nM）；被 a 诱导产生、抑制 a（a^2/h 项）",
+        "D_a_D_h": "扩散系数（um^2/s）；Turing 要求 D_h >> D_a（长程抑制）",
+        "rho": "活化/产生速率常数（1/s）",
+        "rho_h": "抑制子产生速率常数（1/(nM*s)）；GM 标准式与 rho 数值相同但量纲不同",
+        "rho0": "激活子基础产生（nM/s），维持非零均匀稳态",
+        "mu_a_mu_h": "降解速率（1/s）",
+        "homogeneous_steady_state": "a0 = ρ0/(μ_a - μ_h)，h0 = ρ_h a0^2/μ_h；要求 μ_a > μ_h 才能稳定"
+      }
+    },
+    {
+      "name": "扩散驱动不稳定性（线性稳定性分析）",
+      "latex": "f_a=2\\mu_h-\\mu_a,\\ g_h=-\\mu_h,\\ \\det J=\\mu_a\\mu_h>0;\\quad \\text{Turing 条件：}\\ \\mu_h<\\mu_a<2\\mu_h,\\ \\frac{D_h}{D_a}>\\frac{\\mu_h}{2\\mu_h-\\mu_a},\\ \\left(D_h f_a+D_a g_h\\right)^2>4D_aD_h\\mu_a\\mu_h",
+      "plain": "无扩散均匀稳态稳定需 μ_a>μ_h；扩散失稳需 μ_a<2μ_h 且 D_h/D_a > μ_h/(2μ_h-μ_a)，且 (Dh*f_a+Da*g_h)^2 > 4*Da*Dh*mu_a*mu_h",
+      "terms": {
+        "J": "均匀稳态 Jacobian J=[[f_a,f_h],[g_a,g_h]]，其中 f_a=2μ_h-μ_a，g_h=-μ_h，det J=μ_aμ_h",
+        "interpretation": "第一条保证无扩散时稳定；后两条保证存在某个波数 k 使 σ(k)>0（扩散反而失稳）",
+        "unstable_band": "解二次方程 (D_aD_h)k^4-(D_h f_a+D_a g_h)k^2+det J=0 得 k 的失稳区间，对应波长 λ=2π/k",
+        "usage": "用文献 D、μ 估计值快速判断能否产生 Turing 斑图，并预测波长量级 λ ~ 2π sqrt(D_a/μ_h) 附近"
+      }
+    },
+    {
+      "name": "空间离散（method of lines）：一维链",
+      "latex": "\\frac{da_i}{dt}=D_a\\frac{a_{i-1}-2a_i+a_{i+1}}{\\Delta x^2}+\\rho\\frac{a_i^2}{h_i}-\\mu_a a_i+\\rho_0+\\text{边界项}",
+      "plain": "da_i/dt = Da*(a_{i-1}-2*a_i+a_{i+1})/dx^2 + rho*a_i^2/h_i - mu_a*a_i + rho0；h_i 同构",
+      "terms": {
+        "dx": "节点间距（um）；必须远小于目标波长（≥8-10 节点/波长）",
+        "boundary": "零通量（Neumann）边界：i=1 用 a_0=a_2；周期边界：a_0=a_N。边界条件会改变允许的波数与图案选择",
+        "equivalence": "离散系统的扩散项 = 图拉普拉斯；本模板的 3 节点环用 (a_j+a_k-2a_i)/dx^2，环上非均匀模式的有效 k^2=3/dx^2",
+        "note": "离散化会改变不稳定波带；Δx 太大可能错过失稳区间（本模板参数需 Δx≈300 um）"
+      }
+    },
+    {
+      "name": "扩散长度与波长标度",
+      "latex": "\\ell_a=\\sqrt{\\frac{D_a}{\\mu_a}},\\quad \\ell_h=\\sqrt{\\frac{D_h}{\\mu_h}},\\quad \\lambda\\sim2\\pi\\sqrt{\\frac{D_a}{\\mu_a}}\\ \\text{（量级估计）}",
+      "plain": "la=sqrt(Da/mu_a); lh=sqrt(Dh/mu_h); 波长 λ ~ 2π*sqrt(Da/mu_a) 量级",
+      "terms": {
+        "meaning": "斑图间距主要由激活子的扩散长度决定，抑制子扩散长度需显著更长；D_h/D_a 与 μ 比共同决定波长与阈值",
+        "implication": "组织尺寸 L 与 λ 的相对大小决定斑点数（L/λ）；L 太小时均匀态稳定，无法形成图案",
+        "scale_example": "D_a=10 um^2/s、μ_a=2e-3/s → la≈70 um，λ 数百 um（组织尺度）"
+      }
+    },
+    {
+      "name": "其他经典 Turing 体系（参考形式）",
+      "latex": "\\text{Schnakenberg: } \\partial_t u=D_u\\nabla^2u+a-u+u^2v,\\ \\partial_t v=D_v\\nabla^2v+b-u^2v;\\quad \\text{Brusselator: } \\partial_t u=D_u\\nabla^2u+A-(B+1)u+u^2v,\\ \\partial_t v=D_v\\nabla^2v+Bu-u^2v",
+      "plain": "Schnakenberg: du/dt=Du*∇²u+a-u+u^2*v; dv/dt=Dv*∇²v+b-u^2*v；Brusselator 类似，用 A、B 参数",
+      "terms": {
+        "usage": "Schnakenberg/Brusselator 是数学上更易做分岔分析的标准 Turing 模型；Gierer-Meinhardt 在生物学建模中更常用",
+        "choice": "若文献只给斑图与扩散系数、无明确分子机制，先用 GM 或 Schnakenberg 的唯象模型，报告需说明机制不确定性"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "turing_ring3",
+    "title": "Turing 斑图（Gierer-Meinhardt 三节点环离散 ODE）",
+    "description": "一维环上 3 个节点，每个节点含激活子 a 与抑制子 h；节点内为 Gierer-Meinhardt 反应，节点间以扩散（拉普拉斯）耦合。用于演示扩散驱动不稳定与斑图形成的最小 ODE 系统。",
+    "kind": "ode",
+    "time": { "unit": "s", "start": 0, "end": 3000, "n": 3001 },
+    "variables": [
+      { "id": "a1", "name": "节点 1 激活子", "unit": "nM", "initial": { "value": 2.2 } },
+      { "id": "a2", "name": "节点 2 激活子", "unit": "nM", "initial": { "value": 1.9 } },
+      { "id": "a3", "name": "节点 3 激活子", "unit": "nM", "initial": { "value": 2.1 } },
+      { "id": "h1", "name": "节点 1 抑制子", "unit": "nM", "initial": { "value": 24.0 } },
+      { "id": "h2", "name": "节点 2 抑制子", "unit": "nM", "initial": { "value": 27.0 } },
+      { "id": "h3", "name": "节点 3 抑制子", "unit": "nM", "initial": { "value": 25.5 } }
+    ],
+    "parameters": [
+      { "id": "D_a", "name": "激活子扩散系数", "unit": "um^2/s", "value": { "value": 10.0 }, "estimate": true, "bounds": [1e-05, 1000] },
+      { "id": "D_h", "name": "抑制子扩散系数", "unit": "um^2/s", "value": { "value": 300.0 }, "estimate": true, "bounds": [1e-05, 100000] },
+      { "id": "rho", "name": "活化/产生速率常数", "unit": "1/s", "value": { "value": 0.01 }, "estimate": true, "bounds": [1e-08, 10] },
+      { "id": "rho_h", "name": "抑制子产生速率常数", "unit": "1/(nM*s)", "value": { "value": 0.01 }, "estimate": true, "bounds": [1e-10, 100] },
+      { "id": "rho0", "name": "激活子基础产生速率", "unit": "nM/s", "value": { "value": 0.001 }, "estimate": true, "bounds": [1e-10, 10] },
+      { "id": "mu_a", "name": "激活子降解速率", "unit": "1/s", "value": { "value": 0.002 }, "estimate": true, "bounds": [1e-08, 1] },
+      { "id": "mu_h", "name": "抑制子降解速率", "unit": "1/s", "value": { "value": 0.0015 }, "estimate": true, "bounds": [1e-08, 1] },
+      { "id": "dx", "name": "节点间距", "unit": "um", "value": { "value": 300.0 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "a1_reaction", "name": "节点 1 激活子反应（自催化+基础产生）", "stoichiometry": { "a1": 1 },
+        "rate": { "kind": "expression", "expression": "rho0+rho*a1^2/h1" } },
+      { "id": "a1_decay", "name": "节点 1 激活子降解", "stoichiometry": { "a1": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_a" }, "species": { "a1": 1 } } },
+      { "id": "h1_production", "name": "节点 1 抑制子产生", "stoichiometry": { "h1": 1 },
+        "rate": { "kind": "expression", "expression": "rho_h*a1^2" } },
+      { "id": "h1_decay", "name": "节点 1 抑制子降解", "stoichiometry": { "h1": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_h" }, "species": { "h1": 1 } } },
+      { "id": "a1_diffusion", "name": "节点 1 激活子扩散（净交换）", "stoichiometry": { "a1": 1 },
+        "rate": { "kind": "expression", "expression": "D_a*(a2+a3-2*a1)/(dx^2)" } },
+      { "id": "h1_diffusion", "name": "节点 1 抑制子扩散（净交换）", "stoichiometry": { "h1": 1 },
+        "rate": { "kind": "expression", "expression": "D_h*(h2+h3-2*h1)/(dx^2)" } },
+      { "id": "a2_reaction", "name": "节点 2 激活子反应", "stoichiometry": { "a2": 1 },
+        "rate": { "kind": "expression", "expression": "rho0+rho*a2^2/h2" } },
+      { "id": "a2_decay", "name": "节点 2 激活子降解", "stoichiometry": { "a2": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_a" }, "species": { "a2": 1 } } },
+      { "id": "h2_production", "name": "节点 2 抑制子产生", "stoichiometry": { "h2": 1 },
+        "rate": { "kind": "expression", "expression": "rho_h*a2^2" } },
+      { "id": "h2_decay", "name": "节点 2 抑制子降解", "stoichiometry": { "h2": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_h" }, "species": { "h2": 1 } } },
+      { "id": "a2_diffusion", "name": "节点 2 激活子扩散", "stoichiometry": { "a2": 1 },
+        "rate": { "kind": "expression", "expression": "D_a*(a1+a3-2*a2)/(dx^2)" } },
+      { "id": "h2_diffusion", "name": "节点 2 抑制子扩散", "stoichiometry": { "h2": 1 },
+        "rate": { "kind": "expression", "expression": "D_h*(h1+h3-2*h2)/(dx^2)" } },
+      { "id": "a3_reaction", "name": "节点 3 激活子反应", "stoichiometry": { "a3": 1 },
+        "rate": { "kind": "expression", "expression": "rho0+rho*a3^2/h3" } },
+      { "id": "a3_decay", "name": "节点 3 激活子降解", "stoichiometry": { "a3": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_a" }, "species": { "a3": 1 } } },
+      { "id": "h3_production", "name": "节点 3 抑制子产生", "stoichiometry": { "h3": 1 },
+        "rate": { "kind": "expression", "expression": "rho_h*a3^2" } },
+      { "id": "h3_decay", "name": "节点 3 抑制子降解", "stoichiometry": { "h3": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "mu_h" }, "species": { "h3": 1 } } },
+      { "id": "a3_diffusion", "name": "节点 3 激活子扩散", "stoichiometry": { "a3": 1 },
+        "rate": { "kind": "expression", "expression": "D_a*(a1+a2-2*a3)/(dx^2)" } },
+      { "id": "h3_diffusion", "name": "节点 3 抑制子扩散", "stoichiometry": { "h3": 1 },
+        "rate": { "kind": "expression", "expression": "D_h*(h1+h2-2*h3)/(dx^2)" } }
+    ],
+    "outputs": [
+      { "id": "a1_obs", "name": "节点 1 激活子", "unit": "nM", "expression": "a1" },
+      { "id": "a2_obs", "name": "节点 2 激活子", "unit": "nM", "expression": "a2" },
+      { "id": "a3_obs", "name": "节点 3 激活子", "unit": "nM", "expression": "a3" },
+      { "id": "pattern_amplitude", "name": "斑图振幅（节点间差）", "unit": "nM", "expression": "a1-a3" }
+    ],
+    "assumptions": [
+      "一维环几何、3 个等距节点；真实组织需更多节点或二维 PDE",
+      "均匀扩散（各向同性、无主动运输、无细胞运动）；扩散系数恒定",
+      "反应项为唯象 Gierer-Meinhardt 形式（分子机制未定），适合模式形成而非具体通路",
+      "连续浓度、确定性动力学；斑图从初始噪声/不对称初值中自发选择"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。参数满足 Turing 条件（μ_h<μ_a<2μ_h，D_h/D_a=30），3 节点环有效 k²=3/dx²≈3.3e-5 um^-2 落在失稳带内。" }
+  },
+  "spec_notes": [
+    "扩散项写成净交换表达式（可为负），ODE 数学上正确；若要求速率非负，可拆成双向 mass_action 交换（k=D/dx^2，1/s），但变量/参数显著增多。",
+    "扩展到 N 节点链/环：每个节点复制 a_i、h_i 及其 4 个反应 + 2 个扩散反应；MATLAB 侧建议用循环生成 spec 的 JSON（不在本 JSON 里写 MATLAB 代码）。边界条件：零通量用端点邻居复制（a_0=a_2），周期用首尾相接。",
+    "参数自检：D_a=10、D_h=300、rho=0.01(1/s)、rho_h=0.01(1/(nM*s))、rho0=0.001、mu_a=0.002、mu_h=0.0015 时波长约 1-2 mm；dx=300 um 对应 k²=3/dx²≈3.3e-5 um^-2，落在失稳带 (1.2e-5, 8.3e-5) 内。改 dx/μ 必须重查失稳带。",
+    "仿真时长：本参数下最不稳模增长率约 1e-4-1e-3 /s，需要 2000-5000 s 才能看到明显斑图；若 3000 s 内振幅不增，检查节点是否在失稳带外或初值完全对称（对称初值可能停在均匀态，需不对称初值）。",
+    "二维/组织尺度：真实斑图需二维 PDE；可先用 pdepe（1D）或自写有限差分（2D）验证波长，再把离散 ODE 版本作为 v1 spec 提交，报告需说明离散化误差（dx/λ）。",
+    "数据拟合：空间剖面数据的时间匹配较难；常用稳态波长/斑点数做目标函数，或用傅里叶分析提取主波数，再反推 D_h/D_a 与 μ 比。绝对 D、μ 需要时间-空间动态数据才能分离。",
+    "随机性：真实斑图受分子噪声与细胞异质性影响；确定性模型在阈值附近对初值敏感，可用多次随机初值（simulate_cases）评估模式的稳健性。"
+  ],
+  "variables": [
+    { "id": "a1", "name": "节点 1 激活子", "unit": "nM", "typical_range": [0.01, 100], "notes": "激活子常在 nM 级" },
+    { "id": "a2", "name": "节点 2 激活子", "unit": "nM", "typical_range": [0.01, 100], "notes": "" },
+    { "id": "a3", "name": "节点 3 激活子", "unit": "nM", "typical_range": [0.01, 100], "notes": "" },
+    { "id": "h1", "name": "节点 1 抑制子", "unit": "nM", "typical_range": [0.1, 1000], "notes": "抑制子浓度通常高于激活子（h≈ρa²/μ_h）" },
+    { "id": "h2", "name": "节点 2 抑制子", "unit": "nM", "typical_range": [0.1, 1000], "notes": "" },
+    { "id": "h3", "name": "节点 3 抑制子", "unit": "nM", "typical_range": [0.1, 1000], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "D_a", "symbol": "D_a", "unit": "um^2/s", "typical_range": [1e-05, 1000], "notes": "胞内/组织形态发生素 0.1-100 um^2/s；受体结合会降低有效 D" },
+    { "id": "D_h", "symbol": "D_h", "unit": "um^2/s", "typical_range": [1e-05, 100000], "notes": "抑制子需明显大于 D_a（Turing 条件），常 10-100 倍" },
+    { "id": "rho", "symbol": "\\rho", "unit": "1/s", "typical_range": [1e-08, 10], "notes": "自催化强度；与 μ 一起决定稳态浓度" },
+    { "id": "rho_h", "symbol": "\\rho_h", "unit": "1/(nM*s)", "typical_range": [1e-10, 100], "notes": "抑制子生成强度；GM 标准形式中与 rho 数值相同、量纲为 1/(nM*s)" },
+    { "id": "rho0", "symbol": "\\rho_0", "unit": "nM/s", "typical_range": [1e-10, 10], "notes": "基础产生；必须非零才能有稳定的非零均匀态" },
+    { "id": "mu_a", "symbol": "\\mu_a", "unit": "1/s", "typical_range": [1e-08, 1], "notes": "斑图时间尺度 ~1/μ；min-h 级对应 1e-4-1e-2 /s" },
+    { "id": "mu_h", "symbol": "\\mu_h", "unit": "1/s", "typical_range": [1e-08, 1], "notes": "需 μ_h<μ_a（无扩散稳定条件）" },
+    { "id": "dx", "symbol": "\\Delta x", "unit": "um", "typical_range": [10, 1000], "notes": "节点间距，应 ≥8-10 节点/波长；本模板 300 um" }
+  ],
+  "assumptions": [
+    "连续介质与各向同性扩散；忽略细胞运动、主动运输与组织生长",
+    "反应项为唯象形式，未绑定具体分子；机制结论需额外实验证据",
+    "确定性、均匀参数；噪声只用于种子（初值不对称）",
+    "边界条件对图案选择有影响；3 节点环是周期边界的特例"
+  ],
+  "evidence_cues": [
+    "「Turing pattern」「reaction-diffusion」「activator-inhibitor」「local activation and long-range inhibition」",
+    "「morphogen gradient」「pattern spacing」「wavelength」「spot/stripe formation」",
+    "「Gierer-Meinhardt」「Schnakenberg」「Brusselator」等模型名",
+    "「D_h/D_a ratio」「diffusion-driven instability」",
+    "「pigment pattern」「hair follicle spacing」「digit formation」「lateral inhibition」",
+    "「pattern scales with tissue size」「number of stripes/spots」→ 提取波长信息"
+  ],
+  "fitting_notes": "1) 对空间数据做傅里叶分析估主波长 λ_pat，用 λ_pat≈2π√(D_a/μ_a) 约束尺度；2) 用 FRAP 等独立实验固定 D 量级，再拟合 μ、ρ；3) 时空动态数据信息量最大；4) 初值/边界条件决定图案选择，拟合时须固定实验几何；5) 只有稳态图案时只能定比值；6) 多节点版本对照斑点数/波长，勿外推 3 节点结果；7) GM/Schnakenberg 等用 AICc+生物证据比较；8) 扫描 D_h/D_a 与 μ_a/μ_h 确定 Turing 区域。",
+  "identifiability_notes": "1) 稳态图案只约束 √(D_a/μ_a) 与 D_h/D_a 阈值，4 个参数存在尺度不变性；2) 无独立 D 测量时只能估比值；3) 振幅取决于非线性项与初值，难以唯一反推；4) 3 节点离散系统只有有限模式，不能辨识连续 PDE 完整波带；5) 未记录边界/域尺寸时波长有偏；6) 阈值附近噪声水平是隐藏参数；7) 不同反应项形式可匹配同一图案，机制不可辨识。",
+  "references": [
+    { "citation": "Turing AM (1952). The chemical basis of morphogenesis. Philosophical Transactions of the Royal Society B 237(641):37-72.", "authors": ["Turing AM"], "year": 1952, "title": "The chemical basis of morphogenesis", "journal": "Philosophical Transactions of the Royal Society B", "volume": "237", "pages": "37-72", "doi": "10.1098/rstb.1952.0012" },
+    { "citation": "Gierer A, Meinhardt H (1972). A theory of biological pattern formation. Kybernetik 12(1):30-39.", "authors": ["Gierer A", "Meinhardt H"], "year": 1972, "title": "A theory of biological pattern formation", "journal": "Kybernetik", "volume": "12", "pages": "30-39" },
+    { "citation": "Meinhardt H (1982). Models of Biological Pattern Formation. Academic Press, London.", "authors": ["Meinhardt H"], "year": 1982, "title": "Models of Biological Pattern Formation", "journal": "Academic Press" },
+    { "citation": "Kondo S, Asai R (1995). A reaction-diffusion wave on the skin of the marine angelfish Pomacanthus. Nature 376(6543):765-768.", "authors": ["Kondo S", "Asai R"], "year": 1995, "title": "A reaction-diffusion wave on the skin of the marine angelfish Pomacanthus", "journal": "Nature", "volume": "376", "pages": "765-768" },
+    { "citation": "Murray JD (2003). Mathematical Biology II: Spatial Models and Biomedical Applications, 3rd ed. Springer.", "authors": ["Murray JD"], "year": 2003, "title": "Mathematical Biology II: Spatial Models and Biomedical Applications", "journal": "Springer", "note": "反应-扩散与 Turing 不稳定性的标准教材" }
+  ],
+  "related": ["chemotaxis", "hodgkin_huxley", "population_dynamics"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9；v1 仅 ODE，本模板用空间离散",
+    "pde_note": "完整 PDE 需 pdepe/有限差分；spec 提交时为离散 ODE 系统"
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "id": "ontology",
+  "type": "ontology",
+  "name": "生物系统建模本体（层次-尺度-模型类别）",
+  "name_en": "BioModel-MATLAB ontology: levels, scales, model classes",
+  "schema_version": "bma.kb.ontology.v1",
+  "description": "供 agent 在 kb.search 之后做两件事：(1) 把文献线索（分子/通路/细胞/组织/器官/个体/种群/生态系统）映射到合适的模型粒度；(2) 把生物机制映射到 bma.modelSpec.v1 可表达（v1 仅 ode）或需降阶/离散化/随机化的模型类别。levels 给生物学层次；scales 给空间与时间尺度；model_classes 给参数化形式与 MATLAB 实现建议。",
+  "levels": [
+    {
+      "id": "molecule",
+      "name": "分子层",
+      "name_en": "molecule",
+      "description": "单个大分子（酶、受体、离子通道、转录因子）及其构象/结合状态；常假设充分混合、分子数多到可用浓度描述。",
+      "examples": ["酶-底物复合物", "GPCR-配体- G 蛋白三元复合物", "离子通道开放/关闭态", "转录因子-操纵子结合"],
+      "typical_questions": ["结合亲和力 Kd 与动力学 kon/koff", "酶催化机制与抑制类型", "通道门控与电流-电压关系"],
+      "common_models": ["质量作用 ODE", "Michaelis-Menten / Hill 速率", "热力学平衡占据模型", "马尔可夫状态模型（离散）"],
+      "model_spec_class": "ode",
+      "time_scale": "us - s（构象/催化）；s - min（结合平衡）",
+      "matlab_impl": "bma.model.build + ode15s；平衡态用符号 solve 或代数方程；Hill/MM 用 spec.rate.kind 内建；随机版本用 SSA（Gillespie，自实现）"
+    },
+    {
+      "id": "pathway",
+      "name": "通路层",
+      "name_en": "pathway",
+      "description": "细胞内一组相互作用的反应/调控关系（信号级联、代谢通路、基因调控网络）；关注通量、反馈、超敏、振荡与稳态。",
+      "examples": ["MAPK 三级级联", "糖酵解线性通路", "repressilator 三节点环", "NF-kB 负反馈回路"],
+      "typical_questions": ["刺激-响应曲线形状（渐变 vs 开关）", "通量控制与限速步", "振荡周期与振幅", "反馈导致的双稳态/滞后"],
+      "common_models": ["质量作用 ODE 网络", "MM/Hill 集总 ODE", "化学计量矩阵与守恒量", "通量平衡分析（约束）", "网络基序分析"],
+      "model_spec_class": "ode",
+      "time_scale": "ms - min（磷酸化/变构）；min - h（转录翻译）",
+      "matlab_impl": "bma.model.build（S 矩阵 + 速率定律）+ bma.model.analyze（守恒律/稳态/Jacobian）；参数扫描用 simulate_cases；敏感性用 fit.sensitivity"
+    },
+    {
+      "id": "cell",
+      "name": "细胞层",
+      "name_en": "cell",
+      "description": "单细胞作为整合单元：受体信号、基因表达、代谢、细胞周期、兴奋性（电生理）；常需区分细胞内外两个室或空间结构。",
+      "examples": ["单细胞基因表达噪声", "神经元动作电位", "细胞趋化与极性", "细胞周期检查点"],
+      "typical_questions": ["单细胞异质性与噪声（Fano/分布）", "电生理阈值与发放频率", "细胞命运决定（双稳态）", "细胞迁移方向性"],
+      "common_models": ["多室 ODE", "随机基因表达（SSA/CLE）", "HH 型电生理 ODE", "反应-扩散 PDE", "布尔/逻辑模型"],
+      "model_spec_class": "ode",
+      "time_scale": "ms - s（电信号）；min - h（信号/表达）；h - day（周期）",
+      "matlab_impl": "compartments 表示胞内/胞外；HH 用 expression 速率；噪声用 bma.fit.identifiability + 自实现 SSA 聚合；空间效应用 PDE 或隔室离散（v1 用 ODE 隔室近似）"
+    },
+    {
+      "id": "tissue",
+      "name": "组织层",
+      "name_en": "tissue",
+      "description": "细胞群体 + 细胞外基质/间隙的空间组织；关注模式形成（Turing）、伤口愈合、免疫浸润、肿瘤微环境。",
+      "examples": ["Turing 斑图（皮肤/毛发/侧线）", "伤口愈合趋化", "肿瘤-免疫细胞空间分布", "血管生成"],
+      "typical_questions": ["模式波长与扩散系数比", "细胞密度波与趋化速度", "空间异质性与边界效应"],
+      "common_models": ["反应-扩散 PDE", "Keller-Segel 趋化 PDE", "细胞自动机/agent-based", "多室 ODE（区室化）"],
+      "model_spec_class": "pde",
+      "time_scale": "min - h（信号）；h - day（组织重塑）",
+      "matlab_impl": "v1 无 PDE：用空间离散（method of lines）把 PDE 转成 ODE 系统写入 spec（见 archetype reaction_diffusion_turing 的 3 节点环模板）；完整 PDE 用 pdepe/自写有限差分作为报告扩展"
+    },
+    {
+      "id": "organ",
+      "name": "器官层",
+      "name_en": "organ",
+      "description": "多组织整合的功能单元（肝、肾、心、脑）；关注器官间转运、血流灌注、器官级药代（PBPK）与功能输出。",
+      "examples": ["肝脏代谢清除", "肾脏滤过与重吸收", "心脏电生理与泵血", "血脑屏障转运"],
+      "typical_questions": ["器官清除率与首过效应", "PBPK 组织分配系数", "心电稳定性与心律失常"],
+      "common_models": ["多室药代（PBPK）ODE", "生理控制回路 ODE", "空间 PDE（心电）"],
+      "model_spec_class": "ode",
+      "time_scale": "s - min（循环）；min - day（给药后分布）",
+      "matlab_impl": "多室 ODE（每室一个 compartment/变量，体积参数化）；清除用一级或 MM；拟合用 fit.estimate（多输出 output_map）"
+    },
+    {
+      "id": "organism",
+      "name": "个体层",
+      "name_en": "organism",
+      "description": "完整个体的生理/行为/疾病进程；关注整体暴露-响应、体重/年龄协变量、个体间变异（NLME）。",
+      "examples": ["药物浓度-效应关系", "感染个体病程", "血糖-胰岛素调节", "生长曲线"],
+      "typical_questions": ["剂量-暴露-效应（PK/PD）", "个体间变异与协变量", "治疗窗口与给药方案"],
+      "common_models": ["PK/PD ODE", "混合效应统计模型", "生存分析", "生理调节回路 ODE"],
+      "model_spec_class": "ode",
+      "time_scale": "min - day（PK/PD）；day - year（疾病进程）",
+      "matlab_impl": "PK 一室/二室用 ODE 或解析式；PD 用 Hill/Emax 代数关系；个体变异用 fit.estimate 分组拟合或 nlme 风格近似（v1 用分层拟合）"
+    },
+    {
+      "id": "population",
+      "name": "种群层",
+      "name_en": "population",
+      "description": "同种或异种个体的集合（细胞群、微生物群、动物种群、人群）；关注增长、竞争、捕食、传播、进化。",
+      "examples": ["细菌生长与抗生素杀伤", "Lotka-Volterra 竞争", "SIR/SEIR 传染病传播", "肿瘤克隆演化"],
+      "typical_questions": ["增长率 r 与承载量 K", "种间相互作用系数", "R0 与群体免疫阈值", "灭绝/共存条件"],
+      "common_models": ["logistic/LV ODE", "SIR/SEIR 房室 ODE", "分支过程/随机传播", "谱系/进化模型"],
+      "model_spec_class": "ode",
+      "time_scale": "min - day（微生物）；day - year（流行病/生态）",
+      "matlab_impl": "ODE + 表达式速率（logistic/LV/传播）；R0 用下一代矩阵（符号或数值）；随机版本用分支过程/SSA；情景对比用 simulate_cases"
+    },
+    {
+      "id": "ecosystem",
+      "name": "生态系统层",
+      "name_en": "ecosystem",
+      "description": "多物种 + 环境（资源、空间、气候）耦合；关注食物网稳定性、能量/物质循环、空间格局与扰动响应。",
+      "examples": ["食物网稳定性", "资源竞争与共存", "氮/碳循环", "空间元群落"],
+      "typical_questions": ["多物种共存/灭绝条件", "食物网稳定性与模块性", "环境随机性下的灭绝风险", "空间扩散与源汇动态"],
+      "common_models": ["多物种 LV/资源竞争 ODE", "食物网网络模型", "空间显式 metapopulation", "随机/基于个体模型"],
+      "model_spec_class": "ode",
+      "time_scale": "day - year - decade",
+      "matlab_impl": "高维 ODE（species 为 variables，相互作用矩阵为 parameters）；稳定性用 Jacobian 特征值；随机用 Euler-Maruyama/SSA；空间用多 patch 隔室 ODE"
+    }
+  ],
+  "scales": [
+    {"kind": "spatial", "id": "nm", "name": "纳米", "range": "1e-9 - 1e-7 m", "examples": "蛋白复合物、膜厚、受体尺寸", "modeling_note": "充分混合假设通常成立；空间可忽略", "name_en": "nanometer", "description": "分子/复合物尺度（1-100 nm）；空间结构通常可忽略，用充分混合 ODE。"},
+    {"kind": "spatial", "id": "um", "name": "微米", "range": "1e-6 - 1e-4 m", "examples": "细菌/细胞、细胞器、局部信号微区", "modeling_note": "胞内扩散可显著（D~1-1000 um^2/s）；必要时分区室或 PDE", "name_en": "micrometer", "description": "细胞与细胞器尺度（1-100 um）；胞内扩散、局部信号微区与细胞极性开始重要。"},
+    {"kind": "spatial", "id": "mm", "name": "毫米", "range": "1e-3 - 1e-1 m", "examples": "组织切片、类器官、伤口", "modeling_note": "反应-扩散/趋化；边界与初始条件重要", "name_en": "millimeter", "description": "组织尺度（0.1-10 mm）；反应-扩散、趋化、伤口愈合与类器官建模。"},
+    {"kind": "spatial", "id": "cm_m", "name": "厘米-米", "range": "1e-2 - 1 m", "examples": "器官、个体、植株", "modeling_note": "PBPK 多室、器官级生理模型", "name_en": "centimeter-meter", "description": "器官与个体尺度（1 cm-1 m）；PBPK 多室、器官生理与整体药代。"},
+    {"kind": "spatial", "id": "km", "name": "千米及以上", "range": ">1e3 m", "examples": "种群分布、流行病空间传播、生态系统", "modeling_note": "metapopulation、空间网络、地理异质性", "name_en": "kilometer", "description": "种群/流行病/生态系统空间尺度（>1 km）；metapopulation、空间网络与地理异质性。"},
+    {"kind": "temporal", "id": "ms", "name": "毫秒", "range": "1e-3 - 1 s", "examples": "离子通道门控、动作电位、酶构象", "modeling_note": "刚性问题常见，ode15s；采样率不足会导致不可辨识", "name_en": "millisecond", "description": "离子通道门控、动作电位等快速电生理过程（1-1000 ms）。"},
+    {"kind": "temporal", "id": "s_min", "name": "秒-分", "range": "1 - 60 s / 1 - 60 min", "examples": "信号级联、受体结合、代谢通量", "modeling_note": "常用 min 作为全局时间单位；QSSA 可降维", "name_en": "second-minute", "description": "受体结合、信号级联、酶促反应等秒-分过程；常用全局时间单位 min。"},
+    {"kind": "temporal", "id": "h_day", "name": "小时-天", "range": "1 h - 24 h", "examples": "基因表达、细胞周期、药物分布", "modeling_note": "转录/翻译延迟不可忽略时用延迟方程或级联近似", "name_en": "hour-day", "description": "基因表达、细胞周期、药物分布等小时-天过程。"},
+    {"kind": "temporal", "id": "day_year", "name": "天-年", "range": "> 1 day", "examples": "流行病传播、种群动态、生态演替", "modeling_note": "季节性强迫、随机性、参数非平稳性需显式处理", "name_en": "day-year", "description": "流行病传播、种群动态、生态演替等天-年过程。"}
+  ],
+  "model_classes": [
+    {
+      "id": "ode",
+      "name": "常微分方程（ODE）",
+      "name_en": "ordinary differential equations",
+      "when": "充分混合、可忽略空间结构；状态可用连续浓度/数量描述；v1 唯一支持的模型类别（kind:\"ode\"）。",
+      "spec_mapping": "variables + parameters + reactions；速率定律 mass_action/michaelis_menten/hill/constant/expression；d x/dt = S·v。",
+      "matlab_impl": "bma.spec.compile → bma.model.build → bma.model.simulate（ode15s 默认，刚性友好）；bma.model.analyze 求守恒律/稳态/特征值；bma.fit.estimate 多起点拟合。",
+      "examples": "enzyme_kinetics、gene_expression、mapk_cascade、sir_seir、pharmacokinetics"
+    },
+    {
+      "id": "dae",
+      "name": "微分-代数方程（DAE）",
+      "name_en": "differential-algebraic equations",
+      "when": "存在快速平衡或刚性约束（如瞬时平衡结合、电中性、守恒约束需精确满足）；v1 未直接支持，可用 QSSA 降为 ODE 或用 mass_action 大速率近似。",
+      "spec_mapping": "v1 不支持；实践做法：(1) QSSA 代数消元写入 expression；(2) 用大 kon/koff 的 mass_action 近似快速平衡（注意刚性）。",
+      "matlab_impl": "ode15s 解刚性 ODE；daeset 用 ode15i/mass matrix（v1 之外扩展）；报告需说明近似误差。",
+      "examples": "快速受体-配体平衡、代谢网络中的守恒约束"
+    },
+    {
+      "id": "pde",
+      "name": "偏微分方程（PDE）",
+      "name_en": "partial differential equations",
+      "when": "空间梯度/模式形成显著（Turing、趋化、动作电位传播、药物组织扩散）；v1 不支持 PDE，需空间离散为 ODE 系统。",
+      "spec_mapping": "方法：把空间分成 N 个 compartment/隔室，每个隔室一组 state，扩散用双向 mass_action（k=D/dx^2，单位 1/s；或 D*A/dx 形式）；写入 spec 时 kind:\"ode\"。见 archetype reaction_diffusion_turing / chemotaxis 的模板。",
+      "matlab_impl": "方法线（MOL）离散 + ode15s；完整 PDE 用 pdepe（1D）/有限差分；报告说明离散误差与边界条件。",
+      "examples": "reaction_diffusion_turing、chemotaxis、动作电位传播"
+    },
+    {
+      "id": "stochastic",
+      "name": "随机模型（SSA/CLE/分支过程）",
+      "name_en": "stochastic simulation / chemical master equation",
+      "when": "分子数少（< ~100/cell）、需要分布/噪声/灭绝概率；确定性 ODE 只给均值，无法表达 Fano factor、双峰分布、随机切换。",
+      "spec_mapping": "spec 仍写确定性 ODE 作为均值模型；随机模拟参数（Omega/体积、初始分子数）写入 metadata，报告说明转换方法。",
+      "matlab_impl": "Gillespie SSA 自实现（化学计量矩阵 + 倾向函数）；CLE（Langevin）用 Euler-Maruyama；聚合多次运行得到均值/方差/Fano；分支过程求灭绝概率。",
+      "examples": "gene_expression（噪声）、toggle switch（随机切换）、流行病早期传播"
+    },
+    {
+      "id": "discrete",
+      "name": "离散/基于个体模型（ABM）",
+      "name_en": "discrete / agent-based models",
+      "when": "个体异质性、空间离散、局部相互作用（细胞自动机、格子气、agent-based 生态）；连续 ODE 无法捕捉离散事件与涨落。",
+      "spec_mapping": "v1 不支持；可把离散模型的 ODE 均值场极限写入 spec 作为对照，并在 metadata 记录 ABM 规则。",
+      "matlab_impl": "自写事件驱动循环；格子上的状态更新；多次重复取统计量；与 ODE 均值场结果对比验证。",
+      "examples": "肿瘤克隆演化、细胞自动机模式、群体遗传"
+    },
+    {
+      "id": "boolean",
+      "name": "布尔/逻辑模型",
+      "name_en": "boolean / logical models",
+      "when": "定性调控网络、缺乏动力学参数、只需吸引子（稳态/周期）与扰动预测；大网络筛选用。",
+      "spec_mapping": "v1 不支持；可用 Hill 速率 + 大 n 与陡峭阈值近似布尔开关写入 spec（kind:\"ode\"），报告标注为连续近似。",
+      "matlab_impl": "同步/异步更新规则；吸引子枚举；与 ODE 双稳态结果交叉验证；用 hill n 较大值近似阶跃。",
+      "examples": "基因调控网络定性分析、细胞命运决定"
+    },
+    {
+      "id": "constraint_based",
+      "name": "约束/化学计量模型（FBA 类）",
+      "name_en": "constraint-based stoichiometric models",
+      "when": "稳态通量分布、营养限制、基因敲除预测；无需动力学参数，只需化学计量与容量约束。",
+      "spec_mapping": "v1 不支持；把化学计量矩阵与通量上下界写入 spec.metadata.stoichiometry，ODE 用于验证动态可行性。",
+      "matlab_impl": "linprog 求 FBA；S 矩阵来自 spec.reactions 的 stoichiometry；通量变异性分析（FVA）用循环 LP；与 ODE 稳态通量对比。",
+      "examples": "代谢通路（metabolic_pathway）、微生物生长"
+    },
+    {
+      "id": "statistical",
+      "name": "统计/回归模型",
+      "name_en": "statistical models",
+      "when": "机制未知或作为基线对照；剂量-响应曲线、生存分析、混合效应、时间序列；也用于模型比较的零模型。",
+      "spec_mapping": "不作为 bma.modelSpec.v1 提交；作为候选模型对照写入报告（AICc 比较）。",
+      "matlab_impl": "fitlm/glmfit/nlinfit（Statistics 工具箱）；非线性剂量-响应 4 参数 logistic；与机制模型用 AICc 比较（validate.model_selection）。",
+      "examples": "Hill 剂量-响应拟合、生存曲线、PK 非房室分析"
+    },
+    {
+      "id": "hybrid",
+      "name": "混合模型",
+      "name_en": "hybrid models",
+      "when": "快慢时间尺度分离（慢变量 + 快平衡）、离散事件 + 连续状态、多尺度耦合；常见于细胞周期、电生理+生化耦合。",
+      "spec_mapping": "v1 用 ODE + QSSA/分段速率近似；快慢分解用奇异摄动，慢流形上的降阶模型写入 spec。",
+      "matlab_impl": "QSSA 降维；分段平滑（min/max 或 expression 中的阶跃近似，注意刚性）；事件检测（ode 事件）用 options.events；报告说明降阶依据。",
+      "examples": "Hodgkin-Huxley（快 gating + 慢 recovery）、代谢-基因表达耦合"
+    }
+  ],
+  "cross_cutting_rules": [
+    "先定层次与尺度，再定模型类别：同一文献可能含多个层次，选择与数据粒度匹配的最低复杂度模型（Occam）。",
+    "v1 只能提交 kind:\"ode\"；PDE/随机/离散模型要么空间离散/均值场化为 ODE，要么在报告的 future_work 中说明。",
+    "任何层次都要显式声明：时间单位、浓度/数量单位、体积/区室；跨层次参数（如体积、人口 N）必须作为 parameter 而非硬编码常数。",
+    "参数可辨识性随层次升高而变差：种群/生态系统模型的空间/环境参数常不可辨识，应固定或做敏感性分析而非强行拟合。",
+    "同一机制在不同层次的表现不同（如噪声在分子层重要、在种群层被平均掉）；报告需说明尺度选择对结论的影响。"
+  ],
+  "notes": [
+    "本文件为 kb.search 的 ontology 单例条目（id=ontology，type=ontology），不参与 archetype 匹配排序。",
+    "archetype 文件中的 domain/scale/model_class 字段取本文件的 id 词表；新增层次/类别需同步更新本文件与 README 覆盖矩阵。",
+    "scales 仅作参考导航；spec 校验不使用 scales。"
+  ]
+}

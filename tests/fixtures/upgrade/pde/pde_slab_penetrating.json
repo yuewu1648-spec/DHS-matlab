@@ -1,0 +1,114 @@
+{
+    "schema_version":  "bma.modelSpec.v1",
+    "name":  "pde_slab1",
+    "title":  "zero-order slab",
+    "kind":  "pde",
+    "time":  {
+                 "unit":  "s",
+                 "start":  0,
+                 "end":  2,
+                 "n":  201
+             },
+    "variables":  [
+                      {
+                          "id":  "u",
+                          "name":  "substrate",
+                          "unit":  "1",
+                          "initial":  {
+                                          "value":  1
+                                      }
+                      }
+                  ],
+    "pde":  {
+                "dim":  1,
+                "domain":  {
+                               "geometry":  "slab",
+                               "extent":  {
+                                              "value":  1,
+                                              "unit":  "um"
+                                          },
+                               "grid":  {
+                                            "type":  "uniform",
+                                            "n":  16
+                                        },
+                               "approximation":  "dimensionless slab"
+                           },
+                "diffusion":  [
+                                  {
+                                      "species":  "u",
+                                      "coeff":  "De"
+                                  }
+                              ],
+                "bc":  [
+                           {
+                               "face":  "x0",
+                               "type":  "dirichlet",
+                               "value":  "Co"
+                           },
+                           {
+                               "face":  "x1",
+                               "type":  "neumann",
+                               "flux":  0
+                           }
+                       ]
+            },
+    "parameters":  [
+                       {
+                           "id":  "De",
+                           "unit":  "um^2/s",
+                           "value":  {
+                                         "value":  1
+                                     }
+                       },
+                       {
+                           "id":  "Co",
+                           "unit":  "1",
+                           "value":  {
+                                         "value":  1
+                                     }
+                       },
+                       {
+                           "id":  "phi_o",
+                           "unit":  "1",
+                           "value":  {
+                                         "value":  0.5
+                                     }
+                       },
+                       {
+                           "id":  "delta",
+                           "unit":  "1",
+                           "value":  {
+                                         "value":  0.01
+                                     }
+                       }
+                   ],
+    "reactions":  [
+                      {
+                          "id":  "consume",
+                          "stoichiometry":  {
+                                                "u":  -1
+                                            },
+                          "rate":  {
+                                       "kind":  "expression",
+                                       "expression":  "2*phi_o^2*u/(delta+u)"
+                                   }
+                      }
+                  ],
+    "outputs":  [
+                    {
+                        "id":  "u2",
+                        "unit":  "1",
+                        "expression":  "u[2]"
+                    },
+                    {
+                        "id":  "u4",
+                        "unit":  "1",
+                        "expression":  "u[4]"
+                    },
+                    {
+                        "id":  "u16",
+                        "unit":  "1",
+                        "expression":  "u[16]"
+                    }
+                ]
+}

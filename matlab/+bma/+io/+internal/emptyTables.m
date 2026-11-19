@@ -1,0 +1,6 @@
+function s = emptyTables()
+%EMPTYTABLES 返回字段约定一致的空表格 struct 数组。
+s = struct('id', {}, 'caption', {}, 'header', {}, 'rows', {}, ...
+    'section_id', {}, 'section_heading', {}, 'char_start', {}, ...
+    'format', {}, 'n_rows', {}, 'n_cols', {});
+end

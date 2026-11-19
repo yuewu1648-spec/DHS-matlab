@@ -1,0 +1,190 @@
+{
+  "id": "hodgkin_huxley",
+  "type": "archetype",
+  "name": "电生理（Hodgkin-Huxley 动作电位与门控）",
+  "name_en": "Electrophysiology: Hodgkin-Huxley action potential and gating",
+  "domain": "electrophysiology",
+  "scale": "cell",
+  "model_class": "ode",
+  "summary": "把神经元膜电位 V 与三类离子通道（Na、K、漏电流）的开放概率（门控变量 m、h、n）联立：膜电容电流 = 外部刺激 - 各离子电流，门控变量按电压依赖的一阶速率跟随。该模型可复现静息电位、阈值、动作电位波形、不应期与重复发放（f-I 曲线），是电生理文献与离子通道药理学建模的标准骨架；简化版为 FitzHugh-Nagumo 二变量模型与 integrate-and-fire。",
+  "when_to_use": [
+    "文献报告动作电位波形、阈值、静息电位、输入电阻、重复发放频率、电压钳电流或离子电导",
+    "出现「Hodgkin-Huxley」「gating variable」「voltage clamp」「Na+/K+ conductance」「spike」「refractory period」「f-I curve」",
+    "离子通道突变/药物（阻断剂、调节剂）改变兴奋性的机制建模",
+    "心脏/神经元/内分泌细胞的动作电位或节律性电活动（可扩展到心脏 IKr/IKs 通道）",
+    "需要把通道动力学与更宏观的电生理现象（癫痫、心律失常、麻醉）联系起来"
+  ],
+  "tags": ["电生理", "Hodgkin-Huxley", "动作电位", "离子通道", "门控", "膜电位", "electrophysiology"],
+  "keywords": ["动作电位", "膜电位", "离子通道", "门控变量", "电压钳", "钠电流", "钾电流", "不应期", "Hodgkin-Huxley", "action potential", "gating", "voltage clamp", "excitability", "spike"],
+  "equations": [
+    {
+      "name": "膜电位方程（电流平衡）",
+      "latex": "C_m\\frac{dV}{dt}=I_{ext}-I_{Na}-I_{K}-I_{L},\\qquad I_{Na}=g_{Na}m^{3}h\\left(V-E_{Na}\\right),\\ I_{K}=g_{K}n^{4}\\left(V-E_{K}\\right),\\ I_{L}=g_{L}\\left(V-E_{L}\\right)",
+      "plain": "Cm*dV/dt = Iext - INa - IK - IL; INa = gNa*m^3*h*(V-ENa); IK = gK*n^4*(V-EK); IL = gL*(V-EL)",
+      "terms": {
+        "V": "膜电位（mV）；经典约定静息约 -65 mV，去极化为正方向",
+        "C_m": "膜电容密度（uF/cm^2），经典值 1",
+        "g_Na_g_K_g_L": "最大电导密度（mS/cm^2）；经典 120、36、0.3",
+        "E_Na_E_K_E_L": "各离子反转电位（mV）；由 Nernst/Goldman 方程决定（见 principle nernst_potential）",
+        "m_h_n": "Na 激活、Na 失活、K 激活门控变量（0-1，无量纲）",
+        "I_ext": "外部刺激电流密度（uA/cm^2）；实验里为注入电流"
+      }
+    },
+    {
+      "name": "门控变量动力学",
+      "latex": "\\frac{dm}{dt}=\\alpha_m(V)(1-m)-\\beta_m(V)m,\\quad \\frac{dh}{dt}=\\alpha_h(V)(1-h)-\\beta_h(V)h,\\quad \\frac{dn}{dt}=\\alpha_n(V)(1-n)-\\beta_n(V)n",
+      "plain": "dm/dt = alpha_m(V)*(1-m) - beta_m(V)*m; dh/dt = alpha_h(V)*(1-h)-beta_h(V)*h; dn/dt = alpha_n(V)*(1-n)-beta_n(V)*n",
+      "terms": {
+        "m_inf_V_tau_m": "m∞=α/(α+β)，τ=1/(α+β)；m 快（亚毫秒到毫秒）、h 慢（数毫秒）、n 最慢（数毫秒到数十毫秒）",
+        "meaning": "快激活(m)+慢失活(h) 给出 Na 电流的瞬态；慢激活(n) 给出延迟整流 K 电流 → 复极与不应期",
+        "role_of_h": "h 恢复慢决定不应期与发放频率上限；h 突变/药物延长会改变兴奋性"
+      }
+    },
+    {
+      "name": "经典 HH 电压依赖速率函数（V 相对静息 -65 mV，单位 1/ms）",
+      "latex": "\\alpha_m=\\frac{0.1(V+40)}{1-e^{-(V+40)/10}},\\ \\beta_m=4e^{-(V+65)/18};\\quad \\alpha_h=0.07e^{-(V+65)/20},\\ \\beta_h=\\frac{1}{1+e^{-(V+35)/10}};\\quad \\alpha_n=\\frac{0.01(V+55)}{1-e^{-(V+55)/10}},\\ \\beta_n=0.125e^{-(V+65)/80}",
+      "plain": "alpha_m=0.1*(V+40)/(1-exp(-(V+40)/10)); beta_m=4*exp(-(V+65)/18); alpha_h=0.07*exp(-(V+65)/20); beta_h=1/(1+exp(-(V+35)/10)); alpha_n=0.01*(V+55)/(1-exp(-(V+55)/10)); beta_n=0.125*exp(-(V+65)/80)",
+      "terms": {
+        "source": "Hodgkin & Huxley 1952 对枪乌贼巨轴突的电压钳拟合（温度约 6.3 ℃）",
+        "temperature": "速率对温度敏感（Q10≈3），哺乳动物体温下需整体乘 ~3-5 倍（τ 缩小）；报告必须注明温度",
+        "singularity": "alpha_m 在 V=-40 mV、alpha_n 在 V=-55 mV 为 0/0 可去奇点；数值实现应避开精确值或使用极限值",
+        "param_units": "速率 1/ms；若仿真用 s 需换算"
+      }
+    },
+    {
+      "name": "Nernst 反转电位",
+      "latex": "E_X=\\frac{RT}{zF}\\ln\\frac{[X]_{out}}{[X]_{in}}",
+      "plain": "EX = (RT/zF)*ln([X]out/[X]in)",
+      "terms": {
+        "value": "37 ℃ 时 RT/F≈26.7 mV，2.303RT/F≈61.5 mV/decade；20 ℃ 约 58 mV/decade",
+        "E_Na": "Na+ 外高内低 → 约 +50~+60 mV（z=+1）",
+        "E_K": "K+ 内高外低 → 约 -90~-100 mV（若 [K]out 升高则去极化，如高钾血症）",
+        "E_L": "漏电流为多种离子混合，通常作为拟合参数 -50~-60 mV",
+        "usage": "改变细胞外离子浓度（低钠/高钾实验）时用 Nernst 重算 E 值，而不是改 V 初始值"
+      }
+    },
+    {
+      "name": "阈值与重复发放（f-I 关系）",
+      "latex": "I_{rheobase}\\approx\\ \\text{使 } dV/dt>0\\ \\text{在 }V_{th}\\ \\text{附近自持};\\qquad f-I:\\ f\\ \\text{随}\\ I_{ext}\\ \\text{增大而升高（饱和/适应取决于模型）}",
+      "plain": "基强度 Irheobase：能触发动作电位的最小持续电流；持续电流下发放频率 f 随 Iext 增大而升高；Iext 过大时因去极化阻滞（depolarization block）反而停发",
+      "terms": {
+        "threshold": "HH 没有严格阈值（全或无来自正反馈），表观阈值受 dV/dt 与初始条件影响，约 -55~-45 mV",
+        "refractory": "绝对不应期由 Na 失活(h)决定；相对不应期由 K 激活(n)与 h 恢复共同决定",
+        "depolarization_block": "强持续刺激使 h 完全失活，发放停止；拟合 f-I 曲线时需覆盖该区间以约束 h 动力学",
+        "reduced_model": "FitzHugh-Nagumo: dV/dt=V-V^3/3-w+I, τ dw/dt=V+a-bw；integrate-and-fire: 阈值+重置，牺牲波形细节"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "hodgkin_huxley",
+    "title": "Hodgkin-Huxley 动作电位模型（Na/K/漏电流 + 门控）",
+    "description": "经典 HH 四状态模型：膜电位 V 与 Na 激活 m、Na 失活 h、K 激活 n 门控变量；持续去极化电流诱发重复动作电位。用于动作电位波形、阈值、不应期与 f-I 曲线模拟。",
+    "kind": "ode",
+    "time": { "unit": "ms", "start": 0, "end": 50, "n": 5001 },
+    "variables": [
+      { "id": "V", "name": "膜电位", "unit": "mV", "initial": { "value": -65, "note": "静息电位；避免精确取 -55/-40 mV（速率函数可去奇点）" } },
+      { "id": "m", "name": "Na 激活门控", "unit": "1", "initial": { "value": 0.0529 } },
+      { "id": "h", "name": "Na 失活门控", "unit": "1", "initial": { "value": 0.5961 } },
+      { "id": "n", "name": "K 激活门控", "unit": "1", "initial": { "value": 0.3177 } }
+    ],
+    "parameters": [
+      { "id": "C_m", "name": "膜电容密度", "unit": "uF/cm^2", "value": { "value": 1.0 }, "estimate": false },
+      { "id": "g_Na", "name": "最大钠电导密度", "unit": "mS/cm^2", "value": { "value": 120.0 }, "estimate": true, "bounds": [1, 2000] },
+      { "id": "g_K", "name": "最大钾电导密度", "unit": "mS/cm^2", "value": { "value": 36.0 }, "estimate": true, "bounds": [0.1, 1000] },
+      { "id": "g_L", "name": "漏电导密度", "unit": "mS/cm^2", "value": { "value": 0.3 }, "estimate": true, "bounds": [0.001, 100] },
+      { "id": "E_Na", "name": "钠反转电位", "unit": "mV", "value": { "value": 50.0 }, "estimate": true, "bounds": [-100, 150] },
+      { "id": "E_K", "name": "钾反转电位", "unit": "mV", "value": { "value": -77.0 }, "estimate": true, "bounds": [-150, 50] },
+      { "id": "E_L", "name": "漏电流反转电位", "unit": "mV", "value": { "value": -54.4 }, "estimate": true, "bounds": [-150, 50] },
+      { "id": "I_ext", "name": "外部刺激电流密度", "unit": "uA/cm^2", "value": { "value": 10.0 }, "estimate": false },
+      { "id": "mV_unit", "name": "电压单位标度（=1 mV，用于量纲检查）", "unit": "mV", "value": { "value": 1.0 }, "estimate": false },
+      { "id": "per_ms_unit", "name": "速率单位标度（=1/ms，用于量纲检查）", "unit": "1/ms", "value": { "value": 1.0 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "membrane", "name": "膜电容充放电（离子电流 + 刺激）", "stoichiometry": { "V": 1 },
+        "rate": { "kind": "expression", "expression": "(I_ext-g_Na*m^3*h*(V-E_Na)-g_K*n^4*(V-E_K)-g_L*(V-E_L))/C_m" } },
+      { "id": "m_open", "name": "Na 激活门控开放", "stoichiometry": { "m": 1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*0.1*(V+40*mV_unit)/(mV_unit*(1-exp(-(V+40*mV_unit)/(10*mV_unit))))*(1-m)" } },
+      { "id": "m_close", "name": "Na 激活门控关闭", "stoichiometry": { "m": -1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*4*exp(-(V+65*mV_unit)/(18*mV_unit))*m" } },
+      { "id": "h_open", "name": "Na 失活解除（缓慢）", "stoichiometry": { "h": 1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*0.07*exp(-(V+65*mV_unit)/(20*mV_unit))*(1-h)" } },
+      { "id": "h_close", "name": "Na 失活（去极化诱导）", "stoichiometry": { "h": -1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*1/(1+exp(-(V+35*mV_unit)/(10*mV_unit)))*h" } },
+      { "id": "n_open", "name": "K 激活门控开放", "stoichiometry": { "n": 1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*0.01*(V+55*mV_unit)/(mV_unit*(1-exp(-(V+55*mV_unit)/(10*mV_unit))))*(1-n)" } },
+      { "id": "n_close", "name": "K 激活门控关闭", "stoichiometry": { "n": -1 },
+        "rate": { "kind": "expression", "expression": "per_ms_unit*0.125*exp(-(V+65*mV_unit)/(80*mV_unit))*n" } }
+    ],
+    "outputs": [
+      { "id": "V_obs", "name": "膜电位", "unit": "mV", "expression": "V" },
+      { "id": "m_obs", "name": "Na 激活门控", "unit": "1", "expression": "m" },
+      { "id": "h_obs", "name": "Na 失活门控", "unit": "1", "expression": "h" },
+      { "id": "n_obs", "name": "K 激活门控", "unit": "1", "expression": "n" },
+      { "id": "I_Na_obs", "name": "钠电流密度", "unit": "uA/cm^2", "expression": "g_Na*m^3*h*(V-E_Na)" },
+      { "id": "I_K_obs", "name": "钾电流密度", "unit": "uA/cm^2", "expression": "g_K*n^4*(V-E_K)" }
+    ],
+    "assumptions": [
+      "等电位空间钳制：膜电位在细胞上均匀（无轴突传播、无树突几何）",
+      "各离子通道群等价独立，电导为最大电导乘以门控变量的幂次（m^3h、n^4 由独立门控粒子统计得到）",
+      "速率函数只依赖瞬时 V（无记忆、无使用依赖），温度恒定（经典参数对应约 6.3 ℃）",
+      "无突触输入、无泵电流、无胞内钙/代谢影响；持续恒定的外部电流刺激"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。经典 HH 参数（温度 ~6.3 ℃）；I_ext=10 持续电流诱发重复发放。若要单次动作电位：I_ext=0 并用初始 V 去极化小量（如 -60 mV）或改为短脉冲（v1 无时变输入，用初始条件近似）。" }
+  },
+  "spec_notes": [
+    "单位系统：V 用 mV、时间用 ms、电导密度 mS/cm^2、电容密度 uF/cm^2、电流密度 uA/cm^2（kb/units.json 已声明）。模板把 HH 公式中的 mV 常数写成 `<数值>*mV_unit`、速率系数写成 `per_ms_unit*<数值>`，使表达式量纲可被 validate 检查；两参数均=1，动力学不变。",
+    "数值注意：alpha_m 在 V=-40 mV、alpha_n 在 V=-55 mV 为 0/0；MATLAB 会得到 NaN。避免初始值/参数恰好取该值；若轨迹可能穿越，可把表达式写成极限平滑形式或加微小偏移（如 (V+55.0001)），并在报告中说明。",
+    "温度调整：若数据来自哺乳动物体温（37 ℃），经典 6.3 ℃ 速率需乘 Q10 因子（常用 φ≈3-5，即 τ/φ、速率×φ；亦可对整体时间轴缩放）。报告必须注明温度与 Q10 假设。",
+    "单次动作电位：v1 的 expression 速率不能用时间 t，故无法直接写短脉冲电流。两种做法：(1) I_ext=0，把 initial V 设为 -60 mV（并取相应稳态门控）观察回到静息/触发；(2) 用两个 case 模拟（用 simulate_cases 的 param_overrides 设 I_ext）再在报告里拼接。",
+    "f-I 曲线：在 simulate_cases 中扫 I_ext（0、2、5、10、20、40、80 uA/cm^2），统计 10-50 ms 窗内的峰数/发放频率；注意高电流下去极化阻滞导致频率回落。",
+    "药物/突变建模：阻断剂把 g_Na 或 g_K 乘以比例因子（可加参数 frac_block）；突变改变速率函数的半激活电压（V_1/2 偏移参数）或表达量；报告需给出机制假设与证据。",
+    "传播（轴突/组织）：需要电缆方程/PDE（空间离散为隔室 ODE，见 reaction_diffusion_turing 的离散化方法）；v1 可把轴突分成 N 段、每段一个 HH 系统，用双向电紧张耦合近似。"
+  ],
+  "variables": [
+    { "id": "V", "name": "膜电位", "unit": "mV", "typical_range": [-100, 60], "notes": "静息 -70~-60；动作电位峰值 +20~+50；超极化可到 -100" },
+    { "id": "m", "name": "Na 激活门控", "unit": "1", "typical_range": [0, 1], "notes": "静息 ~0.05，去极化峰值 ~0.9" },
+    { "id": "h", "name": "Na 失活门控", "unit": "1", "typical_range": [0, 1], "notes": "静息 ~0.6，去极化后 ~0.05-0.2" },
+    { "id": "n", "name": "K 激活门控", "unit": "1", "typical_range": [0, 1], "notes": "静息 ~0.32，动作电位期间升至 ~0.6-0.8" }
+  ],
+  "parameters": [
+    { "id": "C_m", "symbol": "C_m", "unit": "uF/cm^2", "typical_range": [0.5, 1.5], "notes": "生物膜约 1 uF/cm^2，非常稳定" },
+    { "id": "g_Na", "symbol": "g_{Na}", "unit": "mS/cm^2", "typical_range": [10, 500], "notes": "经典 120；不同神经元/心肌可 20-500" },
+    { "id": "g_K", "symbol": "g_{K}", "unit": "mS/cm^2", "typical_range": [5, 200], "notes": "经典 36" },
+    { "id": "g_L", "symbol": "g_{L}", "unit": "mS/cm^2", "typical_range": [0.01, 5], "notes": "经典 0.3；决定输入电阻" },
+    { "id": "E_Na", "symbol": "E_{Na}", "unit": "mV", "typical_range": [30, 80], "notes": "由 Nernst 决定，37 ℃ 典型 +55~+65" },
+    { "id": "E_K", "symbol": "E_{K}", "unit": "mV", "typical_range": [-110, -60], "notes": "37 ℃ 典型 -90~-100；细胞外钾升高则上移" },
+    { "id": "E_L", "symbol": "E_{L}", "unit": "mV", "typical_range": [-70, -40], "notes": "混合漏电流反转电位，常作为拟合参数" },
+    { "id": "I_ext", "symbol": "I_{ext}", "unit": "uA/cm^2", "typical_range": [-20, 200], "notes": "基强度约 6-10；生理刺激以突触电流形式出现" },
+    { "id": "mV_unit", "symbol": "1 mV", "unit": "mV", "typical_range": [1, 1], "notes": "量纲检查用单位标度，恒为 1 mV；让 HH 公式中的 mV 常数在表达式里带量纲" },
+    { "id": "per_ms_unit", "symbol": "1 ms^-1", "unit": "1/ms", "typical_range": [1, 1], "notes": "量纲检查用单位标度，恒为 1/ms；让门控速率系数在表达式里带量纲" }
+  ],
+  "assumptions": [
+    "空间等电位（电压钳/单室模型）；轴突传播需电缆方程扩展",
+    "通道群同质、独立门控粒子；无通道相互作用与使用依赖",
+    "温度恒定且已折算到模型参数对应温度",
+    "无突触、无钙激活钾通道、无起搏电流（如 Ih）等额外通道"
+  ],
+  "evidence_cues": [
+    "「Hodgkin-Huxley」「voltage clamp」「action potential」「spike threshold」「refractory period」",
+    "「gNa = 120 mS/cm2」「gK」「ENa」「EK」「m3h」「n4」等电生理参数",
+    "「current-clamp」「resting membrane potential -65 mV」「input resistance」「rheobase」",
+    "「f-I curve」「repetitive firing」「depolarization block」「adaptation」",
+    "「FitzHugh-Nagumo」「integrate-and-fire」「leaky integrate-and-fire」→ 简化模型选择",
+    "「channelopathy」「Nav1.7 mutation」「IKr block」「QT prolongation」→ 通道参数变化建模"
+  ],
+  "fitting_notes": "1) 电压钳数据（不同 V 下的电流轨迹）最适合拟合 g 与门控速率；动作电位波形只约束组合参数，单独拟合容易多解；2) 建议分层拟合：先用电压钳/文献固定门控速率函数形式与 g_Na/g_K 数量级，再拟合 E_L/g_L 与温度因子；3) AP 波形拟合目标：峰电位、阈值、半宽、复极时间、AHP；f-I 曲线拟合：基强度、斜率、最大频率；4) 数据采样率：AP 波形需 ≥ 50 kHz（0.02 ms）采样；若只有 1-10 kHz，应降采样模型输出以匹配；5) 初始条件取对应静息的稳态门控（m∞、h∞、n∞），否则会出现伪瞬态；6) 温度、细胞外离子浓度、钳制误差（series resistance）都需作为协变量记录；7) 简化模型（FN/I&F）在只需阈值与发放统计时更稳健，可用 AICc 与 HH 比较。",
+  "identifiability_notes": "1) 仅用动作电位波形时，g_Na、g_K、E_Na、E_K 与门控速率函数高度相关，参数不可唯一辨识；电压钳数据才能分离；2) E_K 与 g_K 在静息附近近似以乘积/和出现，需要改变细胞外钾或施加电流钳位来分离；3) 门控速率函数（α、β）的电压依赖形式（偏移、斜率）需要多个保持电位下的电压钳数据；4) 温度因子与速率函数共线，必须独立测量温度或 Q10；5) 持续电流下的发放频率对 h 的慢恢复最敏感，缺少长时程数据时 h 的时间常数不可辨识；6) 空间钳制不完善（轴突传播、树突）会使表观参数偏离真实通道参数；7) 单细胞数据无法区分通道密度差异与门控电压偏移，需药理学分离。",
+  "references": [
+    { "citation": "Hodgkin AL, Huxley AF (1952). A quantitative description of membrane current and its application to conduction and excitation in nerve. Journal of Physiology 117(4):500-544.", "authors": ["Hodgkin AL", "Huxley AF"], "year": 1952, "title": "A quantitative description of membrane current and its application to conduction and excitation in nerve", "journal": "Journal of Physiology", "volume": "117", "pages": "500-544", "doi": "10.1113/jphysiol.1952.sp004764" },
+    { "citation": "Hodgkin AL, Huxley AF (1952). The components of membrane conductance in the giant axon of Loligo. Journal of Physiology 116(4):473-496.", "authors": ["Hodgkin AL", "Huxley AF"], "year": 1952, "title": "The components of membrane conductance in the giant axon of Loligo", "journal": "Journal of Physiology", "volume": "116", "pages": "473-496", "note": "系列论文之一，给出 Na/K 电导分离实验依据" },
+    { "citation": "FitzHugh R (1961). Impulses and physiological states in theoretical models of nerve membrane. Biophysical Journal 1(6):445-466.", "authors": ["FitzHugh R"], "year": 1961, "title": "Impulses and physiological states in theoretical models of nerve membrane", "journal": "Biophysical Journal", "volume": "1", "pages": "445-466" },
+    { "citation": "Nagumo J, Arimoto S, Yoshizawa S (1962). An active pulse transmission line simulating nerve axon. Proceedings of the IRE 50(10):2061-2070.", "authors": ["Nagumo J", "Arimoto S", "Yoshizawa S"], "year": 1962, "title": "An active pulse transmission line simulating nerve axon", "journal": "Proceedings of the IRE", "volume": "50", "pages": "2061-2070" }
+  ],
+  "related": ["negative_feedback_oscillator", "reaction_diffusion_turing", "mapk_cascade"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "id": "gene_expression",
+  "type": "archetype",
+  "name": "基因表达（转录-翻译-降解的中心法则模型）",
+  "name_en": "Gene expression: transcription, translation and degradation",
+  "domain": "gene_expression",
+  "scale": "cell",
+  "model_class": "ode",
+  "summary": "用 mRNA 与蛋白两个状态描述基因表达：mRNA 由（基础 + 调控）转录产生、一阶降解；蛋白由 mRNA 翻译产生、一阶降解/稀释。两方程模型可解释诱导后的双相响应、稳态蛋白水平与 mRNA/蛋白半衰期；加一个上游信号变量即可表达诱导/阻遏。确定性 ODE 给均值，单细胞噪声需在其上叠加随机模拟（Fano factor）。",
+  "when_to_use": [
+    "文献报告诱导后 mRNA 与蛋白的时间序列（qPCR/RNA-seq + 荧光报告/免疫印迹），或转录/翻译抑制剂（rifampicin、actinomycin D、放线菌酮）后的衰减曲线",
+    "给出 mRNA 半衰期、蛋白半衰期、每细胞 mRNA/蛋白拷贝数、转录速率或翻译速率",
+    "讨论「中心法则」「基因回路」「报告基因」「组成型表达」「诱导表达」「启动子强度」「核糖体结合位点强度」",
+    "研究稳态蛋白水平随诱导剂/转录因子剂量的响应（则耦合 hill_regulation_toggle 的 Hill 输入）",
+    "关注单细胞表达噪声、双峰分布、爆发式表达（则需 stochastic 版本，本模板给均值骨架）"
+  ],
+  "tags": ["基因表达", "转录", "翻译", "mRNA", "蛋白降解", "中心法则", "gene_expression", "reporting"],
+  "keywords": ["基因表达", "转录", "翻译", "mRNA 半衰期", "蛋白半衰期", "中心法则", "翻译爆发", "表达噪声", "gene expression", "transcription", "translation", "mRNA decay", "protein degradation", "burst size"],
+  "equations": [
+    {
+      "name": "mRNA 动力学（基础转录 + Hill 激活）",
+      "latex": "\\frac{dm}{dt}=\\alpha_0+\\alpha\\,\\frac{s^{n}}{K^{n}+s^{n}}-\\gamma_m m",
+      "plain": "dm/dt = alpha0 + alpha*s^n/(K^n+s^n) - gamma_m*m",
+      "terms": {
+        "m": "mRNA 浓度（nM）；细菌中 1 分子/细胞 ≈ 1.7 nM（体积约 1 fL），可直接换算拷贝数",
+        "alpha0": "基础（渗漏）转录速率（nM/min）",
+        "alpha": "调控转录最大增量（nM/min）",
+        "s": "上游信号/转录因子活性（nM 或任意活性单位）",
+        "K_n": "半效浓度与 Hill 系数；n>1 表示协同结合",
+        "gamma_m": "mRNA 一阶降解速率（1/min）；半衰期 t1/2 = ln2/gamma_m"
+      }
+    },
+    {
+      "name": "蛋白动力学",
+      "latex": "\\frac{dp}{dt}=\\beta m-\\gamma_p p",
+      "plain": "dp/dt = beta*m - gamma_p*p",
+      "terms": {
+        "p": "蛋白浓度（nM）",
+        "beta": "翻译速率常数（1/min），与核糖体负载/起始速率成正比",
+        "gamma_p": "蛋白一阶降解 + 生长稀释速率（1/min）；稳定蛋白以稀释为主"
+      }
+    },
+    {
+      "name": "稳态与响应时间",
+      "latex": "m_{ss}=\\frac{\\alpha_0+\\alpha f(s)}{\\gamma_m},\\quad p_{ss}=\\frac{\\beta}{\\gamma_p}m_{ss},\\quad \\tau_m=\\frac{1}{\\gamma_m},\\ \\tau_p=\\frac{1}{\\gamma_p}",
+      "plain": "m_ss = (alpha0+alpha*f(s))/gamma_m; p_ss = (beta/gamma_p)*m_ss; tau_m = 1/gamma_m; tau_p = 1/gamma_p",
+      "terms": {
+        "f_s": "s^n/(K^n+s^n)，Hill 激活分数",
+        "p_ss": "稳态蛋白水平；给定观测 p_ss 时只能约束组合 beta*(alpha0+alpha f)/(gamma_m gamma_p)",
+        "biphasic_response": "诱导后 mRNA 快达新稳态（min 级），蛋白按 tau_p 慢跟随（h 级），形成快-慢两相"
+      }
+    },
+    {
+      "name": "半衰期与降解换算",
+      "latex": "t_{1/2}^{m}=\\frac{\\ln 2}{\\gamma_m},\\qquad t_{1/2}^{p}=\\frac{\\ln 2}{\\gamma_p}",
+      "plain": "mRNA half-life = ln2/gamma_m; protein half-life = ln2/gamma_p",
+      "terms": {
+        "usage": "从 shutoff/chase 实验的指数衰减斜率直接得到 gamma；细菌 mRNA 半衰期常 2-5 min，哺乳动物 1-10 h",
+        "growth_dilution": "分裂细胞中 gamma_p 应至少加 ln2/doubling_time（稀释项），否则会低估降解、高估稳定性"
+      }
+    },
+    {
+      "name": "翻译爆发与 Fano 因子（噪声一阶近似）",
+      "latex": "F=\\frac{\\mathrm{Var}(p)}{\\langle p\\rangle}\\approx 1+b,\\qquad b\\approx\\frac{\\beta}{\\gamma_m}",
+      "plain": "Fano F = Var(p)/<p> ≈ 1 + b; burst size b ≈ beta/gamma_m",
+      "terms": {
+        "F": "Fano 因子；Poisson 过程 F=1，>1 表示超分散（爆发式表达）",
+        "b": "每次转录事件产生的蛋白数（翻译爆发大小）",
+        "meaning": "burst 参数由 beta/gamma_m 决定；mRNA 寿命越长、翻译越快，噪声越大；mRNA 水平本身有噪声时需乘 (1+CV_m^2) 修正（Thattai & van Oudenaarden 2001）",
+        "note": "该式是均值场近似，精确结果依赖启动子两态模型与转录脉冲频率"
+      }
+    },
+    {
+      "name": "两态启动子（转录爆发）的均值",
+      "latex": "\\langle m\\rangle=\\frac{k_{on}}{k_{on}+k_{off}}\\cdot\\frac{\\alpha}{\\gamma_m},\\qquad F_m=1+\\frac{k_{off}}{k_{on}+k_{off}}\\cdot\\frac{\\alpha}{\\gamma_m}",
+      "plain": "<m> = (kon/(kon+koff))*(alpha/gamma_m); F_m = 1 + (koff/(kon+koff))*(alpha/gamma_m)",
+      "terms": {
+        "kon_koff": "启动子开/关切换速率（1/min）",
+        "usage": "当单细胞数据呈双峰/超分散时，用两态启动子解释 Fano；确定性 ODE 无法表达，需随机模型（Gillespie）",
+        "implication": "同样均值可由不同 (kon,koff,alpha) 组合产生，因此噪声数据是拆分这些参数的额外信息"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "gene_expression_induced",
+    "title": "诱导型基因表达（信号→Hill 转录→mRNA→蛋白）",
+    "description": "外源信号 s 以恒定速率产生并一阶降解，达到稳态后驱动 Hill 型转录；mRNA 翻译为蛋白，二者一阶降解。用于诱导时间序列与稳态剂量-响应拟合。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 240, "n": 1201 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "s", "name": "诱导信号（转录因子活性）", "unit": "nM", "initial": { "value": 0 } },
+      { "id": "m", "name": "mRNA 浓度", "unit": "nM", "initial": { "value": 0 } },
+      { "id": "p", "name": "蛋白浓度", "unit": "nM", "initial": { "value": 0 } }
+    ],
+    "parameters": [
+      { "id": "k_s", "name": "信号产生速率", "unit": "nM/min", "value": { "value": 2.0 }, "estimate": false },
+      { "id": "gamma_s", "name": "信号降解速率", "unit": "1/min", "value": { "value": 0.1 }, "estimate": false },
+      { "id": "alpha0", "name": "基础转录速率", "unit": "nM/min", "value": { "value": 0.02 }, "estimate": true, "bounds": [1e-05, 10] },
+      { "id": "alpha", "name": "调控转录最大速率", "unit": "nM/min", "value": { "value": 0.5 }, "estimate": true, "bounds": [1e-05, 100] },
+      { "id": "K", "name": "转录半效信号浓度", "unit": "nM", "value": { "value": 5.0 }, "estimate": true, "bounds": [0.001, 1000] },
+      { "id": "n", "name": "转录 Hill 系数", "unit": "1", "value": { "value": 2.0 }, "estimate": true, "bounds": [1, 6] },
+      { "id": "beta", "name": "翻译速率常数", "unit": "1/min", "value": { "value": 0.3 }, "estimate": true, "bounds": [0.001, 20] },
+      { "id": "gamma_m", "name": "mRNA 降解速率", "unit": "1/min", "value": { "value": 0.2 }, "estimate": true, "bounds": [0.001, 5] },
+      { "id": "gamma_p", "name": "蛋白降解/稀释速率", "unit": "1/min", "value": { "value": 0.02 }, "estimate": true, "bounds": [1e-05, 1] }
+    ],
+    "reactions": [
+      { "id": "signal_supply", "name": "诱导信号产生", "stoichiometry": { "s": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "k_s" } } },
+      { "id": "signal_decay", "name": "诱导信号降解", "stoichiometry": { "s": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_s" }, "species": { "s": 1 } } },
+      { "id": "basal_transcription", "name": "基础转录", "stoichiometry": { "m": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "alpha0" } } },
+      { "id": "regulated_transcription", "name": "信号激活转录", "stoichiometry": { "m": 1 },
+        "rate": { "kind": "hill", "mode": "activation", "parameters": { "vmax": "alpha", "k": "K", "n": "n" },
+                  "species": { "regulator": "s" } } },
+      { "id": "m_decay", "name": "mRNA 降解", "stoichiometry": { "m": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_m" }, "species": { "m": 1 } } },
+      { "id": "translation", "name": "翻译", "stoichiometry": { "p": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "beta" }, "species": { "m": 1 } } },
+      { "id": "p_decay", "name": "蛋白降解/稀释", "stoichiometry": { "p": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_p" }, "species": { "p": 1 } } }
+    ],
+    "outputs": [
+      { "id": "m_obs", "name": "mRNA 水平（相对或绝对）", "unit": "nM", "expression": "m" },
+      { "id": "p_obs", "name": "蛋白水平（相对荧光或绝对浓度）", "unit": "nM", "expression": "p" }
+    ],
+    "assumptions": [
+      "细胞充分混合、体积恒定；mRNA 与蛋白均按一级动力学降解",
+      "转录速率瞬时跟随信号（无启动子状态记忆），翻译速率与 mRNA 量成正比",
+      "忽略转录延伸/翻译延伸造成的分钟级时滞（若数据分辨到分钟级且形状需要，用 Goodwin 型级联或延迟方程）",
+      "单细胞平均行为；噪声特性由 stochastic 版本描述"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；Hill 抑制版本把 regulated_transcription 的 mode 改为 repression。" }
+  },
+  "spec_notes": [
+    "Hill 抑制（阻遏）版本：把 regulated_transcription 的 mode 改为 \"repression\"，此时 rate = alpha*K^n/(K^n+R^n)；若还需要渗漏，保留 basal_transcription。",
+    "单位与尺度：荧光报告基因数据通常是任意单位（a.u.），直接以 a.u. 为 unit 会与 units.json 不符；做法是保留 nM 并把观测做线性缩放（scaling factor 作为参数或先归一化），在报告中说明标定。",
+    "细胞分裂的稀释：gamma_p 应包含 ln2/doubling_time 的稀释项；若拟合得到明显小于稀释项的降解率，说明蛋白非常稳定。",
+    "需要 mRNA/蛋白绝对拷贝数时，用 1 分子/细胞 ≈ 1.7 nM（E. coli，1 fL）或按细胞体积换算；哺乳细胞 1 分子/细胞 ≈ 1.7e-3 nM（1 pL）。",
+    "转录与翻译延迟（~1-5 min）：数据若显示 mRNA 先于蛋白的明显滞后，可用三级级联（Goodwin）或显式 delay；v1 不支持 delay，可用额外中间态近似。",
+    "组织/群体水平的平均表达还需考虑细胞异质性：把参数分布（对数正态）采样后聚合，或直接对单细胞数据分层拟合。"
+  ],
+  "variables": [
+    { "id": "s", "name": "诱导信号", "unit": "nM", "typical_range": [0, 1000], "notes": "可为诱导剂浓度、转录因子活性或光遗传输入" },
+    { "id": "m", "name": "mRNA", "unit": "nM", "typical_range": [0.001, 100], "notes": "细菌 1 拷贝/细胞 ≈ 1.7 nM；哺乳细胞 1 拷贝/细胞 ≈ 1.7e-3 nM" },
+    { "id": "p", "name": "蛋白", "unit": "nM", "typical_range": [0.01, 10000], "notes": "高丰度蛋白可达 uM 级（1e3 nM）" }
+  ],
+  "parameters": [
+    { "id": "k_s", "symbol": "k_s", "unit": "nM/min", "typical_range": [0.001, 100], "notes": "信号输入速率，常按实验设计固定" },
+    { "id": "gamma_s", "symbol": "\\gamma_s", "unit": "1/min", "typical_range": [0.001, 1], "notes": "诱导剂清除/信号失活速率" },
+    { "id": "alpha0", "symbol": "\\alpha_0", "unit": "nM/min", "typical_range": [1e-5, 10], "notes": "渗漏转录；强启动子可达 1-10 nM/min" },
+    { "id": "alpha", "symbol": "\\alpha", "unit": "nM/min", "typical_range": [1e-5, 100], "notes": "调控转录幅度" },
+    { "id": "K", "symbol": "K", "unit": "nM", "typical_range": [0.001, 1000], "notes": "转录因子半效浓度；常 1-100 nM" },
+    { "id": "n", "symbol": "n", "unit": "1", "typical_range": [1, 6], "notes": "Hill 系数；二聚体 2，四聚体 3-4" },
+    { "id": "beta", "symbol": "\\beta", "unit": "1/min", "typical_range": [0.001, 20], "notes": "翻译速率（每个 mRNA 每分钟产生的蛋白量，以浓度计）" },
+    { "id": "gamma_m", "symbol": "\\gamma_m", "unit": "1/min", "typical_range": [0.001, 5], "notes": "细菌 mRNA 半衰期 2-5 min（0.14-0.35/min）；哺乳动物 1-10 h（0.001-0.01/min）" },
+    { "id": "gamma_p", "symbol": "\\gamma_p", "unit": "1/min", "typical_range": [1e-5, 1], "notes": "稳定蛋白以稀释为主：细菌 30 min 倍增 ≈ 0.023/min；哺乳 24 h ≈ 5e-4/min" }
+  ],
+  "assumptions": [
+    "两状态（mRNA、蛋白）已覆盖主要动态；转录因子结合/解离快于表达变化（QSSA）",
+    "翻译速率与游离 mRNA 成正比（核糖体不饱和/不耗尽）",
+    "无转录/翻译后调控（无 miRNA、无翻译后修饰对稳定性的影响）",
+    "细胞体积与生长速率恒定；参数在观测窗内不随时间变化"
+  ],
+  "evidence_cues": [
+    "「mRNA half-life of 5 min」「protein half-life > 10 h」「rifampicin shutoff」「actinomycin D」",
+    "「transcription rate of 0.5 mRNA/min」「translation rate」「ribosome density」",
+    "「copies per cell」「FPKM/TPM」「qPCR relative expression」「luciferase reporter」",
+    "「doxycycline-inducible」「IPTG induction time course」「constitutive promoter」",
+    "「burst size」「Fano factor」「bimodal expression」「extrinsic/intrinsic noise」→ 需随机/两态启动子扩展",
+    "「steady-state protein level scales with mRNA」→ 支持 beta/gamma_p 关系"
+  ],
+  "fitting_notes": "1) 先分别从 shutoff/chase 实验拟合 gamma_m、gamma_p（指数衰减斜率），再把它们固定后拟合 alpha、beta、K、n，可显著改善条件数；2) 同时拟合 mRNA 与蛋白两条曲线（output_map 多输出），共享 beta/gamma_p；3) 荧光报告数据先做线性标定（斜率+截距可作为 nuisance 参数），否则 alpha 与标定因子不可辨识；4) 剂量-响应稳态数据（多剂量、到达稳态）用来估计 K、n；时间序列主要用于动态参数；5) 若 mRNA 测量有时间延迟或 qPCR 有批次效应，加批次随机效应或先归一化；6) 拟合用对数参数化（log10）和 bounds 跨 4-6 个数量级，multistart ≥ 8；7) 残差若在诱导初期系统偏离，提示转录延迟或 Hill 的 QSSA 不成立，考虑加中间态。",
+  "identifiability_notes": "1) 只有稳态数据时，alpha*beta/(gamma_m*gamma_p) 的乘积可辨识，四个参数本身不可辨识；必须用动态扰动（诱导/抑制/敲除）拆分；2) 若 mRNA 与蛋白都未标定到绝对浓度，整体尺度因子与 alpha 混淆（通常把 alpha 或 beta 固定为单位值，报告相对速率）；3) gamma_m 很短（< 数分钟）时，采样间隔过大将导致其不可辨识（只能给上界）；4) K 与 n 在单剂量附近强相关，需覆盖 0.1-10 倍 K 的剂量范围，且 n>2 时要求数据噪声低；5) 降解与稀释混淆：未测量细胞倍增时间时，gamma_p 只能给表观值；6) 蛋白稳态水平主要由 beta/gamma_p 决定，若蛋白非常稳定（gamma_p 接近 0），其估计置信区间极宽，应固定为稀释速率；7) 单细胞平均数据无法辨识两态启动子参数（kon/koff/alpha），需要单细胞分布。",
+  "references": [
+    { "citation": "Jacob F, Monod J (1961). Genetic regulatory mechanisms in the synthesis of proteins. Journal of Molecular Biology 3(3):318-356.", "authors": ["Jacob F", "Monod J"], "year": 1961, "title": "Genetic regulatory mechanisms in the synthesis of proteins", "journal": "Journal of Molecular Biology", "volume": "3", "pages": "318-356" },
+    { "citation": "Elowitz MB, Levine AJ, Siggia ED, Swain PS (2002). Stochastic gene expression in a single cell. Science 297(5584):1183-1186.", "authors": ["Elowitz MB", "Levine AJ", "Siggia ED", "Swain PS"], "year": 2002, "title": "Stochastic gene expression in a single cell", "journal": "Science", "volume": "297", "pages": "1183-1186", "doi": "10.1126/science.1070919" },
+    { "citation": "Thattai M, van Oudenaarden A (2001). Intrinsic noise in gene regulatory networks. Proceedings of the National Academy of Sciences USA 98(15):8614-8619.", "authors": ["Thattai M", "van Oudenaarden A"], "year": 2001, "title": "Intrinsic noise in gene regulatory networks", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "98", "pages": "8614-8619" },
+    { "citation": "Paulsson J (2004). Summing up the noise in gene networks. Nature 427(6973):415-418.", "authors": ["Paulsson J"], "year": 2004, "title": "Summing up the noise in gene networks", "journal": "Nature", "volume": "427", "pages": "415-418", "doi": "10.1038/nature02257" },
+    { "citation": "Golding I, Paulsson J, Zawilski SM, Cox EC (2005). Real-time kinetics of gene activity in individual bacteria. Cell 123(6):1025-1036.", "authors": ["Golding I", "Paulsson J", "Zawilski SM", "Cox EC"], "year": 2005, "title": "Real-time kinetics of gene activity in individual bacteria", "journal": "Cell", "volume": "123", "pages": "1025-1036" },
+    { "citation": "Kaern M, Elston TC, Blake WJ, Collins JJ (2005). Stochasticity in gene expression: from theories to phenotypes. Nature Reviews Genetics 6(6):451-464.", "authors": ["Kaern M", "Elston TC", "Blake WJ", "Collins JJ"], "year": 2005, "title": "Stochasticity in gene expression: from theories to phenotypes", "journal": "Nature Reviews Genetics", "volume": "6", "pages": "451-464" }
+  ],
+  "related": ["hill_regulation_toggle", "negative_feedback_oscillator", "receptor_ligand_dose_response"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

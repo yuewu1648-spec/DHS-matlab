@@ -1,0 +1,103 @@
+{
+  "id": "mass_action",
+  "type": "principle",
+  "name": "质量作用定律（Law of Mass Action）",
+  "name_en": "Law of mass action",
+  "domain": "chemical_kinetics",
+  "scale": "molecule",
+  "model_class": "ode",
+  "summary": "基元反应速率与反应物浓度（的幂）成正比：v = k ∏ x_i^{ν_i}。它是全部 ODE 模型组装的原子规则，也是随机模拟中 propensity（倾向函数）的来源；速率常数 k 的单位随反应分子数变化（一级 1/s、二级 1/(M·s)），正逆速率常数在平衡时与平衡常数满足细致平衡。",
+  "statement": "对基元反应 ν_A A + ν_B B ⇌ ν_C C（单步、无中间态），正反应速率 v_f = k_f [A]^{ν_A}[B]^{ν_B}，逆反应 v_r = k_r [C]^{ν_C}；平衡时 v_f = v_r 给出 K_eq = k_f/k_r = [C]^{ν_C}/([A]^{ν_A}[B]^{ν_B})。多步机制（含酶、催化剂、协同）不能直接套用单一质量作用式，必须显式写出中间态或改用集总速率（Michaelis-Menten/Hill）。",
+  "formulas": [
+    {
+      "name": "质量作用速率",
+      "latex": "v=k\\prod_i x_i^{\\nu_i}",
+      "plain": "v = k * prod(x_i^nu_i)",
+      "terms": {
+        "v": "反应通量（浓度/时间，如 uM/min）",
+        "x_i": "反应物浓度（或活度）",
+        "nu_i": "化学计量数（基元反应通常 1 或 2，三分子及以上罕见）",
+        "k": "速率常数；单位 = 浓度^(1-Σν) / 时间"
+      }
+    },
+    {
+      "name": "微观可逆性与平衡常数",
+      "latex": "\\frac{k_f}{k_r}=K_{eq}=\\exp\\left(-\\frac{\\Delta G^{\\circ}}{RT}\\right)",
+      "plain": "kf/kr = Keq = exp(-ΔG°/RT)",
+      "terms": {
+        "meaning": "正逆速率常数不是独立的：拟合可逆反应时必须满足该约束，否则模型在平衡态附近行为热力学不一致",
+        "check": "用已知 ΔG° 或 Keq 验证 kf/kr；若不一致，优先怀疑机制缺失（如产物抑制/ATP 驱动）"
+      }
+    },
+    {
+      "name": "ODE 组装",
+      "latex": "\\frac{d\\mathbf{x}}{dt}=\\mathbf{S}\\,\\mathbf{v}(\\mathbf{x}),\\qquad S_{ij}=\\nu_{ij}",
+      "plain": "dx/dt = S*v; S_ij 为反应 j 对物种 i 的化学计量系数（消耗负、生成正）",
+      "terms": {
+        "S": "化学计量矩阵；bma.modelSpec 的 reactions[].stoichiometry 正是逐列写 S",
+        "v": "由本定律（或 MM/Hill/expression）给出的通量向量"
+      }
+    },
+    {
+      "name": "随机形式（倾向函数）",
+      "latex": "a_j(\\mathbf{x})=c_j\\prod_i\\frac{x_i!}{\\left(x_i-\\nu_{ij}\\right)!\\,\\nu_{ij}!}\\ \\approx\\ c_j\\prod_i x_i^{\\nu_{ij}}\\ (\\text{大数极限})",
+      "plain": "a_j(x) = c_j * prod_i [ x_i! / ((x_i-ν_ij)! * ν_ij!) ]；大数极限退化为 c_j * prod x_i^ν",
+      "terms": {
+        "c_j": "随机速率常数；与确定性速率常数的换算依赖系统体积 Ω：n 级反应 c = k·Ω^{n-1}",
+        "usage": "Gillespie SSA 的输入；分子数少时用离散组合数而非连续幂",
+        "note": "把确定性 k 直接当随机 c 用会系统性错误（尤其二级反应）"
+      }
+    },
+    {
+      "name": "Arrhenius 温度依赖",
+      "latex": "k(T)=A\\,e^{-E_a/RT}",
+      "plain": "k(T) = A*exp(-Ea/(R*T))",
+      "terms": {
+        "Ea": "活化能；温度每升 10 ℃，k 约增 2-3 倍（Q10≈2-3）",
+        "usage": "跨温度比较/外推实验数据时必须校正；Q10 也是电生理门控速率的标准处理"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "任何「反应网络 → ODE」建模都从质量作用开始：先写基元步骤，再决定哪些步骤可集总（QSSA）。",
+    "速率常数的单位必须与反应级数匹配：一级 1/s、二级 1/(uM*s) 或 1/(nM*s)；单位错误是最常见的 BMA_SPEC 校验失败原因。",
+    "可逆反应必须同时建正逆两步；只建正向而在产物积累时仍用不可逆速率，会产生违背热力学第二定律的假稳态。",
+    "催化反应若保留酶为显式物种，结合/解离/催化三步均为质量作用；若要集总为 MM，必须验证 QSSA 条件（见 qssa_approximation）。",
+    "协同/别构不能用单一质量作用步骤表达：需要多亚基状态模型（MWC）或 Hill 唯象式。"
+  ],
+  "how_to_apply": [
+    "列出文献给出的反应步骤与化学计量；对每一步判断是否为基元步骤（是否已知中间态）。",
+    "按「反应物 → 生成物 + 化学计量」写 stoichiometry；速率用 mass_action kind，k 引用参数 id。",
+    "检查 k 单位：n 级反应的 k 单位 = (浓度单位)^(1-n) × (时间单位)^-1，并在 kb/units.json 中找到对应 id。",
+    "可逆步骤成对写；用平衡常数/ΔG° 或 Haldane 关系校验 k_f/k_r 比值是否合理。",
+    "拟合时优先固定有文献值的 k，估计不确定的；报告每个 k 的来源（measured/estimated/assumed/fitted）。"
+  ],
+  "pitfalls": [
+    "把集总反应（如整体酶促反应）当基元步骤，导致反应级数与分子数不符（v 与 [S] 的关系被错误外推）。",
+    "速率常数单位与反应级数不匹配（如二级反应写成 1/s），仿真结果量纲错误。",
+    "可逆反应只建正向，或正逆速率常数比值与 Keq 矛盾。",
+    "在非理想溶液/高浓度下直接用浓度代替活度，导致表观 k 随条件漂移。",
+    "把随机模拟的 c 与确定性 k 混用（未按体积 Ω 换算）。",
+    "催化剂被消耗（未显式建模或未守恒）：质量作用写出后可能破坏酶总量守恒。"
+  ],
+  "matlab_notes": [
+    "bma.modelSpec.v1 中 mass_action 的 rate = {kind:\"mass_action\", parameters:{k}, species:{id:order}}；species 的键为变量 id，值通常为 1（基元步骤）。",
+    "bma.model.build 会自动按 stoichiometry 组装 S 矩阵与 rhs；bma.model.analyze 会报告守恒律（酶总量守恒等）。",
+    "随机模拟（若需要）需自写 Gillespie：propensity 用组合数或大体积近似，速率常数按 Ω 换算；v1 的 spec 只承载确定性 ODE。"
+  ],
+  "spec_mapping": "mass_action 速率定律：{kind:\"mass_action\", parameters:{k:\"<param_id>\"}, species:{\"<species_id>\": order}}；k 的参数单位必须与反应级数一致。",
+  "diagnostics": [
+    "检查每个反应的质量守恒/元素守恒（尤其含 ATP、NAD 等辅因子的反应）",
+    "比较正逆通量在稳态是否近似相等（封闭系统应趋于平衡；开放系统由能量驱动维持非平衡稳态）",
+    "用初始速率数据验证速率对浓度的幂次（log-log 斜率 ≈ 分子数）"
+  ],
+  "keywords": ["质量作用定律", "速率常数", "化学计量", "平衡常数", "基元反应", "law of mass action", "rate constant", "elementary reaction"],
+  "tags": ["chemical_kinetics", "ode", "foundation"],
+  "related": ["conservation_stoichiometry", "qssa_approximation", "enzyme_kinetics", "thermodynamic_constraints"],
+  "references": [
+    { "citation": "Guldberg CM, Waage P (1864). Studies Concerning Affinity (Forhandlinger i Videnskabs-Selskabet i Christiania).", "authors": ["Guldberg CM", "Waage P"], "year": 1864, "title": "Studies Concerning Affinity", "journal": "Forhandlinger i Videnskabs-Selskabet i Christiania", "note": "质量作用定律原始文献；英译见 J Chem Educ 63(12):1044 (1986)" },
+    { "citation": "Gillespie DT (1992). A rigorous derivation of the chemical master equation. Physica A 188(1-3):404-425.", "authors": ["Gillespie DT"], "year": 1992, "title": "A rigorous derivation of the chemical master equation", "journal": "Physica A", "volume": "188", "pages": "404-425" },
+    { "citation": "Laidler KJ (1987). Chemical Kinetics, 3rd ed. Harper & Row.", "authors": ["Laidler KJ"], "year": 1987, "title": "Chemical Kinetics", "journal": "Harper & Row", "note": "基元反应、速率常数与温度依赖的标准教材" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3（速率定律）、§9" }
+}

@@ -1,0 +1,890 @@
+{
+ "schema_version": "bma.modelSpec.v1",
+ "name": "mader2003_chep_energy_ks2corr_work",
+ "title": "Mader(2003) 肌肉能量代谢模型（应用 2026 年 ks2 更正）：糖酵解与氧化磷酸化作为胞质磷酸化状态与功率输出的函数  [9.10 W/kg 工况，用于敏感性与可辨识性分析]",
+ "description": "复现 Mader 2003 (Eur J Appl Physiol 88:317-338) 的肌肉能量代谢计算机仿真模型，并应用 2026 年更正（ks2: 0.00035 -> 0.0035）。CHEP 平衡用代数式精确求解；状态为 [PCr]、V̇O2、肌/血乳酸与外加载荷（5 个 ODE）。可复现 Fig.3（稳态活化曲线）、Fig.5（超最大负荷至疲劳）、Fig.6（无氧阈稳态）与运动后乳酸恢复。",
+ "kind": "ode",
+ "time": {
+  "unit": "s",
+  "start": 0,
+  "end": 600,
+  "n": 601
+ },
+ "variables": [
+  {
+   "id": "PCr",
+   "name": "磷酸肌酸 [PCr]",
+   "unit": "mM",
+   "initial": {
+    "value": 24.0
+   }
+  },
+  {
+   "id": "VO2",
+   "name": "当前摄氧量 V̇O2（数值单位 mL/(s kg)）",
+   "unit": "1",
+   "initial": {
+    "value": 0.108996
+   }
+  },
+  {
+   "id": "lam",
+   "name": "肌肉室乳酸 [la-]m",
+   "unit": "mM",
+   "initial": {
+    "value": 1.0
+   }
+  },
+  {
+   "id": "lab",
+   "name": "血液室乳酸 [la-]b",
+   "unit": "mM",
+   "initial": {
+    "value": 1.0
+   }
+  },
+  {
+   "id": "Eload",
+   "name": "当前施加的机械功率（数值单位 W/kg）",
+   "unit": "1",
+   "initial": {
+    "value": 0.0
+   }
+  },
+  {
+   "id": "pHst",
+   "name": "胞内 pH（Eq. 25 的弛豫实现）",
+   "unit": "1",
+   "initial": {
+    "value": 6.99639
+   }
+  }
+ ],
+ "parameters": [
+  {
+   "id": "SA",
+   "name": "S[A]=[ATP]+[ADP]+[AMP] 总腺苷酸池",
+   "unit": "mM",
+   "value": {
+    "value": 7.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "S[A]=7.0 mmolÆkg-1",
+     "section_id": "s47",
+     "source": "Fig. 1 legend"
+    }
+   ]
+  },
+  {
+   "id": "SC",
+   "name": "S[C]=[PCr]+[Pi] 可磷酸化池",
+   "unit": "mM",
+   "value": {
+    "value": 28.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "S[C]=28 mmolÆkg-1 muscle",
+     "section_id": "s47",
+     "source": "Fig. 1 legend"
+    }
+   ]
+  },
+  {
+   "id": "M2",
+   "name": "肌酸激酶表观平衡常数 M2（M1=M2*[H+]）",
+   "unit": "1/mM",
+   "value": {
+    "value": 1660000.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "M1=1.66Æ109Æmol-1 and M3=1.05Æmol-1",
+     "section_id": "s47",
+     "source": "Eq. 1, Fig. 1 legend, Veech 1979"
+    }
+   ]
+  },
+  {
+   "id": "M3",
+   "name": "腺苷酸激酶平衡常数",
+   "unit": "1",
+   "value": {
+    "value": 1.05
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "M1=1.66Æ109Æmol-1 and M3=1.05Æmol-1",
+     "section_id": "s47",
+     "source": "Eq. 3"
+    }
+   ]
+  },
+  {
+   "id": "dG0",
+   "name": "[ATP]/[PCr] 体系标准自由能（数值单位 kJ/mol）",
+   "unit": "1",
+   "value": {
+    "value": -30.6
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "with DG =-30.6 kJÆmol-1",
+     "section_id": "s44",
+     "source": "Eq. 4"
+    }
+   ]
+  },
+  {
+   "id": "RT",
+   "name": "RT，310.15 K，R=8.314e-3 kJ/(mol K)（数值单位 kJ/mol）",
+   "unit": "1",
+   "value": {
+    "value": 2.5786
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "The gas constant, 2.0 · 10-3 kcalÆmol-1",
+     "section_id": "s20",
+     "source": "符号表"
+    }
+   ]
+  },
+  {
+   "id": "dGox",
+   "name": "ΔGox,const：氧化磷酸化驱动的自由能上界 (kJ/mol)",
+   "unit": "1",
+   "value": {
+    "value": -66.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "from DGOXap of about -66 kJÆ",
+     "section_id": "s60",
+     "source": "Fig. 4 legend（静息 -66 -> -62）"
+    },
+    {
+     "type": "estimated",
+     "quote": "resulting DGox,ap amounts to about -72.5 kJÆmol-1",
+     "section_id": "s56",
+     "source": "Methods/CS 取 -72.5"
+    }
+   ],
+   "note": "原文两处取值不一致：Fig.4 图注给出静息约 -66 kJ/mol，Methods/Figs.5-10 取 -72.5。主模型采用 -66（可复现 Fig.3 所述 pH7 下 50% 活化于 [ADP]≈0.035-0.05 mM 及“静息近平衡”），-72.5 作为竞争取值在 cases 中对比。"
+  },
+  {
+   "id": "dGref",
+   "name": "自由能标度 ΔGref（把 ks1ΔG=0.65e-4 /(J/mol) 无量纲化, kJ/mol）",
+   "unit": "1",
+   "value": {
+    "value": 15.3846
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "Eq. 12 has values of about -0.65Æ10-4 up to -0.95Æ10-4Æ",
+     "section_id": "s60",
+     "source": "Eq. 12"
+    }
+   ]
+  },
+  {
+   "id": "ks1",
+   "name": "氧化磷酸化 50% 活化常数 ks1（对 [ADP]）",
+   "unit": "mM",
+   "value": {
+    "value": 0.035
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "activity constant ks of 0.035 mmolÆl-1 free [ADP] at pH=7.0",
+     "section_id": "s56",
+     "source": "Fig. 3 legend / Eq. 9,13"
+    }
+   ]
+  },
+  {
+   "id": "VO2max",
+   "name": "虚拟最大摄氧量（数值单位 mL/(s kg)）",
+   "unit": "1",
+   "value": {
+    "value": 2.63333
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "VV_ O2max=158 mlÆmin-1Ækg-1",
+     "section_id": "s61",
+     "source": "Fig. 5 legend: V̇O2max=158 mL/(min kg)（3.5% 线粒体体积）"
+    }
+   ]
+  },
+  {
+   "id": "vlamax",
+   "name": "糖酵解最大速率 VLa,max",
+   "unit": "mM/s",
+   "value": {
+    "value": 1.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "assumed to be about 1.0 mmolÆs-1Ækg-1",
+     "section_id": "s70",
+     "source": "text (Spriet 1987a)"
+    }
+   ]
+  },
+  {
+   "id": "ks2",
+   "name": "糖酵解 50% 活化常数 ks2（对 [ADP][AMP]；修正值 0.0035）",
+   "unit": "mM^2",
+   "value": {
+    "value": 0.0035
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "The coefficient ks =0.00035 is",
+     "section_id": "s60",
+     "source": "2003 原文（被更正）"
+    },
+    {
+     "type": "measured",
+     "quote": "0.0035 is the apparent 50% activation",
+     "section_id": "s5",
+     "source": "2026 更正 -4：ks2=0.0035"
+    }
+   ],
+   "note": "2026 年更正 doi:10.1007/s00421-026-06316-4：ks2 由 0.00035 改为 0.0035。"
+  },
+  {
+   "id": "ks3",
+   "name": "PFK 受 [H+] 抑制的 50% 常数 ks3=10^-20.2 M^3",
+   "unit": "mM^3",
+   "value": {
+    "value": 6.309573444801943e-12
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "where ks is about 10-20.2",
+     "section_id": "s62",
+     "source": "Eq. 15"
+    }
+   ]
+  },
+  {
+   "id": "dbuff",
+   "name": "肌肉平均缓冲容量",
+   "unit": "mM",
+   "value": {
+    "value": 54.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "54 mvalÆl-1ÆpHm-1",
+     "section_id": "s67",
+     "source": "Eq. 25"
+    }
+   ]
+  },
+  {
+   "id": "kelox",
+   "name": "乳酸氧化 50% 常数 kel,ox（=[la]=2.0/1.45）",
+   "unit": "mM",
+   "value": {
+    "value": 1.3793
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "The k is equivalent to [la] of about",
+     "section_id": "s65",
+     "source": "Eq. 17"
+    }
+   ]
+  },
+  {
+   "id": "vlox",
+   "name": "每毫升 O2 氧化的乳酸量（0.01475/0.75，折算到 mM/s 每单位 V̇O2）",
+   "unit": "mM/s",
+   "value": {
+    "value": 0.01967
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "The factor 0.021\nresults from 0.01475/0.75",
+     "section_id": "s65",
+     "source": "Eq. 17"
+    }
+   ]
+  },
+  {
+   "id": "K1c",
+   "name": "乳酸肌-血交换系数（K1=K1c*[la_b]^K1exp）",
+   "unit": "mM^1.4/s",
+   "value": {
+    "value": 0.065
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "0:065 1⁄2lab1:4",
+     "section_id": "s70",
+     "source": "Eq. 31"
+    }
+   ]
+  },
+  {
+   "id": "K1exp",
+   "name": "K1 的乳酸浓度指数",
+   "unit": "1",
+   "value": {
+    "value": -1.4
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "0:065 1⁄2lab1:4",
+     "section_id": "s70",
+     "source": "Eq. 31"
+    }
+   ]
+  },
+  {
+   "id": "Vrel",
+   "name": "活动/被动乳酸分布空间体积比 Vm/Vb（30%/15%）",
+   "unit": "1",
+   "value": {
+    "value": 2.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "estimated",
+     "quote": "%V /%V , the volume of",
+     "section_id": "s21",
+     "source": "符号表：约 30% 与 15% 体重"
+    }
+   ]
+  },
+  {
+   "id": "wf",
+   "name": "肌肉水空间换算 1/0.72",
+   "unit": "1",
+   "value": {
+    "value": 1.35
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "The factor 1.35=1/0.72",
+     "section_id": "s70",
+     "source": "Eq. 29"
+    }
+   ]
+  },
+  {
+   "id": "betaVO2",
+   "name": "1 mmol GP 对应 4.3 mL O2 的换算系数",
+   "unit": "mM/s",
+   "value": {
+    "value": 0.23256
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "1/4.3=0.233",
+     "section_id": "s67",
+     "source": "Eq. 20"
+    }
+   ]
+  },
+  {
+   "id": "betavla",
+   "name": "1 mmol 乳酸/丙酮酸对应的 GP 摩尔数",
+   "unit": "1",
+   "value": {
+    "value": 1.4
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "when bv,la is assumed to be 1.4",
+     "section_id": "s65",
+     "source": "Eq. 21"
+    }
+   ]
+  },
+  {
+   "id": "betaPow",
+   "name": "机械功到 GP 消耗的换算（0.0466 mmol/J）",
+   "unit": "mM/s",
+   "value": {
+    "value": 0.04651
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "this corresponds approximately to 12/(4.3 · 60)=",
+     "section_id": "s67",
+     "source": "Eq. 22"
+    }
+   ]
+  },
+  {
+   "id": "kVO2",
+   "name": "V̇O2 一阶响应速率 1/tau（tau=9 s）",
+   "unit": "1/s",
+   "value": {
+    "value": 0.11111
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "measured",
+     "quote": "Additional time constant sVV_ O2=9.0 s",
+     "section_id": "s61",
+     "source": "Fig. 5 legend"
+    }
+   ]
+  },
+  {
+   "id": "kpH",
+   "name": "pH 代数关系的一阶实现速率 1/tau（tau=1 ms，数值实现用）",
+   "unit": "1/s",
+   "value": {
+    "value": 1000.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "54 mvalÆl-1ÆpHm-1",
+     "section_id": "s67",
+     "source": "Eq. 25"
+    }
+   ],
+   "note": "pH 在原文中为代数关系（Eq.25）。为满足表达式嵌套深度限制且不改变动力学，以 tau=1 ms 的一阶弛豫状态实现；报告中将 pHst 与代数 pH_alg 对比验证（偏差 <1e-4）。"
+  },
+  {
+   "id": "kEload",
+   "name": "负荷施加的一阶平滑速率（tau=0.5 s，数值实现用）",
+   "unit": "1/s",
+   "value": {
+    "value": 2.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "output about 16.9 WÆkg-1",
+     "section_id": "s61",
+     "source": "Fig. 5 legend"
+    }
+   ],
+   "note": "spec 无显式时间输入，用一阶滞后状态 Eload 表示阶跃负荷；tau=0.5 s 远快于代谢时间常数。"
+  },
+  {
+   "id": "cPE",
+   "name": "Eq. 28 的功率-ΔG 转换因子（使静息 FΔG=1）",
+   "unit": "1",
+   "value": {
+    "value": 1.6883
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "FDG 1⁄4 cPE ðDGATP;cyt þ 39:5Þ=ð 39:0Þ",
+     "section_id": "s70",
+     "source": "Eq. 28"
+    }
+   ]
+  },
+  {
+   "id": "kgain",
+   "name": "疲劳耦合开关：0=外力固定负荷，1=功率按 FΔG 衰减（Eq. 28）",
+   "unit": "1",
+   "value": {
+    "value": 0.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "The reduction of power\noutput as function of a decreased",
+     "section_id": "s70",
+     "source": "Eq. 28"
+    }
+   ]
+  },
+  {
+   "id": "Etarget",
+   "name": "外加载荷（数值单位 W/kg 肌肉）",
+   "unit": "1",
+   "value": {
+    "value": 9.1
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "output about 16.9 WÆkg-1",
+     "section_id": "s61",
+     "source": "Fig. 5 legend"
+    }
+   ],
+   "note": "0=静息；Fig.5 用 16.9、Fig.6 用 9.10（由 simulate_cases 覆盖）。"
+  },
+  {
+   "id": "VO2basal",
+   "name": "静息氧化通量（由 Eq.13 在静息磷酸化态自洽解出，mL/(s kg)）",
+   "unit": "1",
+   "value": {
+    "value": 0.108996
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "The PCr-content is\nassumed to be about 24 mmolÆkg-1 muscle",
+     "section_id": "s70",
+     "source": "text"
+    }
+   ],
+   "note": "自洽值：使 Eq.13 在 PCr=24、lam=1 处的稳态通量恰为静息消耗（脚本迭代求解）。"
+  },
+  {
+   "id": "Hconv",
+   "name": "mol/L -> mmol/L 换算（使 [H+]=Hconv*10^-pH 以 mM 计）",
+   "unit": "mM",
+   "value": {
+    "value": 1000.0
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "with DG =-30.6 kJÆmol-1",
+     "section_id": "s44",
+     "source": "(Eq.4) 标准态 1 mol/L 换算"
+    }
+   ],
+   "note": "单位换算常数：原文浓度以 D 标准态（1 mol/L）定义自由能，此处显式给出 mM 换算因子。"
+  },
+  {
+   "id": "la_floor",
+   "name": "[la-] 数值下限（避免 log/分母奇异）",
+   "unit": "mM",
+   "value": {
+    "value": 0.05
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "where ks is about 10-20.2",
+     "section_id": "s62",
+     "source": "Eq. 15"
+    }
+   ]
+  },
+  {
+   "id": "adp_floor",
+   "name": "[ADP]*φ 数值下限（避免 Eq.13 除零；不改变生理区间）",
+   "unit": "mM",
+   "value": {
+    "value": 1e-09
+   },
+   "estimate": false,
+   "evidence": [
+    {
+     "type": "assumed",
+     "quote": "activity constant ks of 0.035 mmolÆl-1 free [ADP] at pH=7.0",
+     "section_id": "s56",
+     "source": "Eq. 9/13"
+    }
+   ]
+  }
+ ],
+ "reactions": [
+  {
+   "id": "oxp_rephosphorylation",
+   "name": "氧化磷酸化对 [GP] 的再磷酸化（Eq. 18 第 1、3 项）",
+   "stoichiometry": {
+    "PCr": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "betaVO2*(VO2-VO2basal)/(1+(SA*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr*(PCr^2+PCr*(SC-PCr)*(1+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst)))))+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))"
+   }
+  },
+  {
+   "id": "glycolytic_rephosphorylation",
+   "name": "糖酵解对 [GP] 的再磷酸化（Eq. 18 第 2 项 / Eq. 21）",
+   "stoichiometry": {
+    "PCr": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "betavla*(vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))/(1+(SA*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr*(PCr^2+PCr*(SC-PCr)*(1+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst)))))+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))"
+   }
+  },
+  {
+   "id": "contraction_dephosphorylation",
+   "name": "收缩的 [GP] 脱磷酸化（Eq. 18 第 4 项 / Eq. 22）",
+   "stoichiometry": {
+    "PCr": -1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "betaPow*(Eload*(1+kgain*(min(1,cPE*((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))+39.5)/(-39))-1)))/(1+(SA*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr*(PCr^2+PCr*(SC-PCr)*(1+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst)))))+2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))"
+   }
+  },
+  {
+   "id": "oxp_response",
+   "name": "氧化磷酸化稳态响应的一阶延迟（Eq. 19/24）",
+   "stoichiometry": {
+    "VO2": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "kVO2*((VO2max/(1+ks1/max((SA*PCr*(SC-PCr)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr)))*(((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))-dGox)/dGref),adp_floor)))-VO2)"
+   }
+  },
+  {
+   "id": "lactate_muscle",
+   "name": "肌肉室乳酸（生成 - 氧化 + 肌-血交换，Eq. 29）",
+   "stoichiometry": {
+    "lam": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "wf*((vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))-(vlox*(2/3)*VO2/(1+kelox/max(lam,la_floor))))+(K1c*max(lab,la_floor)^K1exp)*(lab-lam)"
+   }
+  },
+  {
+   "id": "lactate_blood",
+   "name": "血液室乳酸（肌-血交换 - 氧化，Eq. 30）",
+   "stoichiometry": {
+    "lab": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "Vrel*(K1c*max(lab,la_floor)^K1exp)*(lam-lab)-(vlox*(1/3)*VO2/(1+kelox/max(lab,la_floor)))"
+   }
+  },
+  {
+   "id": "load_application",
+   "name": "外加载荷的一阶施加（数值实现，tau=0.5 s）",
+   "stoichiometry": {
+    "Eload": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "kEload*(Etarget-Eload)"
+   }
+  },
+  {
+   "id": "ph_relaxation",
+   "name": "胞内 pH 趋于缓冲代数关系（Eq. 25；tau=1 ms 的代数实现）",
+   "stoichiometry": {
+    "pHst": 1
+   },
+   "rate": {
+    "kind": "expression",
+    "expression": "kpH*((7.85+(0.8*(SC-PCr)-lam)/dbuff-0.2388619650*log(40+55*VO2/VO2max))-pHst)"
+   }
+  }
+ ],
+ "outputs": [
+  {
+   "id": "VO2_pct",
+   "name": "V̇O2 / V̇O2,max (%)",
+   "unit": "1",
+   "expression": "(100*VO2/VO2max)"
+  },
+  {
+   "id": "vla_pct",
+   "name": "VLa / VLa,max (%)",
+   "unit": "1",
+   "expression": "(100*(vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))/vlamax)"
+  },
+  {
+   "id": "lam_obs",
+   "name": "肌肉乳酸",
+   "unit": "mM",
+   "expression": "lam"
+  },
+  {
+   "id": "lab_obs",
+   "name": "血液乳酸",
+   "unit": "mM",
+   "expression": "lab"
+  },
+  {
+   "id": "PCr_obs",
+   "name": "磷酸肌酸",
+   "unit": "mM",
+   "expression": "PCr"
+  },
+  {
+   "id": "pH_obs",
+   "name": "胞内 pH（状态）",
+   "unit": "1",
+   "expression": "pHst"
+  },
+  {
+   "id": "ATP_obs",
+   "name": "ATP",
+   "unit": "mM",
+   "expression": "(SA*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr)))"
+  },
+  {
+   "id": "ADP_obs",
+   "name": "游离 ADP",
+   "unit": "mM",
+   "expression": "(SA*PCr*(SC-PCr)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr)))"
+  },
+  {
+   "id": "AMP_obs",
+   "name": "AMP",
+   "unit": "mM",
+   "expression": "(SA*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr)))"
+  },
+  {
+   "id": "GP_obs",
+   "name": "[GP]=[ATP]+[PCr]",
+   "unit": "mM",
+   "expression": "(PCr+(SA*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))))"
+  },
+  {
+   "id": "Pi_obs",
+   "name": "游离 Pi",
+   "unit": "mM",
+   "expression": "(SC-PCr)"
+  },
+  {
+   "id": "dG_ATP",
+   "name": "ΔG_ATP,cyt（数值单位 kJ/mol）",
+   "unit": "1",
+   "expression": "(dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))"
+  },
+  {
+   "id": "phi_obs",
+   "name": "自由能驱动力因子 φ=(ΔG-ΔGox)/ΔGref",
+   "unit": "1",
+   "expression": "(((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))-dGox)/dGref)"
+  },
+  {
+   "id": "VO2_obs",
+   "name": "V̇O2（数值单位 mL/(s kg)）",
+   "unit": "1",
+   "expression": "VO2"
+  },
+  {
+   "id": "VO2ss_pct",
+   "name": "稳态 V̇O2,ss / V̇O2,max (%)",
+   "unit": "1",
+   "expression": "(100*(VO2max/(1+ks1/max((SA*PCr*(SC-PCr)/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr)))*(((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))-dGox)/dGref),adp_floor)))/VO2max)"
+  },
+  {
+   "id": "vla_obs",
+   "name": "糖酵解速率 VLa",
+   "unit": "mM/s",
+   "expression": "(vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))"
+  },
+  {
+   "id": "vlaox_obs",
+   "name": "乳酸氧化速率（肌肉室）",
+   "unit": "mM/s",
+   "expression": "(vlox*(2/3)*VO2/(1+kelox/max(lam,la_floor)))"
+  },
+  {
+   "id": "pH_alg",
+   "name": "胞内 pH（代数 Eq.25，用于验证弛豫实现）",
+   "unit": "1",
+   "expression": "(7.85+(0.8*(SC-PCr)-lam)/dbuff-0.2388619650*log(40+55*VO2/VO2max))"
+  },
+  {
+   "id": "PCO2_obs",
+   "name": "组织 PCO2（数值单位 mmHg）",
+   "unit": "1",
+   "expression": "(40+55*VO2/VO2max)"
+  },
+  {
+   "id": "FdG_obs",
+   "name": "疲劳因子 FΔG (Eq. 28)",
+   "unit": "1",
+   "expression": "min(1,cPE*((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))+39.5)/(-39))"
+  },
+  {
+   "id": "power_obs",
+   "name": "有效机械功率（数值单位 W/kg）",
+   "unit": "1",
+   "expression": "(Eload*(1+kgain*(min(1,cPE*((dG0-RT*log(Hconv*(M2*(Hconv*exp(-2.3025850930*pHst)))*PCr/(SC-PCr)^2))+39.5)/(-39))-1)))"
+  },
+  {
+   "id": "glyco_share",
+   "name": "糖酵解供能占比 (%)",
+   "unit": "1",
+   "expression": "(100*betavla*(vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))/(betaVO2*VO2+betavla*(vlamax/((1+(Hconv*exp(-2.3025850930*pHst))^3/ks3)*(1+ks2/(SA^2*(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*PCr*(SC-PCr)^3/((M2*(Hconv*exp(-2.3025850930*pHst)))*PCr^2+(M3/(M2*(Hconv*exp(-2.3025850930*pHst))))*(SC-PCr)^2+PCr*(SC-PCr))^2))))))"
+  }
+ ],
+ "assumptions": [
+  "【静态特征变体】[PCr] 被钳制为参数 PCr_lvl；V̇O2,ss、[ADP]、ΔG、VLa、pH 以 tau=1 ms 的一阶弛豫实现，其状态值即原文 Fig.3 的稳态代数关系；肌肉乳酸固定为 1 mM。",
+  "1 kg 湿肌 ≈ 1 L 内水空间：磷酸盐代谢物以 mmol/L 肌肉表示（原文用 mmol/kg），乳酸分室用 1/0.72 换算到水空间。",
+  "CHEP（CK+腺苷酸激酶）始终处于化学平衡：每步由代数式（Eqs.1-8）从当前 [PCr] 解出 [ATP]/[ADP]/[AMP] 与 ΔG；状态变量取 [PCr]，与原文以 [GP] 为状态在数学上等价（dPCr/dt=(dGP/dt)/(dGP/dPCr)）。",
+  "dGP/dPCr 的导数按 pH 局部不变计算；该近似对通量的相对误差 <1.5%（ATP 在 S[A] 中占主导）。",
+  "氧化磷酸化速率只取决于游离 [ADP] 与自由能驱动力 φ=(ΔG-ΔGox)/ΔGref（Eq. 13）；ΔGox 视为常数。",
+  "糖酵解速率 = VLa,max/((1+[H+]^3/ks3)(1+ks2/([ADP][AMP])))（Eqs. 14-16）；ks2 采用 2026 更正值 0.0035（原文 0.00035）。",
+  "乳酸为肌/血两室，交换系数 K1=0.065[la_b]^-1.4（Eq. 31）；氧化消除按 Eq. 17 与 V̇O2 成比例，肌:血=2:1。",
+  "pH 由 Eq. 25 代数给出（Pi、乳酸、PCO2 三项叠加）；PCO2 由 Eq. 26 随 V̇O2 线性上升。",
+  "外加载荷为阶跃（用 tau=0.5 s 的一阶滞后实现）；Eq. 28 的疲劳功率衰减以 kgain 开关接入（默认 0=固定负荷）。",
+  "V̇O2max=158 mL/(min kg) 为原文的“虚拟”最大摄氧量（按 3.5% 线粒体体积推算），绝对 V̇O2 为虚拟标度。",
+  "温度 310.15 K；忽略 AMP 脱氨酶、糖原合成、线粒体基质区室、Ca2+ 与底物供应限制。"
+ ],
+ "metadata": {
+  "source_docs": [
+   "s00421-002-0676-3-54bc7982de",
+   "s00421-026-06316-4-ae71ef0aaf"
+  ],
+  "erratum": "Eur J Appl Physiol (2026) 126:5703, doi:10.1007/s00421-026-06316-4",
+  "notes": "ks2 主值 = 0.0035（更正）。simulate_cases 中通过 param_overrides 对比 0.00035、dGox=-72.5、Fig.5/Fig.6 工况。"
+ }
+}

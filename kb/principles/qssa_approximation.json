@@ -1,0 +1,108 @@
+{
+  "id": "qssa_approximation",
+  "type": "principle",
+  "name": "准稳态近似（QSSA 与 Michaelis-Menten 推导）",
+  "name_en": "Quasi-steady-state approximation (QSSA)",
+  "domain": "applied_mathematics",
+  "scale": "molecule",
+  "model_class": "ode",
+  "summary": "当快变量（如酶-底物复合物）的弛豫远快于慢变量（底物/产物）时，令快变量的导数为零得到代数关系，把系统降维。标准 QSSA（sQSSA）导出 Michaelis-Menten 速率；其成立条件为 E0/(S0+Km)<<1（Segel-Slemrod）。总 QSSA（tQSSA）在更宽条件下有效，适合 tight-binding 与单分子实验。降维会改变参数的可辨识结构：从 QSSA 模型估出的参数只是表观组合，不能无条件外推。",
+  "statement": "对「快-慢」系统，若慢变量的特征时间 τ_slow 远大于快变量的弛豫时间 τ_fast，则快变量在慢时间尺度上近似处于其稳态流形：d(fast)/dt≈0，从而快变量可写成慢变量的代数函数；把该函数代回慢变量方程即得降阶模型。误差量级由时间尺度比（小参数 ε）决定；ε 不小时近似失效，必须用全机制或更高阶修正。",
+  "formulas": [
+    {
+      "name": "全机制（可逆结合 + 催化）",
+      "latex": "E+S\\ \\underset{k_r}{\\overset{k_f}{\\rightleftharpoons}}\\ ES\\ \\overset{k_{cat}}{\\rightarrow}\\ E+P;\\quad \\frac{dES}{dt}=k_f E\\,S-(k_r+k_{cat})ES",
+      "plain": "dES/dt = kf*E*S - (kr+kcat)*ES；E+ES=E0，S 与 P 由化学计量耦合",
+      "terms": {
+        "E_S_ES_P": "游离酶、底物、复合物、产物浓度",
+        "kf_kr_kcat": "结合、解离、催化速率常数",
+        "conservation": "E+ES=E0；S+P+ES=S0（无其他反应时）"
+      }
+    },
+    {
+      "name": "标准 QSSA → Michaelis-Menten",
+      "latex": "\\frac{dES}{dt}\\approx0\\ \\Rightarrow\\ ES=\\frac{E_0S}{K_m+S},\\quad v=k_{cat}ES=\\frac{V_{max}S}{K_m+S},\\quad K_m=\\frac{k_r+k_{cat}}{k_f},\\ V_{max}=k_{cat}E_0",
+      "plain": "dES/dt≈0 → ES=E0*S/(Km+S)；v=kcat*ES=Vmax*S/(Km+S)；Km=(kr+kcat)/kf；Vmax=kcat*E0",
+      "terms": {
+        "Km": "表观半饱和常数；机制上 = (kr+kcat)/kf",
+        "kcat_Km": "催化效率；kcat 与 Km 无法从初速度曲线分开（只出现比值与 Vmax）",
+        "applicability": "游离底物近似等于总底物（S≈S0），即 E0 << S0 且 S0 >> Km"
+      }
+    },
+    {
+      "name": "sQSSA 成立条件",
+      "latex": "\\varepsilon=\\frac{E_0}{S_0+K_m}\\ll1\\quad(\\text{Segel-Slemrod})",
+      "plain": "ε = E0/(S0+Km) << 1",
+      "terms": {
+        "explanation": "分子：酶库容；分母：底物与 Km。ε 小表示复合物只占很小比例、且底物消耗慢于复合物弛豫",
+        "practice": "ε<0.1 通常可接受；tight-binding（E0≈Ki 或 E0≈S0）时 ε 不小，sQSSA 失效",
+        "error": "sQSSA 的相对误差为 O(ε)（在初始边界层之外）"
+      }
+    },
+    {
+      "name": "总 QSSA（tQSSA）",
+      "latex": "\\bar{S}=S+ES;\\quad ES=\\frac{1}{2}\\left[\\left(E_0+\\bar{S}+K_m\\right)-\\sqrt{\\left(E_0+\\bar{S}+K_m\\right)^2-4E_0\\bar{S}}\\right];\\quad \\frac{d\\bar{S}}{dt}=-\\frac{k_{cat}ES}{1+\\cdots}",
+      "plain": "S̄ = S+ES；ES = 0.5*[(E0+S̄+Km) - sqrt((E0+S̄+Km)^2 - 4*E0*S̄)]；v = kcat*ES",
+      "terms": {
+        "advantage": "在 E0 与 S0 同量级时仍有效；是二次结合方程（配体耗竭）的酶动力学版本",
+        "usage": "单分子/单细胞酶动力学、tight-binding 抑制剂（Morrison 方程同理）",
+        "note": "tQSSA 的成立条件比 sQSSA 更宽（一般要求 kcat 不极大、底物不极低），但仍需验证"
+      }
+    },
+    {
+      "name": "其他 QSSA 场景",
+      "latex": "\\text{受体平衡：}RL\\approx\\frac{R_0L}{K_d+L};\\quad \\text{门控快变量：}m\\approx m_{\\infty}(V);\\quad \\text{快激酶/磷酸酶：}\\frac{dX_p}{dt}\\approx0",
+      "plain": "受体快速平衡：RL≈R0*L/(Kd+L)；HH 门控快变量 m≈m∞(V)；磷酸化循环快速平衡",
+      "terms": {
+        "commonality": "被消去的变量必须是「快」的，且快慢时间尺度分离可量化",
+        "risk": "在振荡/双稳系统中，快变量可能不处于稳态（其慢流形有动态），QSSA 会错误抹掉极限环或改变分岔点",
+        "check": "用全机制与 QSSA 模型各仿真一次，比较被消去变量的实际导数量级与轨迹差异"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "QSSA 是「机制模型 → 可拟合低维模型」的桥梁：v1 中可用 michaelis_menten/hill 速率代替显式中间态，显著减少变量与刚性。",
+    "QSSA 模型的参数（Km、Vmax、kcat）与全机制参数是多对一映射；报告必须说明用了哪种近似及其条件，否则参数不可跨体系比较。",
+    "tight-binding、单分子、[E]0 与 Km 同量级时，sQSSA 会系统偏差，应使用 tQSSA/二次结合式。",
+    "QSSA 降维会改变可辨识性：从 MM 曲线只能得到 kcat 与 Km 的某些组合；kf、kr 单独不可辨识，除非有瞬态数据。",
+    "在时滞/级联系统里，QSSA 相当于引入隐式快动力学；若时滞来自多级级联，QSSA 处理得当可保留有效延迟，处理不当会抹掉振荡。"
+  ],
+  "how_to_apply": [
+    "识别快变量：比较各物种的弛豫速率（kf·E0、kr+kcat 等）与慢变量变化速率。",
+    "选择近似层次：sQSSA（E0<<S0+Km）→ tQSSA（更宽）→ 全机制（无法近似）。",
+    "在 spec 中实现：QSSA 用 michaelis_menten/hill/expression 速率；tQSSA 用 expression 速率的 sqrt 形式（sqrt 在白名单内）。",
+    "验证：同参数下比较全机制（mass_action）与降阶模型的轨迹与拟合指标；报告差异与 ε 数值。",
+    "拟合时报告表观参数（Km、Vmax）与机制参数（kf、kr、kcat）的映射关系，若两者都估则说明约束（Haldane 等）。"
+  ],
+  "pitfalls": [
+    "在 tight-binding 条件下仍用 sQSSA（常见于药物靶点、单分子实验），导致 Km 与 Ki 偏差数倍。",
+    "把 QSSA 当成「精确」模型，用其参数外推到 E0 高/底物低的条件。",
+    "对快变量初始条件随意设置：QSSA 模型的初值应满足代数稳态关系，否则出现伪瞬态。",
+    "在多时间尺度系统中只做一次 QSSA（有三级快慢时需分层处理）。",
+    "把 QSSA 用到振荡系统，抹掉快变量的相位/振幅，误判振荡条件。",
+    "忽略 QSSA 对噪声的影响：随机系统中消去快变量会改变 Fano 因子（需用慢变量有效噪声理论）。"
+  ],
+  "matlab_notes": [
+    "bma.spec 中 michaelis_menten 就是 sQSSA；expression 速率可写 tQSSA 的 sqrt 形式（sqrt 在表达式白名单内）。",
+    "验证 QSSA：分别用 mass_action 全机制与 MM 降阶模型 build+simulate，比较 outputs 与拟合；报告 ε 与误差。",
+    "若全机制刚性大，ode15s 可处理；降阶模型可显著加速拟合，但需在报告中说明近似层次。",
+    "参数映射：Vmax=kcat*E0、Km=(kr+kcat)/kf；Haldane：Keq=(Vmax_f Km_P)/(Vmax_r Km_S)。"
+  ],
+  "spec_mapping": "sQSSA → michaelis_menten 速率定律（vmax、km 参数）；tQSSA/更复杂代数关系 → expression 速率（可用 sqrt）；全机制 → mass_action 三步反应（E、S、ES、P 状态）。",
+  "diagnostics": [
+    "ε = E0/(S0+Km) 是否 <0.1（sQSSA 适用性）",
+    "全机制与降阶模型的轨迹/预测差异是否在数据噪声内",
+    "降阶模型拟合残差是否呈系统性偏差（提示 QSSA 失效）",
+    "被消去变量在降阶模型中的隐式轨迹是否始终有界且快速跟随"
+  ],
+  "keywords": ["准稳态近似", "QSSA", "Michaelis-Menten", "时间尺度分离", "模型降阶", "tQSSA", "quasi-steady-state", "model reduction"],
+  "tags": ["applied_mathematics", "model_reduction", "enzyme_kinetics"],
+  "related": ["enzyme_kinetics", "mass_action", "dimensional_analysis", "receptor_ligand_dose_response"],
+  "references": [
+    { "citation": "Briggs GE, Haldane JBS (1925). A note on the kinetics of enzyme action. Biochemical Journal 19(2):338-339.", "authors": ["Briggs GE", "Haldane JBS"], "year": 1925, "title": "A note on the kinetics of enzyme action", "journal": "Biochemical Journal", "volume": "19", "pages": "338-339", "doi": "10.1042/bj0190338" },
+    { "citation": "Segel LA, Slemrod M (1989). The quasi-steady-state assumption: a case study in perturbation. SIAM Review 31(3):446-477.", "authors": ["Segel LA", "Slemrod M"], "year": 1989, "title": "The quasi-steady-state assumption: a case study in perturbation", "journal": "SIAM Review", "volume": "31", "pages": "446-477" },
+    { "citation": "Borghans JAM, de Boer RJ, Segel LA (1996). Extending the quasi-steady state approximation by changing variables. Bulletin of Mathematical Biology 58(1):43-63.", "authors": ["Borghans JAM", "de Boer RJ", "Segel LA"], "year": 1996, "title": "Extending the quasi-steady state approximation by changing variables", "journal": "Bulletin of Mathematical Biology", "volume": "58", "pages": "43-63" },
+    { "citation": "Tzafriri AR (2003). Michaelis-Menten kinetics at high enzyme concentrations. Bulletin of Mathematical Biology 65(6):1111-1129.", "authors": ["Tzafriri AR"], "year": 2003, "title": "Michaelis-Menten kinetics at high enzyme concentrations", "journal": "Bulletin of Mathematical Biology", "volume": "65", "pages": "1111-1129", "note": "tQSSA 在 E0 与 S0 同量级时的有效性分析" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

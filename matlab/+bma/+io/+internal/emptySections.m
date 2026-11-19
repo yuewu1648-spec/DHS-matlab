@@ -1,0 +1,6 @@
+function s = emptySections()
+%EMPTYSECTIONS 返回字段约定一致的空章节 struct 数组。
+s = struct('id', {}, 'heading', {}, 'level', {}, ...
+    'char_start', {}, 'char_end', {}, 'text', {}, 'kind', {}, ...
+    'section_confidence', {});
+end

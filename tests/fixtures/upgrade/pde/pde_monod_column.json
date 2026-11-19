@@ -1,0 +1,142 @@
+{
+    "schema_version":  "bma.modelSpec.v1",
+    "name":  "pde_monod_column",
+    "title":  "Monod column",
+    "kind":  "pde",
+    "time":  {
+                 "unit":  "h",
+                 "start":  0,
+                 "end":  0.5,
+                 "n":  51
+             },
+    "variables":  [
+                      {
+                          "id":  "C",
+                          "name":  "glucose",
+                          "unit":  "mg/L",
+                          "initial":  {
+                                          "value":  25
+                                      }
+                      }
+                  ],
+    "pde":  {
+                "dim":  1,
+                "domain":  {
+                               "geometry":  "slab",
+                               "extent":  {
+                                              "value":  120,
+                                              "unit":  "um"
+                                          },
+                               "grid":  {
+                                            "type":  "uniform",
+                                            "n":  16
+                                        },
+                               "approximation":  "representative column"
+                           },
+                "diffusion":  [
+                                  {
+                                      "species":  "C",
+                                      "coeff":  "De"
+                                  }
+                              ],
+                "bc":  [
+                           {
+                               "face":  "x0",
+                               "type":  "neumann",
+                               "flux":  0
+                           },
+                           {
+                               "face":  "x1",
+                               "type":  "dirichlet",
+                               "value":  "Co"
+                           }
+                       ],
+                "discretization":  {
+                                       "scheme":  "finite_volume",
+                                       "order":  2
+                                   }
+            },
+    "parameters":  [
+                       {
+                           "id":  "De",
+                           "unit":  "um^2/s",
+                           "value":  {
+                                         "value":  360
+                                     }
+                       },
+                       {
+                           "id":  "Co",
+                           "unit":  "mg/L",
+                           "value":  {
+                                         "value":  25
+                                     }
+                       },
+                       {
+                           "id":  "mu_max",
+                           "unit":  "1/h",
+                           "value":  {
+                                         "value":  0.85
+                                     }
+                       },
+                       {
+                           "id":  "KM",
+                           "unit":  "mg/L",
+                           "value":  {
+                                         "value":  4.76
+                                     }
+                       },
+                       {
+                           "id":  "Yxs",
+                           "unit":  "1",
+                           "value":  {
+                                         "value":  0.4
+                                     }
+                       },
+                       {
+                           "id":  "rho",
+                           "unit":  "mg/L",
+                           "value":  {
+                                         "value":  10000
+                                     }
+                       }
+                   ],
+    "reactions":  [
+                      {
+                          "id":  "consume",
+                          "stoichiometry":  {
+                                                "C":  -1
+                                            },
+                          "rate":  {
+                                       "kind":  "expression",
+                                       "expression":  "mu_max*rho_i*C/((KM+C)*Yxs)"
+                                   }
+                      }
+                  ],
+    "outputs":  [
+                    {
+                        "id":  "C_1",
+                        "unit":  "mg/L",
+                        "expression":  "C[1]"
+                    },
+                    {
+                        "id":  "C_16",
+                        "unit":  "mg/L",
+                        "expression":  "C[16]"
+                    },
+                    {
+                        "id":  "mu_1",
+                        "unit":  "1/h",
+                        "expression":  "mu_max*C[1]/(KM+C[1])"
+                    },
+                    {
+                        "id":  "mu_16",
+                        "unit":  "1/h",
+                        "expression":  "mu_max*C[16]/(KM+C[16])"
+                    },
+                    {
+                        "id":  "mu_min_pct",
+                        "unit":  "1",
+                        "expression":  "100*(C[1]/(KM+C[1]))/(C[16]/(KM+C[16]))"
+                    }
+                ]
+}

@@ -1,0 +1,157 @@
+{
+  "id": "numerical_convergence_checklist",
+  "type": "principle",
+  "name": "数值收敛 ≠ 物理正确：建模自检清单",
+  "name_en": "Numerical convergence is not physical correctness",
+  "domain": "numerical_methods",
+  "scale": "tissue",
+  "model_class": "pde",
+  "keywords": ["convergence", "verification", "validation", "residual", "mesh convergence", "analytic limit", "conservation", "direction test", "收敛", "残差", "自检", "网格收敛", "解析对照", "方向检验", "守恒量"],
+  "tags": ["numerical", "convergence", "verification", "checklist", "residual", "self-check"],
+  "summary": "数值求解器返回 exitflag=1、残差 1e-16、曲线光滑，只能证明“代数方程被满足”，不能证明几何、源项、边界条件、单位或符号约定符合物理。本清单给出五类独立自检：无源/边界检验、算子零空间、守恒量、方向性检验、网格收敛与解析极限对照；并强制在写任何自写求解循环之前先做 A2 雅可比方向导数校验与 A3 方程残差验收。任何新建模实现（尤其自写 FEM/ODE 装配）在把结果写进报告之前都应逐条执行，并把证据路径记录到 run_dir/artifacts 或分析 JSON。",
+  "statement": "对数值模型 M 的解 u，若它满足离散方程 K(u)u=F(u)，仍可能存在物理错误。必须用与求解器无关的恒等式/极限/单调性/守恒量来交叉验证：源项确实被施加、边界条件确实生效、符号方向正确、网格足够细、结果在已知解析极限下收敛。更重要的是：在写任何 Newton/Picard/时间/参数循环之前，先验证 J 与 R 同源（A2），并只以方程残差而不是迭代步差验收（A3）。未通过自检的结果只能标为“数值解”，不能标为“模型预测”。",
+  "formulas": [
+    {
+      "name": "A2 雅可比方向导数校验（写循环前必做）",
+      "latex": "e_J=\\frac{\\|R(u+\\epsilon\\,du)-R(u)-\\epsilon J\\,du\\|}{\\|R(u+\\epsilon\\,du)\\|}",
+      "plain": "err = norm(R(u+eps*du) - R(u) - eps*J*du) / norm(R(u+eps*du))",
+      "terms": {
+        "eps": "1e-8*max(1,norm(u))；du=randn(n,1)，rng(0)",
+        "pass": "目标 <1e-8；1e-8~1e-5 必须换解析 J/中心差分/复数步复测；>1e-5 判失败",
+        "why": "J 与 R 不同源（漏乘单元权重、幅值因子、符号/化学计量）时，牛顿方向会极小或错误；此项成本极低，应最先执行"
+      }
+    },
+    {
+      "name": "A3 方程残差验收（不要用相邻迭代差）",
+      "latex": "r_\\mathrm{rel}=\\frac{\\|R(u)\\|}{\\max(\\|F\\|,\\|K\\|\\,\\|u_\\mathrm{ref}\\|,\\epsilon_\\mathrm{mach})}",
+      "plain": "r_rel = norm(R(u)) / max(norm(F), norm(K)*norm(u_ref), realmin)",
+      "terms": {
+        "u_ref": "边界值/初值/解析尺度，而不是随手取的一个浓度",
+        "clamp": "正性钳位/阈值截断后必须用 R(u_clamped) 重新计算，不能沿用钳位前残差",
+        "pass": "默认 r_rel <= 1e-6；残差不降/卡住时停止，不得继续参数扫描或拟合"
+      }
+    },
+    {
+      "name": "归一化残差（不要用 |r|/c_amb）",
+      "latex": "r_\\mathrm{rel}=\\frac{\\|K u-F\\|}{\\|K\\|\\,\\|u_\\mathrm{ref}\\|}",
+      "plain": "r_rel = norm(K*u-F) / (norm(K)*norm(u_ref))",
+      "terms": {
+        "u_ref": "边界值/初值/解析尺度，而不是随手取的一个浓度",
+        "why": "c_amb=0.2、K~1e-9 时，|r|/c_amb 会把 10% 误差显示成 1e-10"
+      }
+    },
+    {
+      "name": "解析极限：1-D 板扩散-反应",
+      "latex": "u(x)=u_\\mathrm{amb}-\\frac{R}{2D}(L^2-x^2)",
+      "plain": "u(x) = u_amb - R/(2D)*(L^2 - x^2)",
+      "terms": {
+        "geometry": "厚度 2L 的板，中心 x=0 零通量，表面 x=±L 固定 u_amb",
+        "usage": "先用它验证装配/边界/源项；通过后再做 2-D/3-D"
+      }
+    },
+    {
+      "name": "网格收敛阶",
+      "latex": "e(h)\\approx C h^p,\\qquad p=\\log_2\\frac{e(h)}{e(h/2)}",
+      "plain": "e(h) ~ C*h^p; p = log2(e(h)/e(h/2))",
+      "terms": {
+        "e": "与解析解或最细网格的误差（同一范数）",
+        "usage": "p 应接近方法的理论阶；p<1 或误差不降，先查几何/边界/源项，不要归因于“模型复杂”"
+      }
+    },
+    {
+      "name": "守恒量/总量检验",
+      "latex": "\\frac{d}{dt}\\int_\\Omega u\\,dV=\\int_\\Omega f\\,dV+\\int_{\\partial\\Omega}J\\cdot n\\,dS",
+      "plain": "d/dt ∫u dV = ∫f dV + ∫ J·n dS",
+      "terms": {
+        "check": "封闭系统无通量时，总量变化应等于源项积分；若不等，装配或边界有漏项"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "生物模型报告中的“拟合/仿真通过”必须区分三层：求解器收敛、数值自检通过、实验/文献验证通过。三层证据分别报告，不能互相替代。",
+    "方向性错误（源项符号、化学计量方向、坐标轴）最常产生“数值漂亮但物理相反”的结果；方向检验应作为任何新实现的第一道门。",
+    "网格/时间步收敛与解析极限对照是空间/刚性模型的最低证据；没有它们，不应把单次求解结果写成定量结论。",
+    "当自检失败时，先缩小到 1-D/0-D 解析可解问题，再逐项加回几何/非线性/边界；不要在错误结果上继续加功能。"
+  ],
+  "how_to_apply": [
+    "A2 预检：在写任何 Newton/Picard/时间/参数循环之前，先固定测试点 u、eps 与随机方向 du，回代 R(u+eps*du) 与 eps*J*du；err<1e-8 才进入循环；预检失败先修 J/权重/符号，不要写循环。",
+    "A3 验收：循环内只以归一化方程残差 r_rel 接受解；钳位/截断后重算 R；禁止用 ||u_new-u|| 或 |r|/c_amb 作为收敛证据。两项写入 artifacts/solver_preflight.json。",
+    "无源/边界检验：把源项设为 0、边界设为常数 u_amb，求解后检查所有节点 max|u-u_amb|；失败说明边界或坐标映射错。",
+    "算子零空间：纯扩散/无吸收时 norm(K*ones)/norm(K) 应接近 0；有吸收项时应为负定，不应出现正特征值。",
+    "反应体积/总量：对空间模型计算目标区域体积/面积并与解析值比较；对 ODE 计算守恒量 Z'*y 随时间的漂移。",
+    "方向检验：把最大源强/反应速率翻倍，监测点浓度必须按物理方向单调变化；若反向，查 f 符号、化学计量、坐标轴。",
+    "解析极限：先复现 1-D 板/球/0-D 稳态的闭式解，再逐步加回 2-D/3-D、非线性、时变项；记录每一步误差。",
+    "网格/时间步收敛：至少两档分辨率，报告监测点变化或收敛阶；误差不降时先查装配，不要盲目加密。",
+    "把自检脚本、输出 CSV/PNG、参数与网格信息写入 run_dir/artifacts，并在报告中引用具体数值（而不是“已收敛”）。"
+  ],
+  "pitfalls": [
+    "写求解循环前没做 A2：J 与 R 不同源（漏乘单元权重/幅值因子/符号），牛顿方向极小或错误，残差停在 O(1)。",
+    "用 ||u_new-u|| 很小当收敛：正性钳位/阈值截断后的点可能是不动点，方程根本没解对；必须用 r_rel 并钳位后重算。",
+    "把 solvepde/ode15s 的 exitflag 或残差当作物理正确性的证据。",
+    "用 |r|/c_amb 归一化残差，量级很小但相对误差巨大。",
+    "只做一次网格，未做收敛/解析对照，就把单点结果写成定量预测。",
+    "源项符号反了（消耗写成生产），但求解器仍“收敛”到非物理的高浓度。",
+    "自由边界/阈值开关使 Newton 在折点停滞，残差卡在 1e-2 被误读为“已收敛”。",
+    "坐标轴/厚度方向弄错，1-D 解析对照用错轴却仍“看起来差不多”。",
+    "accumarray 的 element-major/node-major 顺序用错（repmat vs repelem），装配矩阵看似正常但物理量错位。",
+    "把“数值上能跑”当成“模型可交付”；没有自检证据的结果不应进入报告主结论。"
+  ],
+  "matlab_notes": [
+    "A2 模板：eps=1e-8*max(1,norm(u)); rng(0); du=randn(n,1); r1=R(u+eps*du); err=norm(r1-R(u)-eps*J*du)/max(norm(r1),realmin); 目标 err<1e-8。",
+    "A3 模板：r_rel=norm(R(u))/max(norm(F),norm(K)*norm(u_ref),realmin); 钳位后重算 R；接受阈值 1e-6。",
+    "残差报告模板：fprintf('abs=%.3e rel=%.3e normK=%.3e\\n', norm(K*u-F), norm(K*u-F)/(norm(K)*norm(u_ref)), norm(K));",
+    "守恒漂移：对 ODE 用 Z'*Y，报告 max(abs(Z'*Y - Z'*Y(:,1)))/max(1,abs(Z'*Y(:,1)))。",
+    "方向检验：参数扫描 R_max*[1,2,4]，输出监测点稳态；用 diff(sign(...)) 或简单单调性断言。",
+    "网格收敛：同一物理问题用 h、h/2、h/4 三档，计算同一监测点值与解析解误差；用 log2(e1/e2) 估阶。",
+    "把自检结果写成 artifacts/numeric_selfcheck.json（检查项、阈值、实际值、通过/失败），报告构建会把它作为证据文件引用。",
+    "自检失败时不要继续拟合/调参；先修装配/边界/符号，否则拟合会把物理错误吸收进参数。"
+  ],
+  "spec_mapping": "本条目不改变 bma.modelSpec.v1；它是模型分析/验证阶段的质量门。对 ODE 模型，用 bma_model_analyze 的守恒律/稳态/Jacobian 与 bma_model_validate_fit 的残差诊断；对自写 FEM/PDE，把自检结果作为 bma_gate_waive 的 evidence 或 report extra_sections 的表格。",
+  "diagnostics": [
+    "A2：max err over 2-3 random du < 1e-8；1e-8~1e-5 复测/换解析 J；>1e-5 直接判失败。",
+    "A3：r_rel=||R(u)||/max(||F||,||K||*||u_ref||,realmin) <= 1e-6，且钳位后重算；不得用 ||u_new-u||。",
+    "无源检验 max|u-u_amb| < 1e-8·u_amb。",
+    "归一化残差 r_rel < 1e-6（并报告绝对残差）。",
+    "守恒量漂移 < 1e-6（相对初值）。",
+    "方向检验：源强翻倍后监测点按物理方向单调变化。",
+    "1-D/0-D 解析对照相对误差 < 5%。",
+    "网格/时间步加密后监测点变化 < 5% 或收敛阶接近理论值。",
+    "以上证据均有文件路径/数值，不只是“已检查”。"
+  ],
+  "references": [
+    {
+      "citation": "Roache PJ. Verification and Validation in Computational Science and Engineering. Hermosa Publishers, 1998.",
+      "authors": ["Roache PJ"],
+      "year": 1998,
+      "title": "Verification and Validation in Computational Science and Engineering",
+      "journal": "Hermosa Publishers",
+      "note": "数值验证（网格收敛/解析对照）与确认（实验对照）的经典区分。"
+    },
+    {
+      "citation": "Oberkampf WL, Roy CJ. Verification and Validation in Scientific Computing. Cambridge University Press, 2010.",
+      "authors": ["Oberkampf WL", "Roy CJ"],
+      "year": 2010,
+      "title": "Verification and Validation in Scientific Computing",
+      "journal": "Cambridge University Press",
+      "doi": "10.1017/CBO9780511760396",
+      "note": "代码验证、解验证与模型确认的流程；本清单的“收敛≠正确”框架来源。"
+    },
+    {
+      "citation": "Buchwald P. A local glucose-and oxygen concentration-based insulin secretion model for pancreatic islets. Theor Biol Med Model. 2009;6:5.",
+      "authors": ["Buchwald P"],
+      "year": 2009,
+      "title": "A local glucose-and oxygen concentration-based insulin secretion model for pancreatic islets",
+      "journal": "Theoretical Biology and Medical Modelling",
+      "volume": "6",
+      "pages": "5",
+      "doi": "10.1186/1742-4682-6-5",
+      "note": "触发本清单的复现对象；其球壳氧输运模型需要反应体积与方向检验。"
+    }
+  ],
+  "metadata": {
+    "author": "bma-kb",
+    "version": "0.8.2",
+    "design_ref": "issue I4/I8 (Buchwald 2009 session)",
+    "source_issue": "tests/fixtures/upgrade/AGENT_ISSUE_buchwald2009.md"
+  }
+}

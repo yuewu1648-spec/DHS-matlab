@@ -1,0 +1,176 @@
+{
+  "id": "sir_seir",
+  "type": "archetype",
+  "name": "传染病房室模型（SIR / SEIR 与 R0、下一代矩阵）",
+  "name_en": "Epidemic compartment models: SIR/SEIR, R0 and next-generation matrix",
+  "domain": "epidemiology",
+  "scale": "population",
+  "model_class": "ode",
+  "summary": "把人群按感染状态分室（易感 S、潜伏 E、感染 I、移除 R），感染率为双线性 βSI/N（频率依赖），康复为一阶 γI。基本再生数 R0=β/γ（频率依赖形式）= 单个感染者在全易感人群中造成的二代病例数，决定疫情是否暴发；SEIR 额外有潜伏期 1/σ，改变代际时间与峰形但不改变 R0 公式。R0 与有效再生数 Rt=R0·S/N、群体免疫阈值 1-1/R0、最终规模方程是报告必须给出的量。",
+  "when_to_use": [
+    "文献报告累计病例/死亡曲线、每日新增病例、感染率 β、康复率 γ、潜伏期、世代时间、R0 或 Rt",
+    "出现「SIR」「SEIR」「basic reproduction number」「herd immunity」「epidemic curve」「exponential growth phase」「final size」",
+    "评估隔离/疫苗接种/社交距离等干预（改变 β 或 S 的比例）",
+    "多地区/多年龄组数据（需分层/元种群扩展），或带症状/无症状分室",
+    "需要区分「感染率」与「报告率」，或从早期增长率反推 R0"
+  ],
+  "tags": ["流行病", "SIR", "SEIR", "R0", "群体免疫", "传染病", "epidemic"],
+  "keywords": ["传染病模型", "SIR", "SEIR", "基本再生数", "R0", "有效再生数", "群体免疫", "下一代矩阵", "感染率", "世代时间", "epidemic model", "basic reproduction number", "herd immunity", "next-generation matrix"],
+  "equations": [
+    {
+      "name": "SIR 模型",
+      "latex": "\\frac{dS}{dt}=-\\beta\\frac{SI}{N},\\qquad \\frac{dI}{dt}=\\beta\\frac{SI}{N}-\\gamma I,\\qquad \\frac{dR}{dt}=\\gamma I",
+      "plain": "dS/dt = -beta*S*I/N; dI/dt = beta*S*I/N - gamma*I; dR/dt = gamma*I",
+      "terms": {
+        "S_I_R": "易感、感染、移除（康复/死亡/隔离）人数（person），S+I+R=N 守恒",
+        "beta": "传播率（1/day）；频率依赖形式下感染率 βSI/N",
+        "gamma": "康复率（1/day）；平均感染期 1/γ",
+        "R0": "R0 = β/γ（S0≈N 时）；若采用密度依赖形式 βSI（无 /N），则 R0 = βN/γ"
+      }
+    },
+    {
+      "name": "SEIR 模型",
+      "latex": "\\frac{dS}{dt}=-\\beta\\frac{SI}{N},\\ \\frac{dE}{dt}=\\beta\\frac{SI}{N}-\\sigma E,\\ \\frac{dI}{dt}=\\sigma E-\\gamma I,\\ \\frac{dR}{dt}=\\gamma I",
+      "plain": "dS/dt=-beta*S*I/N; dE/dt=beta*S*I/N-sigma*E; dI/dt=sigma*E-gamma*I; dR/dt=gamma*I",
+      "terms": {
+        "E": "潜伏期（已感染未传染或低传染）人数",
+        "sigma": "潜伏→感染转化率（1/day）；平均潜伏期 1/σ",
+        "R0": "R0 = β/γ（与 SEIR 无关，只要 β 定义为感染者人均传播率）",
+        "generation_time": "近似 T_gen ≈ 1/σ + 1/γ（潜伏+传染期），决定疫情增长速度与峰形",
+        "peak": "SEIR 的潜伏期使爆发峰推迟、峰更平；R0 相同但增长更慢"
+      }
+    },
+    {
+      "name": "下一代矩阵（next-generation matrix）",
+      "latex": "R_0=\\rho\\left(FV^{-1}\\right),\\qquad \\text{SEIR: } F=\\begin{pmatrix}0 & \\beta S_0/N\\\\ 0 & 0\\end{pmatrix},\\ V=\\begin{pmatrix}\\sigma & 0\\\\ -\\sigma & \\gamma\\end{pmatrix}\\Rightarrow R_0=\\frac{\\beta S_0}{N\\gamma}",
+      "plain": "R0 = rho(F*V^-1)；SEIR 中按 [E,I] 排序：F=[[0,βS0/N],[0,0]]，V=[[σ,0],[-σ,γ]]，解得 R0=βS0/(Nγ)",
+      "terms": {
+        "F": "新感染矩阵（单位时间由感染状态产生的新感染）",
+        "V": "转移矩阵（离开感染状态的速率：潜伏转感染、康复）",
+        "rho": "谱半径（最大特征值）",
+        "usage": "多室/分层/媒介传播（如疟疾、登革热）时 R0 不能直接用 β/γ，必须用下一代矩阵；v1 中可用符号/数值计算"
+      }
+    },
+    {
+      "name": "有效再生数与群体免疫阈值",
+      "latex": "R_t=R_0\\frac{S(t)}{N}=R_0\\left(1-p\\right),\\qquad H_{c}=1-\\frac{1}{R_0}",
+      "plain": "Rt = R0*S/N = R0*(1-p); 群体免疫阈值 Hc = 1 - 1/R0",
+      "terms": {
+        "p": "已免疫（康复或接种）比例",
+        "rt_below_one": "疫情消退条件；干预使 Rt<1 才能压平曲线",
+        "Hc": "所需免疫比例：R0=2 → 50%；R0=3 → 67%；R0=5 → 80%；R0=12（麻疹）→ 92%",
+        "note": "疫苗效果/不完全免疫需乘疫苗有效力，此时 Hc 更高"
+      }
+    },
+    {
+      "name": "早期指数增长与 R0 反推",
+      "latex": "I(t)\\approx I(0)e^{\\lambda t},\\qquad \\lambda=\\beta-\\gamma=\\gamma\\left(R_0-1\\right) \\Rightarrow R_0=1+\\frac{\\lambda}{\\gamma}\\approx 1+\\lambda T_{gen}",
+      "plain": "I(t) ≈ I(0)e^{λt}; λ = β-γ = γ(R0-1) → R0 = 1 + λ/γ ≈ 1 + λ*T_gen",
+      "terms": {
+        "lambda": "指数增长率（1/day），从早期对数线性段估计",
+        "usage": "只有病例曲线、缺少 γ 时：用文献/世代时间估计 T_gen ≈ 1/γ 即可反推 R0",
+        "note": "λ 对报告延迟、检测能力变化、干预非常敏感；早期数据点少，CI 应宽"
+      }
+    },
+    {
+      "name": "最终规模方程（SIR）",
+      "latex": "R_\\infty=N\\left(1-e^{-R_0R_\\infty/N}\\right)\\quad\\text{（等价于 } \\ln\\frac{S_0}{S_\\infty}=R_0\\left(1-\\frac{S_\\infty}{N}\\right)\\text{）}",
+      "plain": "R_inf = N*(1 - exp(-R0*R_inf/N))",
+      "terms": {
+        "usage": "无干预、无人口动力学时预测最终累计感染比例；可用于疫情结束后校验 R0",
+        "implication": "即使 R0=2，最终感染比例也约 80%（而非 50%）；最终规模 >> 群体免疫阈值"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "seir_epidemic",
+    "title": "SEIR 传染病模型（频率依赖传播 + 潜伏期）",
+    "description": "易感者 S 被感染者 I 以 βSI/N 感染进入潜伏 E，E 以 σ 转为感染 I，I 以 γ 康复/移除 R。用于疫情曲线、R0/Rt 估计与干预情景对比。",
+    "kind": "ode",
+    "time": { "unit": "day", "start": 0, "end": 300, "n": 3001 },
+    "variables": [
+      { "id": "S", "name": "易感者", "unit": "person", "initial": { "value": 990000 } },
+      { "id": "E", "name": "潜伏者", "unit": "person", "initial": { "value": 0 } },
+      { "id": "I", "name": "感染者", "unit": "person", "initial": { "value": 1000 } },
+      { "id": "R", "name": "移除者（康复/死亡/隔离）", "unit": "person", "initial": { "value": 0 } }
+    ],
+    "parameters": [
+      { "id": "beta", "name": "传播率（人均）", "unit": "1/day", "value": { "value": 0.6 }, "estimate": true, "bounds": [0.001, 10] },
+      { "id": "sigma", "name": "潜伏→感染转化率", "unit": "1/day", "value": { "value": 0.25 }, "estimate": true, "bounds": [0.01, 5] },
+      { "id": "gamma", "name": "康复/移除速率", "unit": "1/day", "value": { "value": 0.2 }, "estimate": true, "bounds": [0.01, 5] },
+      { "id": "N", "name": "总人口", "unit": "person", "value": { "value": 1000000 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "infection", "name": "感染（频率依赖）", "stoichiometry": { "S": -1, "E": 1 },
+        "rate": { "kind": "expression", "expression": "beta*S*I/N" } },
+      { "id": "progression", "name": "潜伏转感染", "stoichiometry": { "E": -1, "I": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "sigma" }, "species": { "E": 1 } } },
+      { "id": "recovery", "name": "康复/移除", "stoichiometry": { "I": -1, "R": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma" }, "species": { "I": 1 } } }
+    ],
+    "outputs": [
+      { "id": "I_obs", "name": "现有感染者", "unit": "person", "expression": "I" },
+      { "id": "E_obs", "name": "潜伏者", "unit": "person", "expression": "E" },
+      { "id": "R_obs", "name": "累计移除", "unit": "person", "expression": "R" },
+      { "id": "Rt_obs", "name": "有效再生数", "unit": "1", "expression": "beta*S/(gamma*N)" }
+    ],
+    "assumptions": [
+      "均匀混合人口（频率依赖传播），无出生/死亡/迁移与人口增长",
+      "感染后获得永久免疫；无再感染、无变异、无年龄/空间结构",
+      "参数恒定（无行为变化/干预）；若需干预，把 beta 改为随时间变化的表达式或分段常数",
+      "所有感染者最终被报告或识别（若报告率 ρ<1，表观参数需相应缩放）"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。R0 = beta/gamma = 3.0；代际时间 ≈ 1/sigma + 1/gamma = 9 day。" }
+  },
+  "spec_notes": [
+    "SIR 版本：删掉 E 与 progression 反应，把 infection 的 stoich 改为 {S:-1, I:1}，initial I 直接给感染者；其余不变（spec/examples/sir.json 也可直接复用）。",
+    "报告率/漏诊：若只有报告病例 C=ρI，则拟合时应把 output 设为 I 的线性缩放（加一个参数 ρ，expression 只能给 output 用 \"rho*I\" 且 rho 需作为 parameter）；否则 β 与 γ 会被 ρ 同乘缩放（R0 不变但 β、γ 绝对值不可信）。",
+    "干预情景：用 simulate_cases 做参数覆盖（如 beta 降 50%、疫苗覆盖 p 把 S0 降为 (1-p)N），比较峰值与累计感染；报告 Rt(t) 曲线。",
+    "随机早期传播：初始感染数小时确定性模型不适用，用分支过程估计灭绝概率与爆发概率（R0<1 时必然灭绝；R0>1 时爆发概率约 1-1/R0）。",
+    "分层/多群体（年龄、地区、媒介）：每个群体一组 S/E/I/R 状态 + 接触矩阵 β_ij；R0 用下一代矩阵谱半径，报告需给出矩阵维度和假设。",
+    "年龄结构/潜伏期分布非指数时：SEIR 的 1/σ 是均值近似；更精确需 Erlang 分室（E1..Ek）或积分微分方程（v1 用多级 E 近似）。"
+  ],
+  "variables": [
+    { "id": "S", "name": "易感者", "unit": "person", "typical_range": [0, 1e9], "notes": "总人口可为城市到全球" },
+    { "id": "E", "name": "潜伏者", "unit": "person", "typical_range": [0, 1e9], "notes": "" },
+    { "id": "I", "name": "感染者", "unit": "person", "typical_range": [0, 1e9], "notes": "报告病例通常只是其中一部分" },
+    { "id": "R", "name": "移除者", "unit": "person", "typical_range": [0, 1e9], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "beta", "symbol": "\\beta", "unit": "1/day", "typical_range": [0.01, 5], "notes": "由 R0 与 γ 决定：β = R0*γ；季节性流感 γ≈1/4，R0≈1.3-1.6 → β≈0.3-0.4/day" },
+    { "id": "sigma", "symbol": "\\sigma", "unit": "1/day", "typical_range": [0.01, 5], "notes": "潜伏期 2-10 天 → 0.1-0.5/day" },
+    { "id": "gamma", "symbol": "\\gamma", "unit": "1/day", "typical_range": [0.01, 5], "notes": "感染期 2-10 天 → 0.1-0.5/day；流感约 1/4 day^-1" },
+    { "id": "N", "symbol": "N", "unit": "person", "typical_range": [100, 1e10], "notes": "总人口；频率依赖形式下 N 与 S 同比例缩放，R0 不依赖 N" }
+  ],
+  "assumptions": [
+    "均匀混合：每个人与任意他人接触概率相同（无网络/空间结构）",
+    "参数恒定：无行为改变、无干预、无病毒变异",
+    "永久免疫：无再感染，疫苗完全有效",
+    "连续确定性：大 population 极限，忽略随机灭绝与超级传播事件"
+  ],
+  "evidence_cues": [
+    "「basic reproduction number R0 = 2.5」「effective reproduction number Rt」「herd immunity threshold」",
+    "「SIR」「SEIR」「compartmental model」「epidemic curve」「cumulative incidence」",
+    "「 incubation period」「latent period」「infectious period」「serial interval」「generation time」",
+    "「exponential growth phase」「doubling time」「growth rate λ」",
+    "「vaccination coverage」「lockdown」「social distancing」「case fatality ratio」",
+    "「final size」「attack rate」「wave」→ 多波需时变 β 或分室扩展"
+  ],
+  "fitting_notes": "1) 首选累计病例/每日新增数据，拟合前明确报告率与报告延迟；对新增病例可用负二项观测模型（过分散）；2) 早期阶段用 log(病例) vs 时间线性回归估 λ，再用 R0=1+λ/γ（或 1+λT_gen）反推；3) 全曲线拟合时 β、γ、σ、初始 I0、报告率 ρ 常强相关：固定可独立获得的值（如 γ 来自临床病程研究、σ 来自流行病学调查），减少自由参数；4) 干预分析需要时变 β（分段常数/逻辑斯蒂下降），并报告断点选择依据；5) 用 simulate_cases 做情景对比（不同 R0、疫苗覆盖率、干预时点），报告峰值时间/峰值/累计感染；6) 拟合优度用残差自相关检查（疫情数据强自相关），CI 需用 bootstrap 或剖面似然；7) 若数据只有死亡数，需额外 CFR 与感染-死亡延迟，参数可辨识性更差。",
+  "identifiability_notes": "1) β 与 γ 只通过 R0=β/γ 和增长率 λ=β-γ 共同确定；若只有早期增长率，必须外部给定代际时间/γ 才能定 R0；2) 报告率 ρ 与 I(0) 与 β 混淆（相乘缩放）：只有相对曲线时，绝对 β、γ 不可辨识，但 R0 在频率依赖形式下可辨识；3) 潜伏期 σ 主要影响峰形与时滞，对早期增长率影响小，需要峰值附近数据才能辨识；4) S0 与 N 只在频率依赖形式中通过 S/N 出现，绝对人口规模不进入 R0；5) 时变 β 与模型结构误差混淆：干预效果估计依赖干预时间假设，需敏感性分析；6) 最终规模主要约束 R0，若疫情未结束则 R∞ 不可观测；7) 随机模型的早期灭绝概率不能从确定性 R0 推出，需要分支过程参数。",
+  "references": [
+    { "citation": "Kermack WO, McKendrick AG (1927). A contribution to the mathematical theory of epidemics. Proceedings of the Royal Society A 115(772):700-721.", "authors": ["Kermack WO", "McKendrick AG"], "year": 1927, "title": "A contribution to the mathematical theory of epidemics", "journal": "Proceedings of the Royal Society A", "volume": "115", "pages": "700-721", "doi": "10.1098/rspa.1927.0118" },
+    { "citation": "Anderson RM, May RM (1991). Infectious Diseases of Humans: Dynamics and Control. Oxford University Press.", "authors": ["Anderson RM", "May RM"], "year": 1991, "title": "Infectious Diseases of Humans: Dynamics and Control", "journal": "Oxford University Press", "note": "房室模型、R0、群体免疫与控制的经典教材" },
+    { "citation": "Diekmann O, Heesterbeek JAP, Metz JAJ (1990). On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations. Journal of Mathematical Biology 28(4):365-382.", "authors": ["Diekmann O", "Heesterbeek JAP", "Metz JAJ"], "year": 1990, "title": "On the definition and the computation of the basic reproduction ratio R0 in models for infectious diseases in heterogeneous populations", "journal": "Journal of Mathematical Biology", "volume": "28", "pages": "365-382" },
+    { "citation": "van den Driessche P, Watmough J (2002). Reproduction numbers and sub-threshold endemic equilibria for compartmental models of disease transmission. Mathematical Biosciences 180(1-2):29-48.", "authors": ["van den Driessche P", "Watmough J"], "year": 2002, "title": "Reproduction numbers and sub-threshold endemic equilibria for compartmental models of disease transmission", "journal": "Mathematical Biosciences", "volume": "180", "pages": "29-48" },
+    { "citation": "Heesterbeek JAP, Dietz K (1996). The concept of R0 in epidemic theory. Statistica Neerlandica 50(1):89-110.", "authors": ["Heesterbeek JAP", "Dietz K"], "year": 1996, "title": "The concept of R0 in epidemic theory", "journal": "Statistica Neerlandica", "volume": "50", "pages": "89-110" }
+  ],
+  "related": ["population_dynamics", "pharmacokinetics", "chemotaxis"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9",
+    "sibling_example": "spec/examples/sir.json（SIR 三室版本）"
+  }
+}

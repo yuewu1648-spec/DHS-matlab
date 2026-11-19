@@ -1,0 +1,13 @@
+# Runtime artifacts
+.bma/
+.tmp/
+.qa/
+models/
+figures/
+tests/e2e/artifacts/
+bridge/node_modules/
+node_modules/
+*.asv
+*.m~
+Thumbs.db
+.DS_Store

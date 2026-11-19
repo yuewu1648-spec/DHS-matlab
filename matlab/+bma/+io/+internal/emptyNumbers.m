@@ -1,0 +1,6 @@
+function s = emptyNumbers()
+%EMPTYNUMBERS 返回字段约定一致的空数字 struct 数组。
+s = struct('value', {}, 'unit', {}, 'unit_raw', {}, 'symbol', {}, ...
+    'context', {}, 'section_id', {}, 'section_heading', {}, ...
+    'char_start', {}, 'quote', {}, 'is_range', {}, 'range', {}, 'sentence_id', {});
+end

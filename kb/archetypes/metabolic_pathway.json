@@ -1,0 +1,177 @@
+{
+  "id": "metabolic_pathway",
+  "type": "archetype",
+  "name": "代谢通路（通量守恒、化学计量与通量控制）",
+  "name_en": "Metabolic pathway: flux conservation, stoichiometry and control",
+  "domain": "metabolism",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "把代谢通路写成「化学计量矩阵 S × 反应通量 v」的 ODE：dX/dt = S·v。线性通路的稳态要求各步通量相等（J=v1=v2=...），保守基团（ATP/ADP、NAD/NADH、碳骨架）给出守恒量，可用来降维与检查模型一致性。通量大小的控制分布由代谢控制分析（MCA）描述：在无反馈的线性通路中，通量控制系数之和为 1，限速步并非固定标签而是由 Vmax/Km 与环境条件决定。",
+  "when_to_use": [
+    "文献报告代谢物浓度时间序列、摄取/分泌速率、同位素（13C/14C）通量、或酶活/表达变化对通量的影响",
+    "出现「glycolysis」「TCA cycle」「pentose phosphate pathway」「rate-limiting step」「flux control」「metabolic control analysis (MCA)」",
+    "需要检查通量守恒、碳/氮平衡、氧化还原当量平衡（NADH/NADPH）或 ATP 产量",
+    "用酶抑制剂/基因敲除/过表达研究某通路的通量变化与限速步",
+    "代谢组学 + 通量组学联合建模；或与 FBA（约束模型）对照的动力学模型"
+  ],
+  "tags": ["代谢", "通量", "化学计量", "守恒", "MCA", "限速步", "metabolism"],
+  "keywords": ["代谢通路", "通量守恒", "化学计量矩阵", "守恒量", "代谢控制分析", "通量控制系数", "限速步", "糖酵解", "三羧酸循环", "metabolic pathway", "flux", "stoichiometry", "metabolic control analysis", "rate-limiting step"],
+  "equations": [
+    {
+      "name": "通路 ODE（化学计量形式）",
+      "latex": "\\frac{d\\mathbf{X}}{dt}=\\mathbf{S}\\,\\mathbf{v}(\\mathbf{X},\\mathbf{p}),\\qquad S_{ij}=\\text{反应 }j\\text{ 对物种 }i\\text{ 的化学计量系数}",
+      "plain": "dX/dt = S*v; S_ij = 反应 j 对物种 i 的化学计量系数（消耗为负、生成为正）",
+      "terms": {
+        "X": "代谢物浓度向量（uM）",
+        "v": "反应通量向量（uM/min）；本例用 Michaelis-Menten 形式",
+        "S": "化学计量矩阵（m×n）；bma.spec 的 reactions[].stoichiometry 即按列写入",
+        "conserved_quantity": "S 的左零空间向量 l（l^T S = 0）给出守恒量 l^T X = const；可用 bma.model.analyze 自动求"
+      }
+    },
+    {
+      "name": "线性通路与稳态通量守恒",
+      "latex": "\\frac{dX_1}{dt}=v_{in}-v_1,\\ \\frac{dX_2}{dt}=v_1-v_2,\\ \\frac{dX_3}{dt}=v_2-v_{out};\\qquad \\text{steady state: } v_{in}=v_1=v_2=v_{out}=J",
+      "plain": "dX1/dt = v_in - v1; dX2/dt = v1 - v2; dX3/dt = v2 - v_out; 稳态时 v_in = v1 = v2 = v_out = J",
+      "terms": {
+        "J": "稳态通量（uM/min），由最慢/最受限步骤与需求共同决定，不是单一酶的固定属性",
+        "note": "稳态浓度只约束通量相等，不约束通量绝对值；绝对通量需外部测量（摄取率、同位素标记、分泌率）"
+      }
+    },
+    {
+      "name": "米氏通量-浓度关系",
+      "latex": "v_i=\\frac{V_{max,i}\\,X_i}{K_{m,i}+X_i}",
+      "plain": "v_i = Vmax_i*X_i/(Km_i+X_i)",
+      "terms": {
+        "Vmax": "酶容量（uM/min）= kcat*[E]；受表达量调控",
+        "Km": "半饱和浓度（uM）；Km << X 时近似零级（酶饱和），Km >> X 时近似一级",
+        "linearization": "在生理浓度附近可用 v_i ≈ k_i X_i 近似，得到线性通路解析解与控制系数"
+      }
+    },
+    {
+      "name": "通量控制系数与加和定理（MCA）",
+      "latex": "C^{J}_{E_i}=\\frac{\\partial \\ln J}{\\partial \\ln E_i},\\qquad \\sum_i C^{J}_{E_i}=1;\\qquad C^{X_k}_{E_i}=\\frac{\\partial \\ln X_k}{\\partial \\ln E_i},\\ \\sum_i C^{X_k}_{E_i}=0",
+      "plain": "C^J_Ei = d lnJ / d lnEi; 通量控制系数之和 = 1；浓度控制系数对同一代谢物之和 = 0",
+      "terms": {
+        "interpretation": "C=1 表示该酶完全控制通量（限速步）；C≈0 表示无控制；多酶共同控制时各 C 在 0-1 之间",
+        "linear_pathway": "若所有 v_i = k_i X_i 且 v_in 固定，解析可得 C^J_{E_i}=1/n（n 为步数），即控制均分",
+        "application": "用酶活滴定/过表达实验估计 C：测 J 随 [E] 的相对变化",
+        "note": "加和定理只在通量稳态、无分支/无外部通量约束的简单情形成立；分支通路需通量分配系数"
+      }
+    },
+    {
+      "name": "守恒量（示例：腺苷酸池/碳骨架）",
+      "latex": "X_{ATP}+X_{ADP}+X_{AMP}=A_{tot}=const,\\qquad X_{NAD}+X_{NADH}=N_{tot}=const",
+      "plain": "ATP+ADP+AMP = Atot（常数）；NAD+NADH = Ntot（常数）",
+      "terms": {
+        "role": "把 3 个变量降为 2 个自由度；帮助发现模型不一致（若拟合出的守恒量漂移，说明机制缺失或测量误差）",
+        "in_spec": "不需要特殊语法：只要化学计量满足守恒，ODE 会自动保持；analyze 会报告守恒律",
+        "check": "不同初始条件应沿同一守恒面演化；拟合时可固定守恒总量减少参数"
+      }
+    },
+    {
+      "name": "通量平衡（约束/FBA 视角）",
+      "latex": "\\mathbf{S}\\,\\mathbf{v}=0,\\quad \\mathbf{v}_{min}\\le \\mathbf{v}\\le \\mathbf{v}_{max},\\quad \\max\\ \\mathbf{c}^{T}\\mathbf{v}",
+      "plain": "S*v = 0（稳态质量平衡）; v_min <= v <= v_max; max c^T v（目标函数）",
+      "terms": {
+        "usage": "不需要动力学参数即可限定可行通量空间；用于与动力学模型对照、判断生理可行性",
+        "v1_impl": "spec 仍写 ODE 动力学；FBA 结果可作为参数初值/约束写入 metadata 并在报告中说明",
+        "note": "FBA 不预测浓度与瞬态；动力学模型才可解释时间序列与调控"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "linear_metabolic_pathway",
+    "title": "线性三代谢物通路（摄取→己糖激酶→异构酶→排出）",
+    "description": "底物 G 以恒定速率输入，经两步 Michaelis-Menten 酶反应生成中间代谢物 G6P、F6P，F6P 以一级速率排出/消耗。用于通量守恒、稳态与控制系数分析。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 120, "n": 1201 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "G", "name": "底物（葡萄糖）", "unit": "uM", "initial": { "value": 500 } },
+      { "id": "G6P", "name": "葡萄糖-6-磷酸", "unit": "uM", "initial": { "value": 20 } },
+      { "id": "F6P", "name": "果糖-6-磷酸", "unit": "uM", "initial": { "value": 10 } }
+    ],
+    "parameters": [
+      { "id": "v_in", "name": "底物输入通量", "unit": "uM/min", "value": { "value": 5.0 }, "estimate": true, "bounds": [1e-06, 1000] },
+      { "id": "V1", "name": "己糖激酶最大速率", "unit": "uM/min", "value": { "value": 20.0 }, "estimate": true, "bounds": [1e-06, 1000] },
+      { "id": "K1", "name": "己糖激酶 Km（对 G）", "unit": "uM", "value": { "value": 100.0 }, "estimate": true, "bounds": [0.001, 100000] },
+      { "id": "V2", "name": "磷酸己糖异构酶最大速率", "unit": "uM/min", "value": { "value": 30.0 }, "estimate": true, "bounds": [1e-06, 1000] },
+      { "id": "K2", "name": "异构酶 Km（对 G6P）", "unit": "uM", "value": { "value": 50.0 }, "estimate": true, "bounds": [0.001, 100000] },
+      { "id": "k_out", "name": "F6P 排出/下游消耗速率", "unit": "1/min", "value": { "value": 0.5 }, "estimate": true, "bounds": [1e-06, 100] }
+    ],
+    "reactions": [
+      { "id": "uptake", "name": "底物摄取", "stoichiometry": { "G": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "v_in" } } },
+      { "id": "hexokinase", "name": "己糖激酶（G→G6P）", "stoichiometry": { "G": -1, "G6P": 1 },
+        "rate": { "kind": "michaelis_menten", "parameters": { "vmax": "V1", "km": "K1" }, "species": { "substrate": "G" } } },
+      { "id": "isomerase", "name": "磷酸己糖异构酶（G6P→F6P）", "stoichiometry": { "G6P": -1, "F6P": 1 },
+        "rate": { "kind": "michaelis_menten", "parameters": { "vmax": "V2", "km": "K2" }, "species": { "substrate": "G6P" } } },
+      { "id": "downstream", "name": "F6P 下游排出", "stoichiometry": { "F6P": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "k_out" }, "species": { "F6P": 1 } } }
+    ],
+    "outputs": [
+      { "id": "G_obs", "name": "底物浓度", "unit": "uM", "expression": "G" },
+      { "id": "G6P_obs", "name": "G6P 浓度", "unit": "uM", "expression": "G6P" },
+      { "id": "F6P_obs", "name": "F6P 浓度", "unit": "uM", "expression": "F6P" },
+      { "id": "J_hex", "name": "己糖激酶通量", "unit": "uM/min", "expression": "V1*G/(K1+G)" }
+    ],
+    "assumptions": [
+      "单室充分混合（胞内）；忽略区室化与转运延迟",
+      "各酶遵循 Michaelis-Menten 稳态动力学，无别构调控、无产物抑制",
+      "输入通量恒定（代表上游供给/转运），下游以一级过程汇出",
+      "无分支、无反馈；代谢物不参与其他反应"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；分支/反馈版本需扩增反应与参数。" }
+  },
+  "spec_notes": [
+    "稳态通量检查：仿真到 120 min 后若 G、G6P、F6P 达稳态，应有 v_in = V1*G/(K1+G) = V2*G6P/(K2+G6P) = k_out*F6P；可用 outputs 输出这三个通量对照，也可让 analyze 检查。",
+    "通量控制分析：分别对 V1、V2、k_out 做 ±10% 扰动（simulate_cases），记录稳态 J 的相对变化，估计 C^J；对本线性通路，控制分布在两步酶与排出之间。",
+    "分支通路（如糖酵解→磷酸戊糖途径）：在 G6P 处加一个分支反应，守恒关系变为通量分配；MCA 需用通量分配系数，加和定理变成子集加和。",
+    "别构调控（如 PFK 受 ATP/AMP 调节）：用 expression 速率乘上 Hill 因子；反馈抑制会导致更复杂的稳定性（可能振荡）。",
+    "酶容量与表达量：若文献给的是酶表达 fold-change 而非 Vmax，需要先做酶活-表达量标定，或直接把 Vmax 作为表达量的线性函数并用比例参数。",
+    "代谢组数据通常只有相对强度（a.u.）或 log2 fold-change：拟合前需内部标定/归一化；绝对浓度与通量需 13C 或摄取/分泌速率支撑。"
+  ],
+  "variables": [
+    { "id": "G", "name": "底物", "unit": "uM", "typical_range": [1, 100000], "notes": "培养基葡萄糖可达 5-25 mM = 5000-25000 uM；胞内游离葡萄糖约 10-1000 uM" },
+    { "id": "G6P", "name": "G6P", "unit": "uM", "typical_range": [0.1, 5000], "notes": "糖酵解中间物常 10-1000 uM" },
+    { "id": "F6P", "name": "F6P", "unit": "uM", "typical_range": [0.1, 5000], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "v_in", "symbol": "v_{in}", "unit": "uM/min", "typical_range": [1e-06, 1000], "notes": "摄取通量，常 0.1-20 uM/min（细胞水平）" },
+    { "id": "V1", "symbol": "V_{max,1}", "unit": "uM/min", "typical_range": [1e-06, 1000], "notes": "酶容量 = kcat*[E]；糖酵解酶容量常 1-100 uM/min" },
+    { "id": "K1", "symbol": "K_{m,1}", "unit": "uM", "typical_range": [0.001, 100000], "notes": "己糖激酶 Km ~ 50-200 uM" },
+    { "id": "V2", "symbol": "V_{max,2}", "unit": "uM/min", "typical_range": [1e-06, 1000], "notes": "异构酶容量通常远大于己糖激酶（非限速）" },
+    { "id": "K2", "symbol": "K_{m,2}", "unit": "uM", "typical_range": [0.001, 100000], "notes": "磷酸己糖异构酶 Km ~ 50-500 uM" },
+    { "id": "k_out", "symbol": "k_{out}", "unit": "1/min", "typical_range": [1e-06, 100], "notes": "下游消耗/排出的一级速率；控制下游碳流分配" }
+  ],
+  "assumptions": [
+    "充分混合、无区室化/通道效应（substrate channeling 需单独机制）",
+    "酶动力学满足 MM/QSSA；酶浓度恒定（无表达调控或已固定）",
+    "无变构调节、无共价修饰（磷酸化等）调控",
+    "通路线性、无分支与循环"
+  ],
+  "evidence_cues": [
+    "「glycolysis」「TCA cycle」「pentose phosphate pathway」「metabolic flux」",
+    "「rate-limiting step」「flux control coefficient」「metabolic control analysis」",
+    "「13C flux analysis」「uptake/secretion rate」「extracellular acidification rate」",
+    "「metabolite pool size」「ATP/ADP ratio」「NADH/NAD+」→ 守恒量检查",
+    "「enzyme overexpression/inhibition changes flux」→ 控制系数估计",
+    "「steady-state flux」「mass balance」「stoichiometric matrix」→ 约束/化学计量分析"
+  ],
+  "fitting_notes": "1) 拟合前先明确可观测：代谢物浓度（uM 或相对）、通量（摄取/分泌/13C）、或仅 log2 fold-change；不同类型数据权重不同；2) 若只有稳态浓度数据，只能约束 Vmax/Km 组合，需扰动实验（酶滴定、抑制剂、底物阶跃）才能确定绝对通量；3) 用稳态方程减少未知数：例如给定 v_in 与稳态 J，可解出 k_out = J/F6P；4) 动态数据（底物耗尽/添加）对 Vmax/Km 更有信息量，但要注意采样与淬灭误差；5) 酶活数据可直接固定 Vmax（若测得 kcat 与酶量），否则作为估计参数并给宽 bounds；6) 检查守恒律漂移（如腺苷酸池）作为模型诊断；7) 多起点 + log 参数化；8) 与 FBA 的可行通量空间对照，剔除生理不可行参数组合。",
+  "identifiability_notes": "1) 稳态浓度+固定输入时，Vmax/Km 仅以组合进入通量关系，绝对 Vmax 与 Km 不可分离；需要动态或酶滴定数据；2) 通路中若某步远未饱和（v≈Vmax），其 Km 不可辨识；若某步近似一级（Km>>X），则 Vmax/Km 只以比值出现；3) 绝对通量 J 需外部测量，否则只能得到相对通量；4) 通量控制系数在稳态附近可辨识，但远离稳态（大扰动）时会变化（非线性），需说明局部性；5) 分支通路中通量分配比与各分支容量存在多解，需额外的分支产物测量；6) 区室化（胞质/线粒体）缺失会使表观参数偏离文献值，外推受限。",
+  "references": [
+    { "citation": "Kacser H, Burns JA (1973). The control of flux. Symposia of the Society for Experimental Biology 27:65-104.", "authors": ["Kacser H", "Burns JA"], "year": 1973, "title": "The control of flux", "journal": "Symposia of the Society for Experimental Biology", "volume": "27", "pages": "65-104" },
+    { "citation": "Heinrich R, Rapoport TA (1974). A linear steady-state treatment of enzymatic chains: general properties, control and effector strength. European Journal of Biochemistry 42(1):89-95.", "authors": ["Heinrich R", "Rapoport TA"], "year": 1974, "title": "A linear steady-state treatment of enzymatic chains: general properties, control and effector strength", "journal": "European Journal of Biochemistry", "volume": "42", "pages": "89-95" },
+    { "citation": "Fell D (1997). Understanding the Control of Metabolism. Portland Press.", "authors": ["Fell D"], "year": 1997, "title": "Understanding the Control of Metabolism", "journal": "Portland Press", "note": "MCA 教材：控制系数、加和定理、分支通路" },
+    { "citation": "Orth JD, Thiele I, Palsson BO (2010). What is flux balance analysis? Nature Biotechnology 28(3):245-248.", "authors": ["Orth JD", "Thiele I", "Palsson BO"], "year": 2010, "title": "What is flux balance analysis?", "journal": "Nature Biotechnology", "volume": "28", "pages": "245-248", "doi": "10.1038/nbt.1614" },
+    { "citation": "Reder C (1988). Metabolic control theory: a structural approach. Journal of Theoretical Biology 135(2):175-201.", "authors": ["Reder C"], "year": 1988, "title": "Metabolic control theory: a structural approach", "journal": "Journal of Theoretical Biology", "volume": "135", "pages": "175-201" }
+  ],
+  "related": ["enzyme_kinetics", "mapk_cascade", "population_dynamics"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

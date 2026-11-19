@@ -1,0 +1,118 @@
+{
+  "id": "fick_diffusion",
+  "type": "principle",
+  "name": "Fick 扩散定律（Fick's laws of diffusion）",
+  "name_en": "Fick's laws of diffusion",
+  "domain": "biophysics",
+  "scale": "tissue",
+  "model_class": "pde",
+  "summary": "扩散通量正比于负浓度梯度：J = -D∇c；结合质量守恒得扩散方程 ∂c/∂t = D∇²c。扩散时间随距离平方增长（t ~ L²/6D），因此「充分混合」假设只在 L²/D 远小于关注时间尺度时成立。组织中的有效扩散系数受迂曲度、结合/缓冲、细胞膜屏障影响，可远低于水溶液值；与反应耦合时得到反应-扩散方程，是无量纲群 Da、Thiele 模量的基础。",
+  "statement": "Fick 第一定律给出扩散通量与浓度梯度的线性关系，第二定律（连续性方程）给出浓度随时间的演化。对简单几何，扩散时间尺度为 L²/(2D)（1D 均方位移 ⟨x²⟩=2Dt）、L²/(6D)（3D），特征长度 ℓ=√(Dτ)。当反应速率远快于扩散时系统受扩散限制（Da>>1），反之受反应限制。",
+  "formulas": [
+    {
+      "name": "Fick 第一定律（通量）",
+      "latex": "\\mathbf{J}=-D\\nabla c",
+      "plain": "J = -D*∇c",
+      "terms": {
+        "J": "扩散通量（mol/(m²·s) 或 浓度·长度/时间）",
+        "D": "扩散系数（m²/s、cm²/s、um²/s；见 kb/units.json）",
+        "grad_c": "浓度梯度；驱动方向由高到低（负号）",
+        "note": "带电离子还需考虑电场（Nernst-Planck 方程），此处仅中性/无电场情形"
+      }
+    },
+    {
+      "name": "Fick 第二定律（扩散方程）",
+      "latex": "\\frac{\\partial c}{\\partial t}=D\\nabla^2c",
+      "plain": "∂c/∂t = D*∇²c",
+      "terms": {
+        "laplacian": "拉普拉斯算子；1D 为 ∂²c/∂x²，球坐标有 2/r 项",
+        "boundary_condition": "零通量（Neumann）、固定浓度（Dirichlet）、部分吸收（Robin）；边界强烈影响时间尺度与稳态分布",
+        "analytic_solution": "点源/阶跃/脉冲初始条件有标准解；复杂几何用数值方法（pdepe/有限差分）"
+      }
+    },
+    {
+      "name": "扩散时间尺度与均方位移",
+      "latex": "\\langle x^2\\rangle=2Dt\\ (1D),\\quad 4Dt\\ (2D),\\quad 6Dt\\ (3D);\\qquad t_{diff}\\sim\\frac{L^2}{2D}\\ (\\text{1D 尺度})",
+      "plain": "⟨x²⟩=2Dt（1D）；t_diff ~ L²/(2D)；特征长度 ℓ=√(D*t)",
+      "terms": {
+        "usage": "判断能否用充分混合 ODE：若 t_diff << 过程时间尺度，可集总；否则需要空间模型",
+        "value": "小分子在水 D≈1e-9 m²/s=1e3 um²/s → 10 um 扩散时间 ~0.05 s，1 mm ~50 s；蛋白 D≈10-100 um²/s → 10 um ~1-10 s",
+        "tissue": "有效 D 因迂曲度/结合降低 2-10 倍甚至更多"
+      }
+    },
+    {
+      "name": "Stokes-Einstein 关系",
+      "latex": "D=\\frac{k_BT}{6\\pi\\eta r}",
+      "plain": "D = kB*T/(6*pi*eta*r)",
+      "terms": {
+        "r": "分子流体力学半径；D∝1/r",
+        "eta": "介质黏度（水 37 ℃ 约 0.7 mPa·s）",
+        "usage": "无实测 D 时按分子大小估计；蛋白/复合物 D 常 5-100 um²/s，小分子 500-2000 um²/s（水）"
+      }
+    },
+    {
+      "name": "反应-扩散耦合与 Damköhler 数",
+      "latex": "\\frac{\\partial c}{\\partial t}=D\\nabla^2c+R(c);\\qquad Da=\\frac{kL^2}{D}",
+      "plain": "∂c/∂t = D*∇²c + R(c); Da = k*L²/D",
+      "terms": {
+        "Da": "反应速率与扩散速率之比；Da<<1 反应慢（均匀），Da>>1 扩散限制（梯度明显）",
+        "thiele_modulus": "多孔介质/酶固定化中的同类无量纲群 φ=L√(k/D)，有效因子 η=tanh(φ)/φ（1D 平板）",
+        "usage": "决定是否需要 PDE；也是 Turing 不稳定的分析基础（见 reaction_diffusion_turing）"
+      }
+    },
+    {
+      "name": "Nernst-Planck（带电粒子，补充）",
+      "latex": "\\mathbf{J}=-D\\left(\\nabla c+\\frac{zF}{RT}c\\nabla\\phi\\right)",
+      "plain": "J = -D*(∇c + (zF/RT)*c*∇φ)",
+      "terms": {
+        "phi": "电势；带电粒子同时受浓度梯度与电场驱动",
+        "usage": "离子通道/膜电位/电泳；与 nernst_potential 原理配合使用",
+        "note": "在 Debye 长度外近似电中性，可先解 Poisson 再求扩散"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "先算 t_diff = L²/(2D)（1D 尺度）或 L²/(6D)（3D），与生物过程时间尺度比较：远小则可用单室 ODE，否则需空间模型。",
+    "v1 只支持 ODE：空间效应通过「空间离散」变成多室 ODE（扩散用双向质量作用/净交换表达式，k=D/Δx²），再提交 spec；完整 PDE 作为报告扩展。",
+    "组织中的 D 应使用有效扩散系数（含迂曲度、结合、内化），水溶液值只能作上界。",
+    "反应-扩散耦合时用 Da 判断反应限制 vs 扩散限制；这决定模型是否需要用 PDE 还是可用集总假设。",
+    "边界条件与初始条件对空间模型结论影响大：报告必须写清楚（零通量 vs 固定浓度、点源 vs 均匀）。"
+  ],
+  "how_to_apply": [
+    "从文献/手册取 D（注意单位），换算到统一单位（um²/s 或 cm²/s）；用 Stokes-Einstein 校核数量级。",
+    "算特征时间与特征长度；写出「充分混合」或「扩散限制」的建模假设并给出数值依据。",
+    "若需空间模型：设计网格 Δx（≥8-10 点/特征长度），把扩散写成 ODE 交换项，或调用 pdepe 做 PDE 验证。",
+    "在 spec 中使用 kb/units.json 的 um^2/s、cm^2/s；扩散交换速率常数 k_ex= D/Δx²（1/s）可在 expression 或 mass_action 中实现。",
+    "报告列出：D 来源、L、t_diff、Da（或 Pe），以及最终采用 ODE/PDE 的理由。"
+  ],
+  "pitfalls": [
+    "单位混乱：cm²/s vs um²/s 差 1e8；用错会导致扩散时间差 8 个数量级。",
+    "忽略结合/缓冲：荧光标记分子大量结合时有效 D 远小于自由 D（可低 10-100 倍）。",
+    "用体相 D 描述组织/胞内扩散，低估扩散时间、错误得出「充分混合」结论。",
+    "边界条件未说明：封闭 vs 开放边界给出完全不同的稳态梯度。",
+    "把扩散方程用于主动运输/流动/细胞运动主导的系统（需要 Péclet 数检验）。",
+    "稳态梯度 ≠ 无通量：稳态下仍有恒定通量（线性浓度剖面），容易被误判为平衡。"
+  ],
+  "matlab_notes": [
+    "v1 无 PDE：把扩散离散成 ODE 交换项（见 reaction_diffusion_turing 的 3 节点环模板）；完整 PDE 可用 pdepe（1D）或自写有限差分/有限体积。",
+    "离散稳定性：显式欧拉要求 Δt < Δx²/(2D)；用 ode15s 可放宽时间步但需保证空间精度。",
+    "敏感性：扩散系数跨数量级，拟合时用 log 参数化；空间数据稀疏时常固定 D、拟合反应参数。",
+    "组织尺度建模可加有效 D 参数（D_eff = D/τ²，τ 为迂曲度）并在报告中说明。"
+  ],
+  "spec_mapping": "D 以 um^2/s（或 cm^2/s）写在 parameters；空间离散时每个隔室一组变量，扩散写成 expression 净交换 \"D*(c_j-c_i)/dx^2\" 或双向 mass_action（k=D/dx^2，单位 1/s）。",
+  "diagnostics": [
+    "t_diff 与过程时间尺度比值（<0.1 可考虑集总）",
+    "Péclet 数（对流/趋化 vs 扩散）",
+    "Da 或 Thiele 模量（反应 vs 扩散）",
+    "空间离散后网格收敛性（加密 Δx 结果是否稳定）"
+  ],
+  "keywords": ["Fick 定律", "扩散", "扩散系数", "扩散时间", "Stokes-Einstein", "反应-扩散", "Damköhler 数", "diffusion", "Fick's law", "reaction-diffusion"],
+  "tags": ["biophysics", "pde", "spatial"],
+  "related": ["reaction_diffusion_turing", "chemotaxis", "nernst_potential", "dimensional_analysis"],
+  "references": [
+    { "citation": "Fick A (1855). Ueber Diffusion. Annalen der Physik 94:59-86.", "authors": ["Fick A"], "year": 1855, "title": "Ueber Diffusion", "journal": "Annalen der Physik", "volume": "94", "pages": "59-86" },
+    { "citation": "Crank J (1975). The Mathematics of Diffusion, 2nd ed. Oxford University Press.", "authors": ["Crank J"], "year": 1975, "title": "The Mathematics of Diffusion", "journal": "Oxford University Press", "note": "扩散方程解析解与边界条件的标准参考" },
+    { "citation": "Berg HC (1993). Random Walks in Biology. Princeton University Press.", "authors": ["Berg HC"], "year": 1993, "title": "Random Walks in Biology", "journal": "Princeton University Press", "note": "布朗运动、扩散时间尺度与生物中的数量级估计" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

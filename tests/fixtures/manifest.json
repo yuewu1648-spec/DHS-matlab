@@ -1,0 +1,63 @@
+{
+  "schema": "bma.fixtures.manifest.v1",
+  "generated_by": "tests/fixtures/tools/make_fixtures.py",
+  "generated_at_utc": "2026-11-12T05:00:00Z",
+  "description": "Synthetic, original journal-style literature fixtures for the BioModel-MATLAB acceptance pipeline.",
+  "fixtures": [
+    {
+      "id": "enzyme_kinetics",
+      "dir": "literature/enzyme_kinetics",
+      "expected_model_archetype": "enzyme_michaelis_menten",
+      "formats": {
+        "md": "literature/enzyme_kinetics/paper.md",
+        "txt": "literature/enzyme_kinetics/paper.txt",
+        "html": "literature/enzyme_kinetics/paper.html",
+        "docx": "literature/enzyme_kinetics/paper.docx",
+        "pdf": "literature/enzyme_kinetics/paper.pdf"
+      },
+      "expectations": "literature/enzyme_kinetics/expected_facts.json",
+      "datasets": [
+        "literature/enzyme_kinetics/data/substrate_velocity.csv",
+        "literature/enzyme_kinetics/data/progress_curve_S50.csv"
+      ],
+      "recommended_fit_dataset": "literature/enzyme_kinetics/data/progress_curve_S50.csv",
+      "recommended_output_map": {"P_obs": "P_uM", "S_obs": "S_uM"}
+    },
+    {
+      "id": "gene_oscillator",
+      "dir": "literature/gene_oscillator",
+      "expected_model_archetype": "goodwin_oscillator",
+      "formats": {
+        "md": "literature/gene_oscillator/paper.md",
+        "txt": "literature/gene_oscillator/paper.txt",
+        "html": "literature/gene_oscillator/paper.html",
+        "docx": "literature/gene_oscillator/paper.docx",
+        "pdf": "literature/gene_oscillator/paper.pdf"
+      },
+      "expectations": "literature/gene_oscillator/expected_facts.json",
+      "datasets": ["literature/gene_oscillator/data/oscillation_timeseries.csv"],
+      "recommended_fit_dataset": "literature/gene_oscillator/data/oscillation_timeseries.csv",
+      "recommended_output_map": {
+        "m_obs": "mRNA_nM",
+        "p_obs": "intermediate_nM",
+        "r_obs": "repressor_nM"
+      }
+    },
+    {
+      "id": "epidemic_sir",
+      "dir": "literature/epidemic_sir",
+      "expected_model_archetype": "sir_epidemic",
+      "formats": {
+        "md": "literature/epidemic_sir/paper.md",
+        "txt": "literature/epidemic_sir/paper.txt",
+        "html": "literature/epidemic_sir/paper.html",
+        "docx": "literature/epidemic_sir/paper.docx",
+        "pdf": "literature/epidemic_sir/paper.pdf"
+      },
+      "expectations": "literature/epidemic_sir/expected_facts.json",
+      "datasets": ["literature/epidemic_sir/data/community_cases.csv"],
+      "recommended_fit_dataset": "literature/epidemic_sir/data/community_cases.csv",
+      "recommended_output_map": {"I_obs": "active_infections", "R_obs": "cumulative_removed"}
+    }
+  ]
+}

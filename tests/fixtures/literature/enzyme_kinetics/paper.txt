@@ -1,0 +1,153 @@
+Kinetic characterization of a metagenome-derived short-chain dehydrogenase reveals a near-diffusion-limited catalytic efficiency
+
+Authors: A. R. Lindqvist¹, M. Okafor¹, T. S. Brennan², H. Yamashita³
+
+¹ Institute of Molecular Biosciences, University of Westmere, Westmere, UK ² Structural Enzymology Unit, Northgate Institute of Technology, Northgate, UK ³ Department of Bioengineering, Kanto Metropolitan University, Kanto, Japan
+
+Journal: Journal of Enzymatic Systems 47(3), 211–226 (2026) DOI: 10.9999/jes.2026.0047 (synthetic fixture, fictional) Received: 14 March 2026 · Accepted: 2 June 2026 Corresponding author: A. R. Lindqvist, a.lindqvist@westmere.ac.uk (fictional)
+
+Keywords: short-chain dehydrogenase; Michaelis–Menten kinetics; steady-state parameters; progress curves; catalytic efficiency; metagenome
+
+---
+
+Abstract
+
+Short-chain dehydrogenases/reductases (SDRs) are among the most abundant enzyme families in nature, yet kinetic characterization of metagenome-derived members remains sparse. We purified a putative SDR (designated Sdr-HS14) from a hot-spring metagenome clone and characterized its NADH-dependent reduction of a model ketone substrate. Initial-velocity measurements over an 11-point substrate concentration series (0.5–250 µM) were fitted to the Michaelis–Menten equation and gave a Michaelis constant Km = 12.5 ± 0.6 µM (95% CI 11.8–13.2 µM), a maximal velocity Vmax = 0.24 ± 0.01 µM s^−1, and a turnover number kcat = 4.8 ± 0.2 s^−1 at an enzyme active-site concentration of 0.05 µM. The catalytic efficiency (kcat/Km = 3.8 × 10^5 M^−1 s^−1) places Sdr-HS14 among the more efficient members of the family characterized to date. Full progress curves collected at an initial substrate concentration of 50 µM were independently predicted by the steady-state parameters: the time to half-conversion was 141 s, matching the value computed from numerical integration of the corresponding mass-action model to within 3%. The data provide a complete, internally consistent kinetic description that is suitable both for steady-state modeling and for reconstruction of the elementary reaction steps. All numerical values reported here are stored in Data S1 and Data S2.
+
+1. Introduction
+
+Enzyme kinetics provides the quantitative bridge between molecular-level knowledge of a catalyst and the dynamical behavior of the metabolic network in which it operates. For most biotechnologically relevant enzymes, the parameters that are needed by systems-biology models are the maximal velocity, the Michaelis constant for each substrate, and the turnover number. These parameters are routinely obtained from initial-velocity experiments, in which the substrate concentration is varied while the reaction rate is measured in the linear phase of product formation [1,2]. The assumptions that justify the Michaelis–Menten treatment are well known: the enzyme–substrate complex is in a quasi-steady state, substrate is present in excess relative to the enzyme, and the reverse reaction from product can be neglected [1,3].
+
+Metagenomic mining has produced large numbers of uncharacterized enzymes, but their kinetic characterization is often incomplete: reproducibility of the reported kinetic constants is limited by missing information on enzyme concentration, buffer conditions, and the treatment of substrate depletion [4]. We therefore chose one metagenome-derived SDR (Sdr-HS14) as a model system and characterized it in detail, collecting both classical initial-velocity data and full progress curves. The dual data sets allow the steady-state parameters to be cross-validated against the time-course behavior they should predict, an internal consistency check that we recommend as a minimum standard for reporting enzyme kinetics [5].
+
+The specific aims of this work were: (i) to determine the Michaelis constant and turnover number of Sdr-HS14 for its model substrate; (ii) to determine whether the substrate–velocity relationship is adequately described by a single-site Michaelis–Menten model or requires modification by substrate inhibition; and (iii) to test whether the elementary mass-action model, parameterized with the steady-state constants, reproduces the complete progress curves.
+
+2. Materials and methods
+
+2.1 Enzyme expression and purification
+
+The Sdr-HS14 open reading frame was codon-optimized and cloned into a pET-derived expression vector. Protein was expressed in Escherichia coli BL21(DE3) at 18 °C for 16 h after induction with 0.4 mM isopropyl-β-D-thiogalactopyranoside, and purified by nickel-affinity chromatography followed by size-exclusion chromatography. Purity was assessed by SDS–PAGE and was greater than 95% for all preparations. Protein concentration was determined by the bicinchoninic acid assay and is expressed as active-site concentration. The final enzyme stock concentration was 0.05 µM for all kinetic experiments.
+
+2.2 Activity assay
+
+Enzymatic activity was monitored continuously at 25 °C by following the decrease in NADH absorbance at 340 nm (extinction coefficient 6,220 M^−1 cm^−1). The standard reaction buffer contained 50 mM Tris-HCl (pH 8.0), 150 mM NaCl, 5 mM MgCl2, 0.05% Tween-20, and 0.5 mM NADH. Reactions were initiated by addition of enzyme. Initial velocities were determined from the linear phase of each reaction (first 10% of the expected substrate conversion or 20 s, whichever came first) using linear regression. All measurements were performed in triplicate.
+
+2.3 Substrate–velocity experiment
+
+The model ketone substrate was dissolved in dimethyl sulfoxide and diluted into assay buffer to final concentrations of 0.5, 1, 2, 5, 10, 20, 40, 60, 100, 150, and 250 µM. The substrate concentration was verified by high-performance liquid chromatography after dilution. Initial velocities were fitted to the single-site Michaelis–Menten equation
+
+v0 = Vmax · [S] / (Km + [S]),
+
+using weighted nonlinear least squares with weights proportional to 1/v0^2. Substrate inhibition was tested by including a term of the form v0 = Vmax·[S]/(Km + [S] + [S]^2/Ki) and comparing the corrected Akaike information criterion (AICc) of the two models. Parameter confidence intervals were obtained from the Jacobian of the fitted model.
+
+2.4 Progress-curve experiments
+
+Progress curves were recorded at an initial substrate concentration of 50 µM with an enzyme concentration of 0.05 µM, sampling the absorbance every 10 s for 600 s. Product concentration was computed from the absorbance change with a standard curve; unreacted substrate was measured at each sampled time point by rapid quench and chromatographic analysis. The progress curves were compared with the prediction of the following mass-action model:
+
+d[E]/dt = −kf·[E]·[S] + kr·[ES] + kcat·[ES] d[S]/dt = −kf·[E]·[S] + kr·[ES] d[ES]/dt =  kf·[E]·[S] − kr·[ES] − kcat·[ES] d[P]/dt =  kcat·[ES]
+
+The steady-state constants impose the constraint Km = (kr + kcat)/kf. Stopped-flow association experiments recorded at 5 °C (not shown) gave an estimated second-order association rate constant kf ≈ 1.0 µM^−1 s^−1; this value was fixed in the simulations, and the dissociation constant kr was then computed from the constraint as kr = Km·kf − kcat = 7.7 s^−1. Numerical integration was performed with a fourth-order Runge–Kutta method using a time step of 0.01 s.
+
+2.5 Data and code availability
+
+All primary measurements are provided in Data S1 (substrate–velocity series) and Data S2 (progress curve at 50 µM substrate). Simulation scripts are available from the corresponding author upon reasonable request.
+
+3. Results
+
+3.1 Purification and steady-state activity
+
+Sdr-HS14 was purified to homogeneity with a final specific activity of 4.4 µmol min^−1 mg^−1 against the model ketone substrate (Table 1). The enzyme showed a single band at the expected molecular mass of 26.9 kDa.
+
+Table 1. Purification summary of Sdr-HS14. (Synthetic data for fixture purposes.)
+
+Step  Total protein (mg)  Total activity (µmol min^−1)  Specific activity (µmol min^−1 mg^−1)  Yield (%)
+
+Crude lysate  42.6  61.2  1.4  100
+
+Ni-affinity  6.8  34.7  5.1  57
+
+Size exclusion  3.1  13.6  4.4  22
+
+
+
+3.2 Substrate–velocity relationship
+
+Initial velocities increased monotonically with substrate concentration and saturated at concentrations above approximately 100 µM (Table 2). The single-site Michaelis–Menten model described the data well (R² = 0.998); adding a substrate-inhibition term did not improve the fit (ΔAICc = −3.6 in favor of the simpler model), and no substrate inhibition was observed up to 250 µM. The fitted parameters were Km = 12.5 µM (95% CI 11.8–13.2 µM) and Vmax = 0.24 µM s^−1 (95% CI 0.232–0.248 µM s^−1).
+
+Table 2. Substrate–velocity data for Sdr-HS14. Initial velocities are means of three independent determinations; relative standard deviation was below 3% for all points.
+
+Substrate concentration [S] (µM)  Initial velocity v0 (µM s^−1)
+
+0.5  0.0095
+
+1.0  0.0173
+
+2.0  0.0330
+
+5.0  0.0668
+
+10.0  0.1029
+
+20.0  0.1516
+
+40.0  0.1816
+
+60.0  0.1984
+
+100.0  0.2175
+
+150.0  0.2283
+
+250.0  0.2299
+
+
+
+With an active-site concentration of 0.05 µM, the maximal velocity corresponds to a turnover number kcat = 4.8 s^−1 (95% CI 4.6–5.0 s^−1). The catalytic efficiency was kcat/Km = 3.8 × 10^5 M^−1 s^−1, close to the range usually associated with efficient dehydrogenases acting on small substrates.
+
+3.3 Progress curves
+
+At an initial substrate concentration of 50 µM, product accumulated with an initial velocity of 0.19 µM s^−1 and reached half-conversion (25 µM product) at 141 s; the reaction was essentially complete by 400 s, at which point 49.1 of the initial 50 µM substrate had been converted (Table 3).
+
+Table 3. Representative progress curve at [S]0 = 50 µM. Values are means of three independent reactions. The full 10 s-resolution data set is provided in Data S2.
+
+Time (s)  Product P (µM)  Remaining substrate S (µM)
+
+0  0.0  50.4
+
+30  5.7  43.3
+
+60  11.3  39.0
+
+90  16.5  33.3
+
+120  21.6  28.4
+
+150  26.6  23.7
+
+180  30.9  18.9
+
+240  39.0  11.0
+
+300  44.7  5.5
+
+400  49.1  1.1
+
+600  49.2  0.03
+
+
+
+The mass-action model parameterized with kf = 1.0 µM^−1 s^−1, kr = 7.7 s^−1, and kcat = 4.8 s^−1 reproduced the measured progress curve: the predicted half-conversion time was 145 s, within 3% of the observed value, and the root-mean-square deviation between predicted and measured product concentrations was 0.6 µM. No systematic residual structure was observed, indicating that a three-step mechanism (binding, dissociation, catalysis) is sufficient to describe the data on the 0–600 s time scale.
+
+4. Discussion
+
+We report a complete kinetic description of a metagenome-derived SDR. The Michaelis constant (12.5 µM) is in the range typical of SDRs acting on small ketone substrates, and the turnover number (4.8 s^−1) is unremarkable, so the high catalytic efficiency of Sdr-HS14 is driven mainly by tight substrate binding rather than by a fast chemical step. This is a common pattern among enzymes that have evolved under conditions of low substrate availability.
+
+The most important methodological point of this study is the internal consistency between the initial-velocity data and the progress curves. The steady-state constants Km, Vmax, and kcat are properties of the same elementary mechanism, and a model built from them should predict the full time course; in our data this prediction holds to within 3%. We suggest that progress-curve cross-validation should be reported routinely alongside initial-velocity fits, because it detects systematic errors (for example, enzyme inactivation, product inhibition, or substrate depletion inside the initial-velocity window) that a good R² on the saturation curve cannot reveal [5].
+
+Several limitations should be noted. First, the individual rate constants kf and kr are not separately identifiable from steady-state data alone: only the combination Km = (kr + kcat)/kf is determined. The value of kf used here comes from stopped-flow experiments at a different temperature and are therefore best regarded as an estimate. Second, the reaction was followed for 600 s, which is long enough for significant substrate depletion at low substrate concentrations; initial-velocity windows were chosen conservatively to avoid this bias. Third, we characterized a single substrate and a single pH; the pH dependence of kcat/Km, which would provide additional mechanistic information, was not determined.
+
+In conclusion, Sdr-HS14 obeys single-site Michaelis–Menten kinetics with Km = 12.5 µM, Vmax = 0.24 µM s^−1, kcat = 4.8 s^−1, and kcat/Km = 3.8 × 10^5 M^−1 s^−1. The full parameter set, together with the elementary-step interpretation, is suitable for incorporation into larger kinetic models of the host pathway.
+
+5. References
+
+1. Michaelis L, Menten ML. Die Kinetik der Invertinwirkung. Biochemische Zeitschrift 49, 333–369 (1913). 2. Segel IH. Enzyme Kinetics: Behavior and Analysis of Rapid Equilibrium and Steady-State Enzyme Systems. Wiley, New York (1975). [classic textbook] 3. Briggs GE, Haldane JBS. A note on the kinetics of enzyme action. Biochemical Journal 19, 338–339 (1925). 4. Nilsson B, Okonkwo C. Reporting standards for enzyme kinetic parameters: a survey of 1,200 papers. Journal of Enzymatic Systems 44, 88–101 (2023). [fictional] 5. Marchetti F, Devereux P, Sato K. Progress-curve validation of steady-state kinetic parameters. Methods in Biocatalysis 12, 455–470 (2024). [fictional] 6. Cornish-Bowden A. Fundamentals of Enzyme Kinetics, 4th edn. Wiley-Blackwell, Weinheim (2012). [classic textbook]

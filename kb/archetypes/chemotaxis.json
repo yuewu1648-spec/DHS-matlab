@@ -1,0 +1,175 @@
+{
+  "id": "chemotaxis",
+  "type": "archetype",
+  "name": "趋化（梯度感知、Keller-Segel 与 Transwell 隔室模型）",
+  "name_en": "Chemotaxis: gradient sensing, Keller-Segel and transwell assay models",
+  "domain": "cell_migration",
+  "scale": "cell",
+  "model_class": "pde",
+  "summary": "细胞沿化学梯度定向迁移：宏观用 Keller-Segel 型 PDE（细胞通量 = 随机扩散 - 趋化漂移），微观用受体占据差与适应（Barkai-Leibler）解释「如何感知梯度」。实验最常用 Transwell/Boyden 小室：上下两室细胞数 + 趋化因子浓度，可粗化为两室 ODE（迁移通量 ∝ 细胞数 × 因子浓度），本模板即该 ODE 版本。趋化剂量响应常呈倒 U 形（低浓度无信号、最适浓度最大迁移、高浓度受体饱和/适应导致下降）。",
+  "when_to_use": [
+    "文献报告 Transwell/Boyden 小室迁移实验、划痕实验、微流控梯度实验的细胞迁移数据",
+    "出现「chemotaxis」「chemotactic index」「directional migration」「gradient sensing」「Keller-Segel」「run-and-tumble」",
+    "免疫细胞募集、伤口愈合、肿瘤侵袭、细菌趋化、发育中细胞迁移",
+    "需要区分「趋化性（定向）」与「化学激动（随机运动增强）」",
+    "信号通路涉及受体占据、适应（adaptation）、受体甲基化/磷酸化（细菌 Che 系统）"
+  ],
+  "tags": ["趋化", "细胞迁移", "梯度感知", "Keller-Segel", "Transwell", "适应", "chemotaxis"],
+  "keywords": ["趋化性", "化学梯度", "细胞迁移", "Keller-Segel", "受体适应", "定向迁移", "Transwell", "Boyden 小室", "chemotaxis", "gradient sensing", "cell migration", "adaptation", "chemotactic index"],
+  "equations": [
+    {
+      "name": "Keller-Segel 趋化方程（连续组织）",
+      "latex": "\\frac{\\partial c}{\\partial t}=\\nabla\\cdot\\left(D_c\\nabla c-\\chi\\,c\\,\\nabla a\\right),\\qquad \\frac{\\partial a}{\\partial t}=D_a\\nabla^2a+f(c,a)",
+      "plain": "dc/dt = ∇·(Dc*∇c - χ*c*∇a); da/dt = Da*∇²a + f(c,a)",
+      "terms": {
+        "c": "细胞密度（cell/um^3 或 cell/面积）",
+        "a": "趋化因子浓度（nM）",
+        "D_c": "细胞随机运动扩散系数（um^2/s）；细菌 ~10-1000，真核细胞慢得多",
+        "chi": "趋化敏感系数；通量 = χ c ∇a，单位取决于 a 的单位（通常 um^2/(s·nM)）",
+        "f_c_a": "趋化因子产生/降解项（可由细胞产生，如细菌消耗/分泌）",
+        "peclet": "Pe = χ |∇a| L / D_c，衡量趋化漂移相对扩散的强弱；Pe>>1 时形成明显聚集"
+      }
+    },
+    {
+      "name": "两室（Transwell）粗化模型",
+      "latex": "\\frac{dC_2}{dt}=k_{mig}\\,A\\,C_1-k_{out}C_2,\\qquad C_1+C_2=C_0",
+      "plain": "dC2/dt = k_mig*A*C1 - k_out*C2; C1 + C2 = C0",
+      "terms": {
+        "C1_C2": "上室（接种侧）与下室（趋化因子侧）细胞数",
+        "A": "下室趋化因子浓度（nM）",
+        "k_mig": "趋化迁移速率系数（1/(nM*min)）；含膜孔径、黏附、受体密度等集总因素",
+        "k_out": "反向/随机迁移系数（1/min）",
+        "C0": "总细胞数守恒；迁移分数 f = C2/C0 是实验读出",
+        "inverted_u": "A 过低无梯度信号、A 过高受体饱和/适应：两个方向都会降低 f；最优点在 Kd 附近"
+      }
+    },
+    {
+      "name": "受体占据差与梯度感知极限",
+      "latex": "\\frac{\\Delta p}{p}\\approx\\frac{L_c}{2}\\cdot\\frac{|\\nabla a|}{K_d+a},\\qquad \\text{噪声极限：}\\ \\frac{\\Delta p}{p}\\gtrsim\\frac{1}{\\sqrt{N_{rec}}}",
+      "plain": "相对占据差 Δp/p ≈ (Lc/2)*|∇a|/(Kd+a)；可分辨下限受受体数噪声 1/sqrt(N_rec) 限制",
+      "terms": {
+        "L_c": "细胞感知长度（um）；细菌 ~1-2 um，真核细胞 ~10-20 um",
+        "grad_a_abs": "局部梯度（nM/um）；实验常用相对梯度（%/um）",
+        "K_d": "受体解离常数（nM）；梯度感知在 a≈Kd 附近最灵敏（相对差最大）",
+        "N_rec": "受体数；单细胞受体数少时梯度感知受噪声限制",
+        "meaning": "解释为何趋化响应在低浓度（信号弱）和高浓度（受体饱和）都变差，最适浓度与 Kd 相关"
+      }
+    },
+    {
+      "name": "受体适应（Barkai-Leibler 模型）",
+      "latex": "A=\\frac{1}{1+e^{\\alpha(m-m_0)}},\\qquad \\frac{dm}{dt}=k_R(1-A)-k_BA",
+      "plain": "A = 1/(1+exp(alpha*(m-m0))); dm/dt = kR*(1-A) - kB*A",
+      "terms": {
+        "A": "受体活性/激酶活性（0-1）",
+        "m": "受体修饰水平（如甲基化）；m0 与配体浓度相关（配体升高使 m0 增大，从而通过 m 变化补偿 A）",
+        "alpha": "活性对修饰水平的敏感度（1/单位 m）",
+        "k_R_k_B": "修饰/去修饰速率（1/min）",
+        "perfect_adaptation": "稳态 A 与配体浓度无关（只与 m 的设定点有关），使细胞能响应梯度变化而非绝对浓度；是细菌趋化的核心机制",
+        "modeling": "若只是两室 ODE 可忽略适应；若分析长时间梯度暴露/适应缺陷突变，需加适应模块"
+      }
+    },
+    {
+      "name": "随机游走 vs 定向迁移的判别",
+      "latex": "\\text{chemotactic index }CI=\\frac{\\langle\\cos\\theta\\rangle}{\\text{或}}\\ \\frac{\\text{沿梯度方向位移}}{\\text{总路程}},\\qquad \\text{random motility}\\ \\mu=\\frac{v^2\\tau}{2}",
+      "plain": "趋化指数 CI = 沿梯度方向平均位移比例（-1 到 1）；随机运动系数 μ = v²τ/2",
+      "terms": {
+        "CI": "0 表示纯随机，1 表示完全定向；Transwell 的迁移分数不是 CI，需区分",
+        "v_tau": "细胞速度与方向持续时间的相关时间；run-and-tumble 细菌 τ~0.1-1 s，真核细胞 τ~分钟",
+        "usage": "区分「趋化性」（方向性）与「化学激动」（速度/随机运动增强）；两者都增加迁移分数但机制不同",
+        "experiment_note": "微流控梯度 + 时间-lapse 追踪可同时估计 CI 与 μ"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "transwell_chemotaxis",
+    "title": "Transwell 趋化两室模型（细胞迁移 + 趋化因子动态）",
+    "description": "上室细胞 C1 在趋化因子 A 的驱动下迁移到下室 C2（速率 ∝ A×C1），另有基础随机迁移；趋化因子以下室恒定速率补充并一阶降解。用于 Transwell 迁移分数随趋化因子浓度/时间变化的拟合。",
+    "kind": "ode",
+    "time": { "unit": "h", "start": 0, "end": 24, "n": 481 },
+    "variables": [
+      { "id": "C1", "name": "上室细胞数", "unit": "cell", "initial": { "value": 100000 } },
+      { "id": "C2", "name": "下室细胞数", "unit": "cell", "initial": { "value": 0 } },
+      { "id": "A", "name": "趋化因子浓度", "unit": "nM", "initial": { "value": 10.0 } }
+    ],
+    "parameters": [
+      { "id": "k_mig", "name": "趋化迁移速率系数", "unit": "1/(nM*h)", "value": { "value": 0.02 }, "estimate": true, "bounds": [1e-08, 10] },
+      { "id": "k_out", "name": "基础（随机）迁移速率", "unit": "1/h", "value": { "value": 0.05 }, "estimate": true, "bounds": [1e-08, 10] },
+      { "id": "k_A", "name": "趋化因子补充速率", "unit": "nM/h", "value": { "value": 0.0 }, "estimate": false },
+      { "id": "gamma_A", "name": "趋化因子降解速率", "unit": "1/h", "value": { "value": 0.0 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "chemotactic_migration", "name": "趋化迁移（上室→下室）", "stoichiometry": { "C1": -1, "C2": 1 },
+        "rate": { "kind": "expression", "expression": "k_mig*A*C1" } },
+      { "id": "basal_migration", "name": "基础随机迁移（上室→下室）", "stoichiometry": { "C1": -1, "C2": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "k_out" }, "species": { "C1": 1 } } },
+      { "id": "attractant_supply", "name": "趋化因子补充", "stoichiometry": { "A": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "k_A" } } },
+      { "id": "attractant_decay", "name": "趋化因子降解", "stoichiometry": { "A": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_A" }, "species": { "A": 1 } } }
+    ],
+    "outputs": [
+      { "id": "C1_obs", "name": "上室细胞数", "unit": "cell", "expression": "C1" },
+      { "id": "C2_obs", "name": "下室细胞数", "unit": "cell", "expression": "C2" },
+      { "id": "migrated_fraction", "name": "迁移分数", "unit": "1", "expression": "C2/(C1+C2)" },
+      { "id": "A_obs", "name": "趋化因子浓度", "unit": "nM", "expression": "A" }
+    ],
+    "assumptions": [
+      "两室充分混合；膜两侧迁移只依赖上室细胞数与下室浓度（集总近似）",
+      "细胞总数守恒（无增殖/死亡）；无细胞黏附/膜阻塞的显式描述",
+      "趋化因子在观测窗内均匀（可选项：不补充不降解→恒定；k_A=gamma_A=0）",
+      "迁移速率与趋化因子浓度线性（低浓度近似）；高浓度饱和/适应需改用 Hill/适应模块"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。单位 1/(nM*h) 见 kb/units.json（由 1/(nM*min) 换算：1/(nM*min)=60 1/(nM*h)）。" }
+  },
+  "spec_notes": [
+    "单位注意：1/(nM*h) 是 1/(nM*min) 的 1/60（1 1/(nM*h) = 1/60 1/(nM*min)）；kb/units.json 中 1/(nM*min) 的 factor 为 1.6667e7 1/(M*s)，1/(nM*h) = 2.7778e5 1/(M*s)。若 time.unit 改为 min，则参数单位相应改为 1/(nM*min)。",
+    "若要把迁移速率写成饱和形式（倒 U 形剂量响应）：expression \"k_mig*A*C1/(K_A+A)\"，其中 K_A 为半饱和浓度（nM）；高浓度下若需表达适应/抑制，可再加一项 1/(1+(A/K_inh)^h)。",
+    "仅当时间窗短于趋化因子降解/细胞增殖时可假设总数守恒；若实验超过数天或细胞增殖显著，需加增殖项（logistic 或指数）。",
+    "Keller-Segel 版本：v1 需把空间离散成 N 个隔室，每个隔室一个 C_i，扩散/趋化耦合用双向 mass_action 或净交换 expression（方法同 reaction_diffusion_turing 的离散化）；注意趋化项不是对称的（沿梯度方向流），需用 upwind 或直接写通量形式。",
+    "适应模块（长时间梯度暴露、细菌趋化）：加受体活性 A_act 与修饰 m 两个状态，A_act 的稳态由 m 与配体决定，m 的动力学给出适应时间尺度（秒-分钟）。v1 中可用 expression 近似 A_act = 1/(1+exp(alpha*(m-m0)))。",
+    "实验读出注意：Transwell 读出是「跨膜迁移到另一侧的细胞数」，不是方向性；要区分趋化与化学激动，需要梯度实验 + 均匀浓度对照（均匀高浓度应只增强随机运动，不应定向富集）。",
+    "报告需给出：膜孔径、趋化因子浓度与梯度、迁移时间、细胞类型/代数、是否血清饥饿，这些都会影响 k_mig。"
+  ],
+  "variables": [
+    { "id": "C1", "name": "上室细胞数", "unit": "cell", "typical_range": [1e3, 1e6], "notes": "Transwell 常用 1e4-1e5 细胞/孔" },
+    { "id": "C2", "name": "下室细胞数", "unit": "cell", "typical_range": [0, 1e6], "notes": "" },
+    { "id": "A", "name": "趋化因子浓度", "unit": "nM", "typical_range": [0.001, 1000], "notes": "趋化因子（如 CXCL12、fMLP）常在 0.1-100 nM；细菌对氨基酸趋化在 uM-mM" }
+  ],
+  "parameters": [
+    { "id": "k_mig", "symbol": "k_{mig}", "unit": "1/(nM*h)", "typical_range": [1e-08, 10], "notes": "集总参数，跨实验差异大；应由同一实验体系的剂量-时间数据拟合" },
+    { "id": "k_out", "symbol": "k_{out}", "unit": "1/h", "typical_range": [1e-08, 10], "notes": "基础随机迁移，与膜孔径/细胞运动性相关；通常远小于最适趋化迁移" },
+    { "id": "k_A", "symbol": "k_A", "unit": "nM/h", "typical_range": [0, 1000], "notes": "趋化因子补充速率；实验常为一次性加入→设 0" },
+    { "id": "gamma_A", "symbol": "\\gamma_A", "unit": "1/h", "typical_range": [0, 10], "notes": "降解/内化/扩散清除；短实验可设 0" }
+  ],
+  "assumptions": [
+    "两室均匀混合，膜两侧浓度差近似恒定（或显式建模 A 的动态）",
+    "迁移速率与上室细胞密度无关（无拥挤/接触抑制）",
+    "细胞总数守恒；无增殖/凋亡/贴壁损失",
+    "趋化响应为线性（低浓度）或给定饱和形式；无受体适应的时间依赖"
+  ],
+  "evidence_cues": [
+    "「chemotaxis」「chemotactic migration」「Transwell」「Boyden chamber」「migration assay」「wound healing」",
+    "「chemotactic index」「directional migration」「gradient」「chemokine」「fMLP」「CXCL12」",
+    "「Keller-Segel」「run-and-tumble」「receptor adaptation」「perfect adaptation」「methylation」",
+    "「dose-response of migration」「inverted U」「optimal attractant concentration」",
+    "「random motility」「chemokinesis」「cell tracking」「mean squared displacement」",
+    "「immune cell recruitment」「tumor invasion」「neutrophil migration」→ 组织尺度趋化/募集模型"
+  ],
+  "fitting_notes": "1) Transwell 数据通常是终点迁移分数 vs 趋化因子浓度：先拟合平衡/准稳态 dose-response（倒 U 形用 Hill 激活 × 失敏抑制的乘积模型），再拟合时间序列得 k_mig、k_out；2) 若同时有多个时间点，可把 C2(t) 作为 output 直接拟合 ODE；3) 数据为细胞计数（Poisson 型方差），用 log 或 sqrt 变换/加权；4) 均匀浓度对照用于估计 k_out，梯度实验用于 k_mig，两者必须分别有数据否则混淆；5) 若只知道迁移分数而不知道膜孔径/梯度，参数为表观集总参数，报告需说明；6) 长时间实验需检查趋化因子稳定性（HPLC/ELISA）或建模其降解；7) 细胞增殖用 Ki67/计数校正，否则迁移分数会被增殖污染；8) 微流控/时间-lapse 数据可直接估计 CI 与随机运动系数 μ，进而与 Keller-Segel 参数对应。",
+  "identifiability_notes": "1) 只有终点迁移分数且趋化因子浓度未知/未测时，k_mig 与 A 的乘积不可分（只得到有效趋化强度）；2) k_mig 与 k_out 在低迁移分数时近似线性叠加，需要最适浓度/足够长时间才能分离；3) 倒 U 形响应需要覆盖至少 2 个数量级浓度，否则饱和参数 K_A 不可辨识；4) 适应参数在终点实验（可达数小时）中往往已被平均掉，只能从时间-lapse 或梯度切换实验辨识；5) 细胞总数不守恒（黏附、死亡、增殖）时，迁移分数与总损失的机制混淆；6) 膜孔径/细胞刚度/黏附差异跨条件比较时可能被误读为趋化改变。",
+  "references": [
+    { "citation": "Keller EF, Segel LA (1971). Model for chemotaxis. Journal of Theoretical Biology 30(2):225-234.", "authors": ["Keller EF", "Segel LA"], "year": 1971, "title": "Model for chemotaxis", "journal": "Journal of Theoretical Biology", "volume": "30", "pages": "225-234" },
+    { "citation": "Barkai N, Leibler S (1997). Robustness in simple biochemical networks. Nature 387(6636):913-917.", "authors": ["Barkai N", "Leibler S"], "year": 1997, "title": "Robustness in simple biochemical networks", "journal": "Nature", "volume": "387", "pages": "913-917", "note": "细菌趋化的完美适应模型" },
+    { "citation": "Berg HC, Brown DA (1972). Chemotaxis in Escherichia coli analysed by three-dimensional tracking. Nature 239(5374):500-504.", "authors": ["Berg HC", "Brown DA"], "year": 1972, "title": "Chemotaxis in Escherichia coli analysed by three-dimensional tracking", "journal": "Nature", "volume": "239", "pages": "500-504" },
+    { "citation": "Zigmond SH (1977). Ability of polymorphonuclear leukocytes to orient in gradients of chemotactic factors. Journal of Cell Biology 75(2):606-616.", "authors": ["Zigmond SH"], "year": 1977, "title": "Ability of polymorphonuclear leukocytes to orient in gradients of chemotactic factors", "journal": "Journal of Cell Biology", "volume": "75", "pages": "606-616" },
+    { "citation": "Hillen T, Painter KJ (2009). A user's guide to PDE models for chemotaxis. Journal of Mathematical Biology 58(1-2):183-217.", "authors": ["Hillen T", "Painter KJ"], "year": 2009, "title": "A user's guide to PDE models for chemotaxis", "journal": "Journal of Mathematical Biology", "volume": "58", "pages": "183-217" }
+  ],
+  "related": ["reaction_diffusion_turing", "receptor_ligand_dose_response", "population_dynamics"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9；v1 仅 ODE，PDE 需空间离散",
+    "pde_note": "Keller-Segel 完整模型需空间离散；本模板为两室集总版本"
+  }
+}

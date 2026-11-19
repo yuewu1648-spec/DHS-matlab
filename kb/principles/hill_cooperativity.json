@@ -1,0 +1,113 @@
+{
+  "id": "hill_cooperativity",
+  "type": "principle",
+  "name": "Hill 函数与协同性（Hill function and cooperativity）",
+  "name_en": "Hill function and cooperativity",
+  "domain": "applied_mathematics",
+  "scale": "molecule",
+  "model_class": "ode",
+  "summary": "Hill 方程 θ = xⁿ/(Kⁿ+xⁿ) 用两个参数（半饱和浓度 K、Hill 系数 n）描述 S 形剂量-响应；n>1 表示正协同（多亚基/多聚体/下游超敏），n<1 表示负协同。它是描述「开关样」调控最常用的唯象工具，但 n 不是结合位点数、K 不是微观 Kd；机制解释应优先用 MWC/Adair 模型或明确说明 Hill 是表观拟合。",
+  "statement": "对具有 n 个等价结合位点、完全协同（全或无）的体系，占据分数严格为 Hill 形式；对部分协同/独立位点，Hill 是近似。Hill 图的斜率给出表观 Hill 系数 n_H；n_H=1 无协同，n_H>1 正协同，n_H<1 负协同。任何协同模型都必须满足 n_H ≤ 位点数（热力学/统计力学约束），拟合出超出位点数的 n 通常提示机制缺失或数据范围过窄。",
+  "formulas": [
+    {
+      "name": "Hill 激活/抑制",
+      "latex": "\\theta_{act}=\\frac{x^{n}}{K^{n}+x^{n}},\\qquad \\theta_{rep}=1-\\theta_{act}=\\frac{K^{n}}{K^{n}+x^{n}}",
+      "plain": "θ_act = x^n/(K^n+x^n); θ_rep = K^n/(K^n+x^n)",
+      "terms": {
+        "x": "配体/调控因子浓度或活性",
+        "K": "半饱和浓度（K0.5 / EC50 / IC50），不一定是微观解离常数",
+        "n": "Hill 系数（表观协同性）；n>1 开关样，n=1 双曲（Langmuir），n<1 负协同",
+        "response": "E = Emax*θ；若下游有放大，EC50 与 K 可不同"
+      }
+    },
+    {
+      "name": "Hill 图（线性化诊断）",
+      "latex": "\\log\\frac{\\theta}{1-\\theta}=n\\log x-n\\log K",
+      "plain": "log(θ/(1-θ)) = n*log(x) - n*log(K)",
+      "terms": {
+        "usage": "诊断数据是否服从 Hill 形式：斜率即 n_H，截距给出 K",
+        "note": "只在中间区（θ 0.1-0.9）线性；做线性回归时不要用全部点（两端饱和区会压平斜率）",
+        "pitfall": "用 logit 回归拟合 n 时，噪声结构改变，需加权/或用非线性拟合原始 θ"
+      }
+    },
+    {
+      "name": "Monod-Wyman-Changeux（MWC）别构模型",
+      "latex": "Y=\\frac{\\alpha(1+\\alpha)^{n-1}+L\\,c\\,\\alpha(1+c\\alpha)^{n-1}}{(1+\\alpha)^{n}+L(1+c\\alpha)^{n}},\\qquad \\alpha=\\frac{x}{K_A},\\ c=\\frac{K_A}{K_B},\\ L=\\frac{T_0}{R_0}",
+      "plain": "Y = [α(1+α)^(n-1) + L*c*α*(1+cα)^(n-1)] / [(1+α)^n + L*(1+cα)^n]; α=x/KA, c=KA/KB, L=T0/R0",
+      "terms": {
+        "n": "亚基（结合位点）数——机制参数，非表观 n_H",
+        "L": "无配体时 T/R 构象平衡比；L>>1 偏向 T 态",
+        "c": "配体对 T/R 的相对亲和力；c<1 表示配体偏好 R 态（激活）",
+        "relation": "MWC 可产生 n_H 接近 n 的陡峭响应；n_H 由 L、c、n 共同决定",
+        "usage": "当文献给出亚基数、别构常数时优先用 MWC；只有剂量-响应曲线时用 Hill 表观拟合"
+      }
+    },
+    {
+      "name": "Adair 逐步结合（四聚体血红蛋白示例）",
+      "latex": "Y=\\frac{K_1x+2K_1K_2x^{2}+3K_1K_2K_3x^{3}+4K_1K_2K_3K_4x^{4}}{4\\left(1+K_1x+K_1K_2x^{2}+K_1K_2K_3x^{3}+K_1K_2K_3K_4x^{4}\\right)}",
+      "plain": "Y = (K1*x + 2K1K2*x² + 3K1K2K3*x³ + 4K1K2K3K4*x⁴) / (4*(1+K1x+K1K2x²+K1K2K3x³+K1K2K3K4x⁴))",
+      "terms": {
+        "K_i": "第 i 个位点的逐步结合常数（宏观/表观）",
+        "meaning": "保留位点结构与部分协同；可拟合任意协同程度而不违反位点数约束",
+        "data_requirements": "需要覆盖低占据区的完整曲线；否则逐步常数不可辨识"
+      }
+    },
+    {
+      "name": "协同性 → 超敏/双稳的定量联系",
+      "latex": "n_{H}^{eff}\\ \\text{越大，负反馈越易振荡、正反馈越易双稳};\\qquad \\text{零级超敏：}n_{H}^{eff}\\ \\text{可达}\\ 4\\text{-}5\\ (K_m\\ll X_{tot})",
+      "plain": "有效 Hill 系数越大，开关样越强：负反馈更易振荡、正反馈更易双稳；共价修饰循环在 Km<<Xtot 时可给出 n_H 4-5 的零级超敏",
+      "terms": {
+        "meaning": "Hill 参数不是孤立拟合细节，它决定系统的定性行为（振荡/双稳阈值）",
+        "source": "协同结合（MWC）、多聚化、零级超敏（Goldbeter-Koshland）、正反馈",
+        "note": "Hill 模型本身无记忆；真实超敏若来自多步机制，时间响应形状会不同"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "Hill 是从剂量-响应曲线提取「阈值 + 陡度」的最小模型；当没有分子机制信息时优先用它，但必须在报告中说明是表观模型。",
+    "Hill 的 K 是半饱和浓度（EC50/IC50），不是微观 Kd；只有在 n=1 时才与 Langmuir Kd 一致。",
+    "n 必须在物理上可解释的范围内（≤ 结合位点数/多聚体数）；文献中常见 n=3-4（四聚体）或更高（常来自下游超敏）。",
+    "Hill 型速率用于 ODE 时必须明确「快平衡」假设：转录/结合快于表达变化；否则需显式动力学（质量作用）。",
+    "用于双稳/振荡模型时，n 是控制分岔的关键参数：先做参数扫描确认定性行为，再拟合定量数据。"
+  ],
+  "how_to_apply": [
+    "从文献整理剂量-响应数据（浓度、响应、单位），判断是否归一化；未归一化时 Emax 也需拟合。",
+    "先画 Hill 图估计 n_H 与 K 初值，再用非线性最小二乘拟合原始数据（避免 logit 变换的偏差）。",
+    "若文献给出亚基数/别构参数，改用 MWC 或 Adair 模型，用 Hill 结果作为初值/诊断。",
+    "在 spec 中用 hill 速率定律（mode=activation/repression），n 的 bounds 取 [1, 4]（有依据时可到 8）。",
+    "报告 K、n 的 CI，并注明是表观参数；跨条件比较时检查 K 是否随实验条件漂移。"
+  ],
+  "pitfalls": [
+    "把 n 当作结合位点数：n>位点数在物理上不可能（可能来自多聚化、下游超敏或拟合伪影）。",
+    "把 Hill K 当作微观 Kd 使用，导致与结合实验不一致。",
+    "在窄浓度范围（<2 个数量级）拟合 Hill，n 与 K 强相关、估计偏差大。",
+    "未扣除基线/非特异结合；Hill 曲线被压缩后 n 被高估。",
+    "对时间序列直接套 Hill 稳态式（忽略达到平衡的时间），尤其在慢结合/慢转录系统中。",
+    "忽略下游放大：EC50 与 Kd 差异可达 10-100 倍（受体储备），不能把 EC50 当 Kd 报告。",
+    "用 Hill 拟合双相数据（两种受体/两种状态）：单 Hill 会给出虚假的中间 n 与 K。"
+  ],
+  "matlab_notes": [
+    "bma.spec 的 hill 速率：{kind:\"hill\", mode:\"activation\"|\"repression\", parameters:{vmax,k,n}, species:{regulator:<id>}}。",
+    "n 的取值范围建议 [1,6]（有明确机制可到 8）；K 的 bounds 跨 4-6 个数量级；拟合时用 log10 参数化。",
+    "MWC/Adair 机制用 expression 速率实现（表达式支持 ^、/、+，无需额外函数）。",
+    "双相剂量-响应用两个 Hill 项叠加（需两个 K、两个 n、权重参数），并用 AICc 与单 Hill 比较。"
+  ],
+  "spec_mapping": "hill 速率定律（activation/repression）；更复杂机制（MWC、Adair、双相）用 expression 速率，参数全部以参数 id 引用。",
+  "diagnostics": [
+    "Hill 图在 θ 0.1-0.9 区间是否线性（非线性提示多相或机制变化）",
+    "拟合 n 的 CI 是否跨 1（跨 1 说明无协同证据）",
+    "残差是否在低/高浓度端系统性偏离（提示基线/非特异/多相）",
+    "EC50 与结合实验 Kd 的差异是否可用受体储备/放大解释"
+  ],
+  "keywords": ["Hill 方程", "协同性", "Hill 系数", "MWC 模型", "别构", "剂量-响应", "超敏", "cooperativity", "allostery", "sigmoidal"],
+  "tags": ["applied_mathematics", "dose_response", "regulation"],
+  "related": ["hill_regulation_toggle", "receptor_ligand_dose_response", "mapk_cascade", "negative_feedback_oscillator"],
+  "references": [
+    { "citation": "Hill AV (1910). The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves. Journal of Physiology 40(Suppl):iv-vii.", "authors": ["Hill AV"], "year": 1910, "title": "The possible effects of the aggregation of the molecules of haemoglobin on its dissociation curves", "journal": "Journal of Physiology", "volume": "40", "pages": "iv-vii" },
+    { "citation": "Adair GS (1925). The hemoglobin system. VI. The oxygen dissociation curve of hemoglobin. Journal of Biological Chemistry 63(2):529-545.", "authors": ["Adair GS"], "year": 1925, "title": "The hemoglobin system. VI. The oxygen dissociation curve of hemoglobin", "journal": "Journal of Biological Chemistry", "volume": "63", "pages": "529-545" },
+    { "citation": "Monod J, Wyman J, Changeux JP (1965). On the nature of allosteric transitions: a plausible model. Journal of Molecular Biology 12(1):88-118.", "authors": ["Monod J", "Wyman J", "Changeux JP"], "year": 1965, "title": "On the nature of allosteric transitions: a plausible model", "journal": "Journal of Molecular Biology", "volume": "12", "pages": "88-118" },
+    { "citation": "Weiss JN (1997). The Hill equation revisited: uses and misuses. FASEB Journal 11(11):835-841.", "authors": ["Weiss JN"], "year": 1997, "title": "The Hill equation revisited: uses and misuses", "journal": "FASEB Journal", "volume": "11", "pages": "835-841" },
+    { "citation": "Goldbeter A, Koshland DE Jr (1981). An amplified sensitivity arising from covalent modification in biological systems. Proceedings of the National Academy of Sciences USA 78(11):6840-6844.", "authors": ["Goldbeter A", "Koshland DE Jr"], "year": 1981, "title": "An amplified sensitivity arising from covalent modification in biological systems", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "78", "pages": "6840-6844" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

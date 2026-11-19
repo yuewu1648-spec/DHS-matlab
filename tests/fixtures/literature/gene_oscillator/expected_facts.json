@@ -1,0 +1,192 @@
+{
+  "schema": "bma.fixture.expectations.v1",
+  "fixture_id": "gene_oscillator",
+  "title": "A three-stage negative-feedback gene circuit sustains robust limit-cycle oscillations in a cell-free transcription-translation system",
+  "purpose": "Goodwin-type negative-feedback oscillator: Hill repression parameters, three-species ODE, period/amplitude observations. Exercises Hill rate law, oscillatory model analysis and time-course fitting.",
+  "formats": ["md", "txt", "html", "docx", "pdf"],
+  "expected_sections": [
+    "Abstract", "1. Introduction", "2. Materials and methods", "3. Results",
+    "4. Discussion", "5. Data availability", "6. References"
+  ],
+  "expected_model": {
+    "kind": "ode",
+    "archetype": "goodwin_oscillator",
+    "archetype_synonyms": [
+      "negative_feedback_oscillator", "gene_oscillator", "goodwin",
+      "three_stage_negative_feedback", "repressilator"
+    ],
+    "suggested_name": "gene_oscillator",
+    "species": ["m", "p", "r"],
+    "time_unit": "min",
+    "time_span": [0, 1500],
+    "mechanism_keywords": ["negative feedback", "Hill", "repression", "limit cycle", "oscillation"],
+    "expected_reaction_kinds": ["hill", "mass_action"]
+  },
+  "facts": [
+    {
+      "id": "alpha", "role": "parameter", "symbol": "alpha",
+      "names": ["alpha", "maximal transcription rate", "maximum transcription rate"],
+      "unit": "nM/min", "unit_aliases": ["nM min^-1", "nM min−1", "nM/min"],
+      "value": 32.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["maximal transcription rate", "32"]
+    },
+    {
+      "id": "K", "role": "parameter", "symbol": "K",
+      "names": ["K", "half-maximal repression", "repression half-effect", "dissociation constant"],
+      "unit": "nM", "unit_aliases": ["nM", "nanomolar"],
+      "value": 25.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "2.3 Repression transfer function",
+      "context_keywords": ["half-maximal repression", "25 nM"]
+    },
+    {
+      "id": "h", "role": "parameter", "symbol": "h",
+      "names": ["h", "Hill coefficient", "Hill exponent"],
+      "unit": "1", "unit_aliases": ["dimensionless", "1"],
+      "value": 10.0, "tolerance": {"relative": 0.1},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "2.3 Repression transfer function",
+      "context_keywords": ["Hill coefficient", "10"]
+    },
+    {
+      "id": "beta", "role": "parameter", "symbol": "beta",
+      "names": ["beta", "translation rate"],
+      "unit": "1/min", "unit_aliases": ["min^-1", "min−1", "1/min"],
+      "value": 0.72, "tolerance": {"relative": 0.15},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["translation rate", "0.72"]
+    },
+    {
+      "id": "delta", "role": "parameter", "symbol": "delta",
+      "names": ["delta", "repressor formation rate", "maturation rate"],
+      "unit": "1/min", "unit_aliases": ["min^-1", "min−1", "1/min"],
+      "value": 0.72, "tolerance": {"relative": 0.15},
+      "expected_in_spec": true, "expected_estimate": true,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["repressor formation rate", "0.72"]
+    },
+    {
+      "id": "gamma_m", "role": "parameter", "symbol": "gamma_m",
+      "names": ["gamma_m", "mRNA degradation rate", "mRNA decay rate"],
+      "unit": "1/min", "unit_aliases": ["min^-1", "min−1", "1/min"],
+      "value": 0.10, "tolerance": {"relative": 0.2},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["mRNA degradation", "0.10"]
+    },
+    {
+      "id": "gamma_p", "role": "parameter", "symbol": "gamma_p",
+      "names": ["gamma_p", "intermediate degradation rate", "protein degradation rate"],
+      "unit": "1/min", "unit_aliases": ["min^-1", "min−1", "1/min"],
+      "value": 0.10, "tolerance": {"relative": 0.2},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["intermediate degradation", "0.10"]
+    },
+    {
+      "id": "gamma_r", "role": "parameter", "symbol": "gamma_r",
+      "names": ["gamma_r", "repressor degradation rate"],
+      "unit": "1/min", "unit_aliases": ["min^-1", "min−1", "1/min"],
+      "value": 0.10, "tolerance": {"relative": 0.2},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["repressor degradation", "0.10"]
+    },
+    {
+      "id": "half_life", "role": "derived", "symbol": "t1/2",
+      "names": ["half-life", "half-lives"],
+      "unit": "min", "unit_aliases": ["min"],
+      "value": 6.9, "tolerance": {"relative": 0.15},
+      "expected_in_spec": false,
+      "derivation": "t1/2 = ln(2)/gamma",
+      "section_hint": "2.4 Rate-constant measurements",
+      "context_keywords": ["half-lives", "6.9"]
+    },
+    {
+      "id": "m0", "role": "initial", "symbol": "m0",
+      "names": ["m0", "initial mRNA", "initial mRNA concentration"],
+      "unit": "nM", "unit_aliases": ["nM"],
+      "value": 0.87, "tolerance": {"relative": 0.15},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.5 Mathematical model",
+      "context_keywords": ["m0", "0.87"]
+    },
+    {
+      "id": "p0", "role": "initial", "symbol": "p0",
+      "names": ["p0", "initial intermediate"],
+      "unit": "nM", "unit_aliases": ["nM"],
+      "value": 6.55, "tolerance": {"relative": 0.15},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.5 Mathematical model",
+      "context_keywords": ["p0", "6.55"]
+    },
+    {
+      "id": "r0", "role": "initial", "symbol": "r0",
+      "names": ["r0", "initial repressor"],
+      "unit": "nM", "unit_aliases": ["nM"],
+      "value": 45.0, "tolerance": {"relative": 0.15},
+      "expected_in_spec": true, "expected_estimate": false,
+      "section_hint": "2.5 Mathematical model",
+      "context_keywords": ["r0", "45.0"]
+    },
+    {
+      "id": "period", "role": "observation", "symbol": "T",
+      "names": ["period", "oscillation period"],
+      "unit": "min", "unit_aliases": ["min", "minutes"],
+      "value": 39.1, "tolerance": {"relative": 0.12},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Emergence and persistence of the oscillation",
+      "context_keywords": ["period", "39.1"]
+    },
+    {
+      "id": "repressor_min", "role": "observation", "symbol": "r_min",
+      "names": ["repressor varied between", "peak-to-trough"],
+      "unit": "nM", "unit_aliases": ["nM"],
+      "value": 34.3, "tolerance": {"relative": 0.15},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Emergence and persistence of the oscillation",
+      "context_keywords": ["34.3"]
+    },
+    {
+      "id": "repressor_max", "role": "observation", "symbol": "r_max",
+      "names": ["peak-to-trough", "repressor maximum"],
+      "unit": "nM", "unit_aliases": ["nM"],
+      "value": 69.4, "tolerance": {"relative": 0.15},
+      "expected_in_spec": false,
+      "section_hint": "3.2 Emergence and persistence of the oscillation",
+      "context_keywords": ["69.4"]
+    }
+  ],
+  "datasets": [
+    {
+      "file": "data/oscillation_timeseries.csv",
+      "role": "fit_target",
+      "time_unit": "min",
+      "columns": {
+        "time_min": "min",
+        "mRNA_nM": "nM",
+        "intermediate_nM": "nM",
+        "repressor_nM": "nM"
+      },
+      "rows": 751,
+      "output_map": {"m_obs": "mRNA_nM", "p_obs": "intermediate_nM", "r_obs": "repressor_nM"},
+      "initial_conditions_hint": {"m": 0.87, "p": 6.55, "r": 45.0},
+      "note": "Full 2 min-resolution recording; the paper table shows only t = 598-642 min."
+    }
+  ],
+  "assertions": {
+    "report_must_contain": ["Hill", "period", "assumptions", "oscillat"],
+    "report_must_contain_case_insensitive": ["limit cycle", "goodwin"],
+    "spec_must_have_assumptions": true,
+    "parameter_evidence_required": true,
+    "expected_output_ids_any_of": ["m_obs", "p_obs", "r_obs"]
+  },
+  "notes": [
+    "Synthetic fixture: the paper text, authors, journal and DOI are fabricated for testing.",
+    "The repression reaction should be modeled with the 'hill' rate kind in 'repression' mode; the other three reactions are 'mass_action'.",
+    "The degradation rate constants can be recovered from the stated half-life 6.9 min: gamma = ln(2)/6.9 = 0.10 min^-1."
+  ]
+}

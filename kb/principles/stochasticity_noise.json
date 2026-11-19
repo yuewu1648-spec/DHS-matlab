@@ -1,0 +1,126 @@
+{
+  "id": "stochasticity_noise",
+  "type": "principle",
+  "name": "随机性与噪声（CME、Gillespie、Fano 因子）",
+  "name_en": "Stochasticity and noise: CME, Gillespie SSA and Fano factor",
+  "domain": "stochastic_processes",
+  "scale": "cell",
+  "model_class": "stochastic",
+  "summary": "当分子数少（单细胞中转录因子/ mRNA 常 1-100 个）时，确定性 ODE 只给均值，无法描述分布、双峰与随机切换。化学主方程（CME）描述分子数分布的时间演化；Gillespie 随机模拟（SSA）可精确采样 CME 的轨迹；化学 Langevin 方程（CLE）是中间近似。噪声大小用 Fano 因子 F=Var/Mean 度量：Poisson 过程 F=1，爆发式表达 F>1（常近似 1+burst size）。",
+  "statement": "随机化学系统的状态是分子数向量 x，CME 给出 P(x,t) 的演化；每个反应的倾向函数 a_j(x) 与确定性速率定律对应（大体积极限下 c = kΩ^{1-n}）。CME 一般无法解析求解，需 SSA（精确）或 CLE/矩闭合（近似）。噪声分内禀（同一细胞内反应随机性）与外禀（细胞间参数/状态差异），可用双报告基因实验分离；噪声通过调控网络传播，决定双稳态切换、细胞命运与振荡的可靠性。",
+  "formulas": [
+    {
+      "name": "化学主方程（CME）",
+      "latex": "\\frac{\\partial P(\\mathbf{x},t)}{\\partial t}=\\sum_{j=1}^{M}\\left[a_j\\left(\\mathbf{x}-\\boldsymbol{\\nu}_j\\right)P\\left(\\mathbf{x}-\\boldsymbol{\\nu}_j,t\\right)-a_j(\\mathbf{x})P(\\mathbf{x},t)\\right]",
+      "plain": "∂P(x,t)/∂t = Σ_j [ a_j(x-ν_j)*P(x-ν_j,t) - a_j(x)*P(x,t) ]",
+      "terms": {
+        "x": "分子数向量（整数）",
+        "propensity": "反应 j 的倾向函数（单位时间发生概率）",
+        "nu_j": "反应 j 的化学计量向量（第 j 列）",
+        "P_xt": "t 时刻处于状态 x 的概率",
+        "usage": "从原理上定义随机动力学；解析解只对少数线性系统（生灭过程）可得"
+      }
+    },
+    {
+      "name": "质量作用倾向函数与确定性极限",
+      "latex": "a_j(\\mathbf{x})=c_j\\prod_i\\frac{x_i!}{\\left(x_i-\\nu_{ij}\\right)!\\nu_{ij}!};\\qquad c_j=\\frac{k_j}{\\Omega^{n_j-1}}\\ (\\text{大数极限})",
+      "plain": "a_j(x) = c_j*prod_i[x_i!/((x_i-ν_ij)!ν_ij!)]；大数极限下 c_j = k_j/Ω^(n_j-1)",
+      "terms": {
+        "omega": "系统体积（或等效的分子数尺度）；大 Ω 时随机模型趋于确定性 ODE",
+        "c_j": "随机速率常数；与确定性 k 的换算依赖反应级数",
+        "note": "直接拿确定性 k（如 1/(uM*s)）当 c 用，必须做体积换算；否则噪声大小错误"
+      }
+    },
+    {
+      "name": "Fano 因子与分布类型",
+      "latex": "F=\\frac{\\mathrm{Var}(x)}{\\langle x\\rangle};\\quad \\text{Poisson: }F=1;\\quad \\text{bursty: }F\\approx1+b,\\ b=\\text{每次爆发的平均分子数}",
+      "plain": "F = Var(x)/<x>；Poisson F=1；爆发式表达 F≈1+b（b 为爆发大小）",
+      "terms": {
+        "fano_lt_one": "亚 Poisson（负反馈/有限状态约束）",
+        "fano_eq_one": "Poisson（简单生灭过程）",
+        "fano_gt_one": "超分散（转录爆发、细胞间变异、正反馈）；负二项分布常用于拟合",
+        "protein": "Fano_protein ≈ 1 + β/γ_m *（mRNA 噪声修正）；翻译爆发 b≈β/γ_m",
+        "usage": "用单细胞分布/Fano 判断机制（爆发式转录、两态启动子、负反馈）"
+      }
+    },
+    {
+      "name": "Gillespie 直接法（SSA）",
+      "latex": "a_{tot}=\\sum_j a_j;\\quad \\tau=\\frac{-\\ln u_1}{a_{tot}};\\quad \\text{选择 }j:\\ \\sum_{i<j}a_i\\le u_2a_{tot}<\\sum_{i\\le j}a_i",
+      "plain": "a_tot=Σa_j; τ=-ln(u1)/a_tot; 选 j 使 Σ_{i<j}a_i ≤ u2*a_tot < Σ_{i≤j}a_i; 更新 x+=ν_j, t+=τ",
+      "terms": {
+        "u1_u2": "独立均匀随机数（0,1）；每步消耗两个",
+        "exactness": "无时间离散误差，精确采样 CME（单轨迹）",
+        "cost": "事件数 ∝ 分子数×反应数；大系统/长时间仿真慢；用多轨迹统计均值/方差/Fano",
+        "speedup": "τ-leaping、慢尺度近似、混合方法；但需验证近似误差"
+      }
+    },
+    {
+      "name": "化学 Langevin 方程（CLE）",
+      "latex": "d\\mathbf{x}=\\mathbf{S}\\,\\mathbf{a}(\\mathbf{x})\\,dt+\\sum_j\\boldsymbol{\\nu}_j\\sqrt{a_j(\\mathbf{x})}\\,dW_j",
+      "plain": "dx = S*a(x)*dt + Σ_j ν_j*sqrt(a_j(x))*dW_j（Itô 形式）",
+      "terms": {
+        "dW_j": "独立 Wiener 过程增量",
+        "applicability": "分子数较大（>~100）但噪声不可忽略；比 SSA 快，低丰度物种可能失真",
+        "implementation": "Euler-Maruyama；需注意负值截断与刚性"
+      }
+    },
+    {
+      "name": "噪声传播（线性近似）",
+      "latex": "CV_{out}^{2}\\approx\\sum_i\\left(\\frac{\\partial\\ln y}{\\partial\\ln x_i}\\right)^{2}CV_{x_i}^{2};\\qquad \\mathrm{Var}_{total}=\\mathrm{Var}_{intrinsic}+\\mathrm{Var}_{extrinsic}",
+      "plain": "CV²_out ≈ Σ_i (∂lny/∂lnx_i)²*CV²_in,i；总方差 = 内禀方差 + 外禀方差",
+      "terms": {
+        "CV": "变异系数（标准差/均值）；无量纲",
+        "meaning": "网络对输入的敏感度决定噪声放大或过滤；负反馈可降低内禀噪声（但可能放大外禀噪声）",
+        "dual_reporter": "两个相同报告基因的协方差给外禀方差，差值给内禀方差（Elowitz 2002）"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "先估计分子数：单细胞中 1 个分子 ≈ 1.7 nM（细菌 1 fL）；mRNA 常 1-100 copies、转录因子 10-1e4 copies。低于 ~100 时确定性 ODE 不足以描述分布。",
+    "随机模型需要额外参数（Ω 或体积、初始分子数、随机速率常数），这些不在 bma.modelSpec.v1 的 ODE 字段中；应在 metadata 中记录并在报告中说明换算。",
+    "Fano 因子/分布形状是判别机制的数据：Poisson vs 超分散 vs 双峰分别指向简单生灭、转录爆发、双稳态。",
+    "噪声会改变定性行为：双稳态在噪声下可随机切换、振荡可能被噪声抑制或放大；确定性模型给出的分岔点需要随机模拟验证。",
+    "负反馈降低内禀噪声但可能放大外禀噪声；报告噪声结论时必须区分两类噪声与测量噪声。"
+  ],
+  "how_to_apply": [
+    "确定系统体积与关键物种分子数；判断是否需要随机模型。",
+    "从确定性 spec 的速率定律写倾向函数（按体积换算 c）；用 Gillespie 自实现脚本跑 ≥1000 条轨迹。",
+    "统计均值、方差、Fano、分布（直方图/双峰），与 ODE 均值比较；绘制变异随时间/基因表达水平的变化。",
+    "若用 CLE/矩闭合，先与 SSA 在小参数下对照验证。",
+    "报告：随机模拟设置（Ω、初值、轨迹数、随机种子）、Fano 数值、确定性 vs 随机结论差异。"
+  ],
+  "pitfalls": [
+    "把确定性速率常数直接当随机 c，导致噪声量级错误（二级反应差 Ω 倍）。",
+    "分子数很少时仍用 ODE 解释双峰/随机切换（会得到「中间值」的错误结论）。",
+    "SSA 轨迹数太少（<100）就下结论，统计误差大于效应。",
+    "忽略测量噪声：实验 Fano 含仪器/采样噪声，需对照/去卷积。",
+    "把外禀变异当内禀噪声（或反之）；未做双报告/重复实验分离。",
+    "CLE 在低拷贝数下产生负值或错误方差；需要截断/对数变换等修正。",
+    "时间单位/体积单位换算错误（nM ↔ copies：1 copy/cell 的换算依赖细胞体积）。"
+  ],
+  "matlab_notes": [
+    "v1 不直接支持随机模型：spec 写确定性 ODE；随机模拟用自写 Gillespie 脚本（化学计量矩阵从 spec 生成，倾向函数按速率定律手写）。",
+    "用固定随机种子（rng）保证可复现；跑多条轨迹后统计 Fano/分布；报告需给出轨迹数。",
+    "与确定性结果对照：随机均值应收敛到 ODE（大 Ω/大分子数），可用于验证实现正确。",
+    "单细胞数据拟合：先拟合均值（ODE），再用 Fano/分布判别机制；两态启动子参数（kon,koff,α）需单细胞分布数据。"
+  ],
+  "spec_mapping": "确定性均值模型用 ODE spec；随机模拟参数（系统体积 Ω、初始分子数、随机种子）写入 spec.metadata 与报告；若需要，把 burst 参数作为 ODE 均值模型的额外参数（如两态启动子平均占据率）。",
+  "diagnostics": [
+    "Fano 因子 vs 均值关系（Poisson: F=1；爆发: F 随均值增大而升高）",
+    "分布是否双峰（双稳态/两态启动子）",
+    "确定性 ODE 均值与 SSA 均值在增大 Ω 时是否收敛",
+    "内禀/外禀方差分解（双报告协方差）",
+    "轨迹数与统计误差（bootstrap CI）"
+  ],
+  "keywords": ["随机性", "噪声", "Fano 因子", "化学主方程", "Gillespie", "SSA", "爆发式表达", "stochasticity", "noise", "Fano factor", "chemical master equation"],
+  "tags": ["stochastic_processes", "cell", "gene_expression"],
+  "related": ["gene_expression", "hill_regulation_toggle", "negative_feedback_oscillator", "mass_action"],
+  "references": [
+    { "citation": "Gillespie DT (1977). Exact stochastic simulation of coupled chemical reactions. Journal of Physical Chemistry 81(25):2340-2361.", "authors": ["Gillespie DT"], "year": 1977, "title": "Exact stochastic simulation of coupled chemical reactions", "journal": "Journal of Physical Chemistry", "volume": "81", "pages": "2340-2361", "doi": "10.1021/j100540a008" },
+    { "citation": "Elowitz MB, Levine AJ, Siggia ED, Swain PS (2002). Stochastic gene expression in a single cell. Science 297(5584):1183-1186.", "authors": ["Elowitz MB", "Levine AJ", "Siggia ED", "Swain PS"], "year": 2002, "title": "Stochastic gene expression in a single cell", "journal": "Science", "volume": "297", "pages": "1183-1186", "doi": "10.1126/science.1070919" },
+    { "citation": "Paulsson J (2004). Summing up the noise in gene networks. Nature 427(6973):415-418.", "authors": ["Paulsson J"], "year": 2004, "title": "Summing up the noise in gene networks", "journal": "Nature", "volume": "427", "pages": "415-418", "doi": "10.1038/nature02257" },
+    { "citation": "Thattai M, van Oudenaarden A (2001). Intrinsic noise in gene regulatory networks. Proceedings of the National Academy of Sciences USA 98(15):8614-8619.", "authors": ["Thattai M", "van Oudenaarden A"], "year": 2001, "title": "Intrinsic noise in gene regulatory networks", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "98", "pages": "8614-8619" },
+    { "citation": "Munsky B, Neuert G, van Oudenaarden A (2012). Using gene expression noise to understand gene regulation. Science 336(6078):183-187.", "authors": ["Munsky B", "Neuert G", "van Oudenaarden A"], "year": 2012, "title": "Using gene expression noise to understand gene regulation", "journal": "Science", "volume": "336", "pages": "183-187" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

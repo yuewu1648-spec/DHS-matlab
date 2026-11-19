@@ -1,0 +1,89 @@
+# headless.patch.template.yml
+# =========================================================================
+# DSH overlay patch for the headless agent E2E (tests/e2e/run_headless_e2e.ps1).
+#
+# `dsh --profile headless --patch <this-file>` composes this overlay AFTER the
+# profile layers, so it can (1) re-enable the DeepSeek account credential
+# plugins that the stock headless bundle disables, (2) replace the coding-agent
+# persona with the BioModel-MATLAB modelling persona, and (3) mount the
+# project's MATLAB tool plugin.
+#
+# The runner substitutes these placeholders before use:
+#   __BIO_MATLAB_PLUGIN_SPEC__  module specifier for bridge/ — an INSTALLED
+#                               package name (@local/dsh-bio-matlab) or an
+#                               ABSOLUTE module path such as
+#                               E:/matlab系统建模/bridge/lib/index.js.
+#                               Absolute paths are used because the generated
+#                               patch lives in the run's artifact directory,
+#                               where relative anchoring does not apply.
+#
+# Loader dialect reference: docs/DESIGN.md section 8 and the DSH Cordis
+# composition reference. Owner: qa-acceptance (tests/e2e scope).
+# =========================================================================
+
+# ---------------------------------------------------------------------------
+# 1) restore the DeepSeek account credentials for headless runs
+#    (the shipped @deepseek-ai/dsh-headless patch disables these rows)
+# ---------------------------------------------------------------------------
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+  disabled: false
+
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  disabled: false
+  config:
+    desktopPlatform: !!js >-
+      ctx.get('profileContext')?.name === 'desktop' &&
+      ['darwin', 'win32'].includes(process.platform) ? process.platform : null
+
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+  disabled: false
+
+# ---------------------------------------------------------------------------
+# 2) BioModel-MATLAB persona (self-contained; mirrors docs/DESIGN.md §8.2)
+# ---------------------------------------------------------------------------
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaPrefix: |
+      你是 BioModel-MATLAB 系统的生物系统建模专家（由 {{model}} 驱动），同时具备
+      数学、物理与化学生物学功底。你的计算后端是 MATLAB：所有符号/数值建模、仿真、
+      参数估计、可辨识性、验证、绘图与报告都必须通过 bma_* / matlab_* 工具完成。输出
+      中文报告，模型规格（spec）与代码标识符使用英文。
+
+      【强制工作流（质量门，不得跳步）】
+      1. 文献解析：bma_literature_ingest 读入文献，read 全文，抽取章节、数值与单位。
+      2. 证据与实体抽取：每个参数记录来源（measured/estimated/assumed/fitted）与
+         section/quote；不得编造文献中不存在的内容。
+      3. 知识库检索：bma_kb_search 匹配模型原型（archetype）与建模原则。
+      4. 机制假设与建模假设：写出可检验的机制假设与显式假设清单。
+      5. 模型规格 bma.modelSpec.v1：变量/参数/反应/输出齐全，单位齐全，参数标注
+         estimate 与 bounds，附 assumptions。
+      6. bma_model_validate 校验直到 valid=true（按 hint 修复，不要绕过错误）。
+      7. 仿真 bma_model_simulate，检查行为是否与文献描述定性一致。
+      8. 参数估计 bma_model_fit（用数据 CSV；不可辨识时用 assumed/estimated 值并说明）。
+      9. 可辨识性/敏感性 bma_model_identifiability、bma_model_sensitivity。
+      10. 验证/证伪：bma_model_validate_fit（残差+交叉验证），必要时模型比较
+          bma_model_selection。
+      11. 报告 bma_report_build（含参数表、证据表、假设、指标、图、局限）。
+      12. 导出 bma_codegen；最后用一段话总结模型、拟合指标与证据缺口。
+
+      【硬性规则】
+      - 参数必须有单位与 evidence（measured/estimated/assumed/fitted），推断值必须标
+        assumed 或 estimated；禁止无来源数字。
+      - 先最小机制模型，再按数据证据扩展；不要为拟合而堆参数。
+      - 所有文件操作在 / 相对 work_dir 内；产物由工具自动写入 .bma/runs/。
+      - 工具报错时先读错误码与 hint 修复，再重试；连续失败要如实报告。
+      - 报告必须列出假设、局限、可复现命令；结论必须能回溯到文献 section/quote。
+      - 最后必须实际生成报告文件，不能只给出计划。
+
+# ---------------------------------------------------------------------------
+# 3) mount the project's MATLAB tool plugin (bridge/lib/index.js)
+#    __BIO_MATLAB_PLUGIN_SPEC__ is substituted with an absolute module path by
+#    the runner (relative anchoring is not reliable from artifact directories).
+# ---------------------------------------------------------------------------
+- insert:
+    - id: bio-matlab-tools
+      name: __BIO_MATLAB_PLUGIN_SPEC__

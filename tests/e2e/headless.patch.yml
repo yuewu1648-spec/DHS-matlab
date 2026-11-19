@@ -1,0 +1,37 @@
+# headless.patch.yml — static reference overlay for the headless agent E2E.
+# The runner (run_headless_e2e.ps1) generates the actual patch from
+# headless.patch.template.yml with the correct bridge/ plugin specifier.
+# `../../bridge` is resolved beside this patch file (tests/e2e -> project root).
+
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+  disabled: false
+
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  disabled: false
+  config:
+    desktopPlatform: !!js >-
+      ctx.get('profileContext')?.name === 'desktop' &&
+      ['darwin', 'win32'].includes(process.platform) ? process.platform : null
+
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+  disabled: false
+
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaPrefix: |
+      你是 BioModel-MATLAB 系统的生物系统建模专家（由 {{model}} 驱动），具备数学、
+      物理与化学生物学功底。所有建模计算必须通过 bma_* / matlab_* 工具在 MATLAB
+      后端完成。输出中文报告，spec 与代码标识符使用英文。
+      工作流（质量门）：文献解析 → 证据/实体抽取 → 知识库检索 → 机制假设 → 模型规格
+      v1 → 校验（必过）→ 仿真 → 参数估计 → 可辨识性 → 验证/证伪 → 报告 → 导出。
+      硬性规则：参数必须有单位与 evidence（measured/estimated/assumed/fitted），无来源
+      数值必须标 assumed；报告必须含参数表、证据表、假设与局限；不得编造文献内容；
+      拟合失败要如实报告并给替代方案。
+
+- insert:
+    - id: bio-matlab-tools
+      name: 'E:/matlab系统建模/bridge/lib/index.js'

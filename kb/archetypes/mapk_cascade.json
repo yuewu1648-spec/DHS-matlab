@@ -1,0 +1,186 @@
+{
+  "id": "mapk_cascade",
+  "type": "archetype",
+  "name": "信号级联（MAPK/磷酸化级联与超敏）",
+  "name_en": "Signaling cascade: MAPK/phosphorylation cascade and ultrasensitivity",
+  "domain": "signaling",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "三级激酶级联（MAPKKK→MAPKK→MAPK）通过逐级磷酸化传递并放大信号；当磷酸化/去磷酸化两个酶都接近饱和时出现零级超敏（Goldbeter-Koshland），使渐变输入转为开关样输出。每级用「激酶浓度 × 底物 MM 动力学」写为 expression 速率即可在 v1 中完整表达；级联叠加负反馈可产生振荡（ERK 振荡），叠加正反馈可产生双稳。",
+  "when_to_use": [
+    "文献报告激酶级联的磷酸化时间序列/剂量-响应（如 pMEK、ppERK、pAKT、p38、JNK），或 western blot/phospho-flow 的磷酸化比例",
+    "出现「ultrasensitivity」「switch-like」「zero-order」「Goldbeter-Koshland」「sigmoidal dose-response」「amplification」",
+    "机制涉及多级激酶、支架蛋白（scaffold）、双磷酸化（MEK→ERK 需 TEY 双位点）、反馈（ERK→SOS/RAF）",
+    "观测到 ERK 活性振荡、持续 vs 瞬时信号（决定细胞命运）、或双稳/滞后",
+    "需要把受体刺激强度与下游激酶激活的陡峭度、峰值幅度、持续时间定量联系"
+  ],
+  "tags": ["信号级联", "MAPK", "磷酸化", "超敏", "开关", "激酶", "signaling"],
+  "keywords": ["MAPK 级联", "磷酸化", "去磷酸化", "零级超敏", "超敏性", "开关样响应", "信号放大", "ERK", "MEK", "激酶 cascade", "ultrasensitivity", "zero-order", "phosphorylation", "switch-like"],
+  "equations": [
+    {
+      "name": "单级磷酸化循环（质量作用 + MM）",
+      "latex": "\\frac{d[X_p]}{dt}=\\frac{k_{cat}^{kin}\\,[K]\\,[X]}{K_m+[X]}-\\frac{V_{phos}\\,[X_p]}{K_{m}^{phos}+[X_p]},\\qquad [X]+[X_p]=X_{tot}",
+      "plain": "dXp/dt = kcat_kin*K*X/(Km+X) - Vphos*Xp/(Kmphos+Xp); X + Xp = Xtot",
+      "terms": {
+        "X_Xp": "未磷酸化/磷酸化底物浓度（nM）；每级总量守恒",
+        "K": "活性激酶浓度（nM）；由上一级或输入决定",
+        "kcat_kin_Km": "激酶催化常数（1/min）与底物半饱和浓度（nM）",
+        "Vphos_Kmphos": "磷酸酶最大速率（nM/min）与半饱和浓度（nM）",
+        "amplification": "上游激酶浓度稍增即可让下游磷酸化大幅增加；级联逐级放大信号"
+      }
+    },
+    {
+      "name": "三级级联（MAPKKK→MAPKK→MAPK）",
+      "latex": "\\frac{dB_p}{dt}=\\frac{k_1 A\\,B}{K_1+B}-\\frac{V_{2}B_p}{K_{2}+B_p},\\qquad \\frac{dC_p}{dt}=\\frac{k_3 B_p\\,C}{K_3+C}-\\frac{V_{4}C_p}{K_{4}+C_p}",
+      "plain": "dBp/dt = k1*A*B/(K1+B) - V2*Bp/(K2+Bp); dCp/dt = k3*Bp*C/(K3+C) - V4*Cp/(K4+Cp)",
+      "terms": {
+        "A": "活性 MAPKKK（输入级）",
+        "B_Bp": "MAPKK 未/已磷酸化；C, Cp 为 MAPK 未/已磷酸化",
+        "k1_k3": "上游激酶对底物的有效催化常数（1/min）",
+        "V2_V4": "磷酸酶最大速率（nM/min）",
+        "dual_phosphorylation": "MEK 需磷酸化两个位点、ERK 需 TEY 双位点；严格建模需中间态（X、Xp、Xpp），本模板用单步近似"
+      }
+    },
+    {
+      "name": "Goldbeter-Koshland 零级超敏（稳态解）",
+      "latex": "\\frac{V_1\\left(1-x\\right)}{K_1+\\left(1-x\\right)}=\\frac{V_2\\,x}{K_2+x},\\qquad x=\\frac{[X_p]}{X_{tot}}",
+      "plain": "V1*(1-x)/(K1+(1-x)) = V2*x/(K2+x); x = Xp/Xtot",
+      "terms": {
+        "K1_K2": "归一化米氏常数（Km/Xtot）；K1,K2 << 1 时两酶均饱和 → 零级动力学",
+        "ultrasensitivity": "零级区响应接近阶跃，有效 Hill 系数可达 ~4-5；V1/V2 决定切换阈值",
+        "analytic_solution": "x = [-(K2+V2/K1... )] 形式可解二次方程；工程上直接用数值稳态或公式拟合",
+        "applicability": "激酶/磷酸酶浓度远低于底物且底物浓度 >> Km 时；AKT/ERK 级联常见"
+      }
+    },
+    {
+      "name": "级联的输入-输出陡峭度与放大",
+      "latex": "n_{H}^{cascade}\\approx n_{H}^{1}\\cdot n_{H}^{2}\\cdot n_{H}^{3}\\ (\\text{局部斜率相乘，非严格 Hill 指数});\\qquad A_{overall}=\\prod_i A_i",
+      "plain": "级联总陡峭度/放大近似为各级之积（局部斜率相乘）；但若某级饱和则不再放大",
+      "terms": {
+        "implication": "一级超敏 + 级联可产生极陡阈值；但也容易被饱和/负反馈限制",
+        "measurement": "用剂量-响应曲线的最大斜率（log-log）估计有效 Hill 系数"
+      }
+    },
+    {
+      "name": "正/负反馈扩展",
+      "latex": "\\frac{dC_p}{dt}=f(B_p,C)-g(C_p)\\,\\text{；负反馈：}\\ f \\to \\frac{f_0}{1+(C_p/K_{fb})^{h}};\\ \\text{正反馈：}\\ f \\to f_0\\frac{C_p^{h}}{K_{fb}^{h}+C_p^{h}}",
+      "plain": "把磷酸化速率乘上对下游产物的负/正反馈因子：负反馈可致振荡，正反馈可致双稳",
+      "terms": {
+        "negative_feedback": "ERK 抑制 SOS/RAF；强负反馈 + 时滞 → 阻尼振荡或持续振荡（ERK 振荡调控增殖/分化）",
+        "positive_feedback": "RAF-MEK-ERK 正反馈环路；与双稳态/滞后相关",
+        "modeling": "用 hill repression/activation 速率乘到上游级联（或 expression 速率内嵌反馈因子）"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "mapk_three_tier",
+    "title": "三级 MAPK 磷酸化级联（含激酶输入与去磷酸化）",
+    "description": "输入驱动 MAPKKK 活性 A；A 磷酸化 MAPKK（B→Bp），Bp 磷酸化 MAPK（C→Cp），各级均有磷酸酶去磷酸化；A 一阶失活。用于 pMEK/ppERK 时间序列与剂量-响应拟合、超敏分析。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 120, "n": 1201 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "A", "name": "活性 MAPKKK", "unit": "nM", "initial": { "value": 0 } },
+      { "id": "B", "name": "未磷酸化 MAPKK", "unit": "nM", "initial": { "value": 100 } },
+      { "id": "Bp", "name": "磷酸化 MAPKK", "unit": "nM", "initial": { "value": 0 } },
+      { "id": "C", "name": "未磷酸化 MAPK", "unit": "nM", "initial": { "value": 300 } },
+      { "id": "Cp", "name": "双磷酸化 MAPK（ppERK）", "unit": "nM", "initial": { "value": 0 } }
+    ],
+    "parameters": [
+      { "id": "kA", "name": "MAPKKK 激活输入速率", "unit": "nM/min", "value": { "value": 20.0 }, "estimate": false },
+      { "id": "koffA", "name": "MAPKKK 失活速率", "unit": "1/min", "value": { "value": 0.2 }, "estimate": true, "bounds": [0.001, 10] },
+      { "id": "kcat1", "name": "MAPKKK 催化 MAPKK 的转换数（有效）", "unit": "1/min", "value": { "value": 0.5 }, "estimate": true, "bounds": [0.0001, 100] },
+      { "id": "Km1", "name": "MAPKKK 对 MAPKK 的米氏常数", "unit": "nM", "value": { "value": 50.0 }, "estimate": true, "bounds": [0.01, 10000] },
+      { "id": "kphosB", "name": "MAPKK 磷酸酶最大速率", "unit": "nM/min", "value": { "value": 30.0 }, "estimate": true, "bounds": [0.001, 1000] },
+      { "id": "KpB", "name": "MAPKK 磷酸酶米氏常数", "unit": "nM", "value": { "value": 30.0 }, "estimate": true, "bounds": [0.01, 10000] },
+      { "id": "kcat2", "name": "磷酸化 MAPKK 催化 MAPK 的转换数（有效）", "unit": "1/min", "value": { "value": 1.0 }, "estimate": true, "bounds": [0.0001, 100] },
+      { "id": "Km2", "name": "MAPKK 对 MAPK 的米氏常数", "unit": "nM", "value": { "value": 100.0 }, "estimate": true, "bounds": [0.01, 10000] },
+      { "id": "kphosC", "name": "MAPK 磷酸酶最大速率", "unit": "nM/min", "value": { "value": 60.0 }, "estimate": true, "bounds": [0.001, 1000] },
+      { "id": "KpC", "name": "MAPK 磷酸酶米氏常数", "unit": "nM", "value": { "value": 50.0 }, "estimate": true, "bounds": [0.01, 10000] }
+    ],
+    "reactions": [
+      { "id": "A_input", "name": "MAPKKK 激活", "stoichiometry": { "A": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "kA" } } },
+      { "id": "A_deactivation", "name": "MAPKKK 失活", "stoichiometry": { "A": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "koffA" }, "species": { "A": 1 } } },
+      { "id": "B_phosphorylation", "name": "MAPKK 磷酸化（A 催化）", "stoichiometry": { "B": -1, "Bp": 1 },
+        "rate": { "kind": "expression", "expression": "kcat1*A*B/(Km1+B)" } },
+      { "id": "B_dephosphorylation", "name": "MAPKK 去磷酸化", "stoichiometry": { "Bp": -1, "B": 1 },
+        "rate": { "kind": "expression", "expression": "kphosB*Bp/(KpB+Bp)" } },
+      { "id": "C_phosphorylation", "name": "MAPK 磷酸化（Bp 催化）", "stoichiometry": { "C": -1, "Cp": 1 },
+        "rate": { "kind": "expression", "expression": "kcat2*Bp*C/(Km2+C)" } },
+      { "id": "C_dephosphorylation", "name": "MAPK 去磷酸化", "stoichiometry": { "Cp": -1, "C": 1 },
+        "rate": { "kind": "expression", "expression": "kphosC*Cp/(KpC+Cp)" } }
+    ],
+    "outputs": [
+      { "id": "A_obs", "name": "MAPKKK 活性", "unit": "nM", "expression": "A" },
+      { "id": "Bp_obs", "name": "pMEK 水平", "unit": "nM", "expression": "Bp" },
+      { "id": "Cp_obs", "name": "ppERK 水平", "unit": "nM", "expression": "Cp" },
+      { "id": "ERK_fraction", "name": "ppERK 占总 ERK 比例", "unit": "1", "expression": "Cp/(C+Cp)" }
+    ],
+    "assumptions": [
+      "单室充分混合；各级底物总量守恒（B+Bp、C+Cp 为常数）",
+      "磷酸化/去磷酸化可作为单步有效 MM 过程（双磷酸化、支架蛋白被集总进有效参数）",
+      "激酶/磷酸酶浓度变化快于底物状态变化，可用自由激酶浓度直接写速率；无酶-底物复合物积累",
+      "无反馈、无交叉对话、无亚细胞定位差异；输入为恒定激活速率"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；负反馈版本在 C_phosphorylation 速率上乘 1/(1+(Cp/Kfb)^h)。" }
+  },
+  "spec_notes": [
+    "磷酸化位点双位点机制（MEK/ERK 真实情况）需要中间态；若要建模，把 B 拆成 B、Bp1、Bpp 三态并写两步磷酸化 + 两步去磷酸化，参数增加到 8-10 个，仅在数据丰富时使用。",
+    "激酶输入剂量扫描：把 kA 在 simulate_cases 中从 0.1 扫到 1000 nM/min（相当于刺激强度），记录终态 Cp 或 Cp/C 比例，得到输入-输出曲线并估计有效 Hill 系数。",
+    "加入 ERK 负反馈（ERK 抑制 RAF）：把 B_phosphorylation 的速率改为 expression \"kcat1*A*B/(Km1+B)/(1+(Cp/Kfb)^h)\"，新增参数 Kfb（nM）与 h；可产生 ERK 振荡（周期约 10-30 min）。",
+    "若只有总 ERK/pERK 比例数据（western blot），只能拟合比例而非绝对浓度；把 C_tot、pERK 比例作为观测，绝对参数（kcat*Etot）只得到乘积。",
+    "支架蛋白（KSR、MP1）会改变有效浓度与局部动力学；文献若提到 scaffold，需把有效激酶浓度作为参数并说明集总。",
+    "超敏诊断：画 ppERK 对刺激的对数-对数曲线，最大斜率（Hill 斜率）显著 >1 提示零级超敏或协同；如仅由一级 MM 级联组成，斜率通常 <1.5。"
+  ],
+  "variables": [
+    { "id": "A", "name": "活性 MAPKKK", "unit": "nM", "typical_range": [0, 500], "notes": "RAF/MLK 等；活性形式浓度常 10-200 nM" },
+    { "id": "B", "name": "MAPKK", "unit": "nM", "typical_range": [10, 1000], "notes": "MEK 丰度常 100-1000 nM（远高于 RAF）" },
+    { "id": "Bp", "name": "磷酸化 MAPKK", "unit": "nM", "typical_range": [0, 1000], "notes": "" },
+    { "id": "C", "name": "MAPK", "unit": "nM", "typical_range": [50, 2000], "notes": "ERK1/2 总丰度可达 uM 级" },
+    { "id": "Cp", "name": "ppMAPK", "unit": "nM", "typical_range": [0, 2000], "notes": "刺激后峰值常为总量的 10-50%" }
+  ],
+  "parameters": [
+    { "id": "kA", "symbol": "k_A", "unit": "nM/min", "typical_range": [0.01, 1000], "notes": "输入激活速率，实验刺激强度的代理" },
+    { "id": "koffA", "symbol": "k_{off,A}", "unit": "1/min", "typical_range": [0.001, 10], "notes": "MAPKKK 失活，决定信号持续时间" },
+    { "id": "kcat1", "symbol": "k_{cat,1}", "unit": "1/min", "typical_range": [0.0001, 100], "notes": "有效转换数（含支架/定位效应）" },
+    { "id": "Km1", "symbol": "K_{m,1}", "unit": "nM", "typical_range": [0.01, 10000], "notes": "常 50-500 nM" },
+    { "id": "kphosB", "symbol": "V_{phos,B}", "unit": "nM/min", "typical_range": [0.001, 1000], "notes": "磷酸酶容量；与激酶容量之比决定稳态磷酸化水平" },
+    { "id": "KpB", "symbol": "K_{m,B}^{phos}", "unit": "nM", "typical_range": [0.01, 10000], "notes": "磷酸酶 Km；远小于底物总量时进入零级超敏区" },
+    { "id": "kcat2", "symbol": "k_{cat,2}", "unit": "1/min", "typical_range": [0.0001, 100], "notes": "" },
+    { "id": "Km2", "symbol": "K_{m,2}", "unit": "nM", "typical_range": [0.01, 10000], "notes": "" },
+    { "id": "kphosC", "symbol": "V_{phos,C}", "unit": "nM/min", "typical_range": [0.001, 1000], "notes": "" },
+    { "id": "KpC", "symbol": "K_{m,C}^{phos}", "unit": "nM", "typical_range": [0.01, 10000], "notes": "" }
+  ],
+  "assumptions": [
+    "充分混合、单细胞室；忽略亚细胞定位（质膜/内体/核）导致的局部浓度差异",
+    "去磷酸化由单一（或集总）磷酸酶催化，无饱和以外的调控",
+    "底物总量在观测窗内不变（无新合成/降解）",
+    "无下游反馈与交叉通路；受体刺激被集总为上游激酶激活速率"
+  ],
+  "evidence_cues": [
+    "「MAPK cascade」「pMEK」「ppERK」「phospho-flow」「western blot for pERK」",
+    "「ultrasensitivity」「switch-like」「sigmoidal」「Hill slope > 1」「zero-order」",
+    "「scaffold protein」「KSR」「MEK-ERK」「dual phosphorylation」「TEY motif」",
+    "「ERK oscillations」「transient vs sustained ERK」「negative feedback from ERK to SOS/RAF」",
+    "「dose-response of pERK to EGF/NGF」→ 输入-输出曲线拟合",
+    "「bistability in MAPK cascade」「hysteresis」→ 需正反馈/双位点机制扩展"
+  ],
+  "fitting_notes": "1) 数据通常是磷酸化比例（pERK/total ERK），拟合时用 Cp/(C+Cp) 作为 output，绝对总浓度固定为文献值（如 ERK 总量 500 nM）；2) 先拟合时间序列的峰值时间/幅度/衰减（koffA、磷酸酶速率），再拟合剂量-响应（kcat、Km）；3) MEK/ERK 双位点数据（pMEK1/2、ppERK）可先拟合上游再拟合下游，或全局拟合；4) 若只有 western blot 半定量，需做内参归一化与线性范围检查，避免饱和；5) 超敏拟合：用对数-对数斜率或 4 参数 logistic 先给有效 Hill 系数，再回头映射到零级超敏参数（Km<<Xtot）；6) 负反馈/振荡数据需检查周期与相移，固定激酶/磷酸酶容量后拟合反馈强度 Kfb、h；7) multistart ≥ 8，参数用 log 参数化，注意 kcat 与激酶浓度乘积的可辨识性。",
+  "identifiability_notes": "1) 只有磷酸化比例时，激酶浓度与 kcat 以乘积出现，不可分别辨识；2) kcat 与 Km 强相关（尤其数据只在饱和区或非饱和区一侧）；3) 磷酸酶 Km 只有在底物浓度跨越 Km 时才可辨识，否则只得到 Vphos/Kmp 附近组合；4) 双位点机制与单步有效模型对常见数据近似等价（结构不可辨识），模型选择应由数据量与机制证据决定；5) 输入强度 kA 与上游响应时间常数 koffA 在只有稳态数据时不可辨识；6) 负反馈强度只有在振荡/双稳或脉冲响应数据中可辨识；7) 忽略支架效应时，拟合得到的有效参数不能外推到其他细胞类型。",
+  "references": [
+    { "citation": "Goldbeter A, Koshland DE Jr (1981). An amplified sensitivity arising from covalent modification in biological systems. Proceedings of the National Academy of Sciences USA 78(11):6840-6844.", "authors": ["Goldbeter A", "Koshland DE Jr"], "year": 1981, "title": "An amplified sensitivity arising from covalent modification in biological systems", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "78", "pages": "6840-6844" },
+    { "citation": "Huang CY, Ferrell JE Jr (1996). Ultrasensitivity in the mitogen-activated protein kinase cascade. Proceedings of the National Academy of Sciences USA 93(19):10078-10083.", "authors": ["Huang CY", "Ferrell JE Jr"], "year": 1996, "title": "Ultrasensitivity in the mitogen-activated protein kinase cascade", "journal": "Proceedings of the National Academy of Sciences USA", "volume": "93", "pages": "10078-10083" },
+    { "citation": "Ferrell JE Jr (1996). Tripping the switch fantastic: how a protein kinase cascade can convert graded inputs into switch-like outputs. Trends in Biochemical Sciences 21(12):460-466.", "authors": ["Ferrell JE Jr"], "year": 1996, "title": "Tripping the switch fantastic: how a protein kinase cascade can convert graded inputs into switch-like outputs", "journal": "Trends in Biochemical Sciences", "volume": "21", "pages": "460-466" },
+    { "citation": "Markevich NI, Hoek JB, Kholodenko BN (2004). Signaling switches and bistability arising from multisite phosphorylation in protein kinase cascades. Journal of Cell Biology 164(3):353-359.", "authors": ["Markevich NI", "Hoek JB", "Kholodenko BN"], "year": 2004, "title": "Signaling switches and bistability arising from multisite phosphorylation in protein kinase cascades", "journal": "Journal of Cell Biology", "volume": "164", "pages": "353-359" },
+    { "citation": "Kholodenko BN (2000). Negative feedback and ultrasensitivity can bring about oscillations in the mitogen-activated protein kinase cascades. European Journal of Biochemistry 267(6):1583-1588.", "authors": ["Kholodenko BN"], "year": 2000, "title": "Negative feedback and ultrasensitivity can bring about oscillations in the mitogen-activated protein kinase cascades", "journal": "European Journal of Biochemistry", "volume": "267", "pages": "1583-1588" }
+  ],
+  "related": ["enzyme_kinetics", "receptor_ligand_dose_response", "negative_feedback_oscillator", "hill_regulation_toggle"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

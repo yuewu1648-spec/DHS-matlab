@@ -1,0 +1,47 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "goodwin",
+  "title": "Goodwin 负反馈振荡器（mRNA–蛋白–阻遏物）",
+  "description": "mRNA 翻译为蛋白，蛋白激活阻遏物，阻遏物以 Hill 型抑制转录，形成延迟负反馈振荡。用于演示 Hill 抑制、非线性动力学与振荡。",
+  "kind": "ode",
+  "time": { "unit": "min", "start": 0, "end": 600, "n": 1201 },
+  "variables": [
+    { "id": "m", "name": "mRNA", "unit": "nM", "initial": { "value": 0.2 } },
+    { "id": "p", "name": "蛋白", "unit": "nM", "initial": { "value": 0.2 } },
+    { "id": "r", "name": "阻遏物", "unit": "nM", "initial": { "value": 0.2 } }
+  ],
+  "parameters": [
+    { "id": "alpha", "name": "最大转录速率", "unit": "nM/min", "value": { "value": 10 }, "estimate": false },
+    { "id": "K", "name": "抑制半效浓度", "unit": "nM", "value": { "value": 1 }, "estimate": true, "bounds": [0.01, 100] },
+    { "id": "h", "name": "Hill 指数", "unit": "1", "value": { "value": 12 }, "estimate": true, "bounds": [1, 30] },
+    { "id": "gamma_m", "name": "mRNA 降解速率", "unit": "1/min", "value": { "value": 0.3 }, "estimate": false },
+    { "id": "beta", "name": "翻译速率", "unit": "1/min", "value": { "value": 2 }, "estimate": true, "bounds": [0.01, 100] },
+    { "id": "gamma_p", "name": "蛋白降解速率", "unit": "1/min", "value": { "value": 0.3 }, "estimate": false },
+    { "id": "delta", "name": "阻遏物生成速率", "unit": "1/min", "value": { "value": 2 }, "estimate": true, "bounds": [0.01, 100] },
+    { "id": "gamma_r", "name": "阻遏物降解速率", "unit": "1/min", "value": { "value": 0.3 }, "estimate": false }
+  ],
+  "reactions": [
+    { "id": "transcription", "name": "转录（受阻遏物抑制）", "stoichiometry": { "m": 1 },
+      "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha", "k": "K", "n": "h" }, "species": { "regulator": "r" } } },
+    { "id": "m_decay", "name": "mRNA 降解", "stoichiometry": { "m": -1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "gamma_m" }, "species": { "m": 1 } } },
+    { "id": "translation", "name": "翻译", "stoichiometry": { "p": 1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "beta" }, "species": { "m": 1 } } },
+    { "id": "p_decay", "name": "蛋白降解", "stoichiometry": { "p": -1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "gamma_p" }, "species": { "p": 1 } } },
+    { "id": "r_formation", "name": "阻遏物生成", "stoichiometry": { "r": 1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "delta" }, "species": { "p": 1 } } },
+    { "id": "r_decay", "name": "阻遏物降解", "stoichiometry": { "r": -1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "gamma_r" }, "species": { "r": 1 } } }
+  ],
+  "outputs": [
+    { "id": "m_obs", "name": "mRNA 水平", "unit": "nM", "expression": "m" },
+    { "id": "p_obs", "name": "蛋白水平", "unit": "nM", "expression": "p" }
+  ],
+  "assumptions": [
+    "转录受阻遏物单体 Hill 型抑制",
+    "翻译与降解均为一级过程",
+    "忽略转录与翻译的时间延迟（以三级级联近似）"
+  ],
+  "metadata": { "source_docs": [], "notes": "示例模型（Lead 维护）。" }
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "sir",
+  "title": "SIR 传染病动力学",
+  "description": "易感者-感染者-移除者三室模型，感染率为双线性质量作用并除以总人口 N，康复为一级过程。用于演示表达式速率、R0 与情景对比。",
+  "kind": "ode",
+  "time": { "unit": "day", "start": 0, "end": 160, "n": 1601 },
+  "variables": [
+    { "id": "S", "name": "易感者", "unit": "person", "initial": { "value": 990 } },
+    { "id": "I", "name": "感染者", "unit": "person", "initial": { "value": 10 } },
+    { "id": "R", "name": "移除者", "unit": "person", "initial": { "value": 0 } }
+  ],
+  "parameters": [
+    { "id": "beta", "name": "传播率", "unit": "1/day", "value": { "value": 0.4 }, "estimate": true, "bounds": [0.01, 5] },
+    { "id": "gamma", "name": "康复率", "unit": "1/day", "value": { "value": 0.14 }, "estimate": true, "bounds": [0.01, 5] },
+    { "id": "N", "name": "总人口", "unit": "person", "value": { "value": 1000 }, "estimate": false }
+  ],
+  "reactions": [
+    { "id": "infection", "name": "感染", "stoichiometry": { "S": -1, "I": 1 },
+      "rate": { "kind": "expression", "expression": "beta*S*I/N" } },
+    { "id": "recovery", "name": "康复", "stoichiometry": { "I": -1, "R": 1 },
+      "rate": { "kind": "mass_action", "parameters": { "k": "gamma" }, "species": { "I": 1 } } }
+  ],
+  "outputs": [
+    { "id": "I_obs", "name": "感染者数", "unit": "person", "expression": "I" },
+    { "id": "R_obs", "name": "累计移除数", "unit": "person", "expression": "R" }
+  ],
+  "assumptions": [
+    "均匀混合人口，无出生/死亡与迁移",
+    "感染后获得永久免疫",
+    "总人口守恒（S + I + R = N）"
+  ],
+  "metadata": {
+    "source_docs": [],
+    "notes": "示例模型（Lead 维护）。R0 = beta/gamma ≈ 2.86。"
+  }
+}

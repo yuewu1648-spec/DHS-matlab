@@ -1,0 +1,200 @@
+{
+  "id": "negative_feedback_oscillator",
+  "type": "archetype",
+  "name": "负反馈振荡（Goodwin 振子 / repressilator）",
+  "name_en": "Negative-feedback oscillator: Goodwin and repressilator",
+  "domain": "dynamics",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "转录/翻译抑制构成的负反馈环，在足够长的时滞（由多级级联或降解慢的中间态提供）与足够陡的 Hill 非线性下，稳态经 Hopf 分岔失稳，收敛到极限环。三个变量的 Goodwin 振子与三基因环 repressilator 是最小模型：前者用 Hill 抑制 + 三级线性降解链，后者用三节点环形互斥阻遏。两者都不需要显式延迟方程即可产生振荡，因而可直接写成 bma.modelSpec.v1 的 ODE。",
+  "when_to_use": [
+    "文献报告周期性的表达/活性波动（ circadian、细胞周期、体节发生、p53-Mdm2、NF-kB、Hes1），给周期、振幅、相位或阻尼",
+    "出现「negative feedback loop」「delayed negative feedback」「limit cycle」「Hopf bifurcation」「sustained/damped oscillations」",
+    "机制描述为「蛋白抑制自身转录，经转录-翻译级联产生时滞」",
+    "合成生物学报告 repressilator、relaxation oscillator 或振荡网络",
+    "单次扰动后的振荡恢复（phase resetting）或同步/去同步数据"
+  ],
+  "tags": ["振荡", "负反馈", "极限环", "Hopf", "Goodwin", "repressilator", "节律"],
+  "keywords": ["负反馈振荡", "极限环", "Hopf 分岔", "时滞", "周期", "振幅", "阻尼振荡", "circadian", "repressilator", "Goodwin oscillator", "limit cycle", "negative feedback", "oscillation", "phase resetting"],
+  "equations": [
+    {
+      "name": "Goodwin 三变量振子",
+      "latex": "\\frac{dx}{dt}=\\frac{k_1}{1+\\left(\\frac{z}{K}\\right)^{n}}-k_2 x,\\qquad \\frac{dy}{dt}=k_3 x-k_4 y,\\qquad \\frac{dz}{dt}=k_5 y-k_6 z",
+      "plain": "dx/dt = k1/(1+(z/K)^n) - k2*x; dy/dt = k3*x - k4*y; dz/dt = k5*y - k6*z",
+      "terms": {
+        "x_y_z": "三级级联中的物种（如 mRNA、蛋白、阻遏物）浓度",
+        "k1_K_n": "受阻遏物 z 抑制的合成速率上限、半效浓度与 Hill 系数",
+        "k2_k4_k6": "各级一阶降解速率（1/min）",
+        "k3_k5": "级联传递速率（1/min）",
+        "oscillation_condition": "三变量线性降解链 + Hill 抑制需 n > 8 才能通过 Hopf 分岔产生稳定极限环（经典结论）；n≤8 时唯一稳态渐近稳定（对相等降解率情形）"
+      }
+    },
+    {
+      "name": "Repressilator（Elowitz-Leibler）",
+      "latex": "\\frac{dm_i}{dt}=\\alpha_0+\\alpha\\frac{K^{n}}{K^{n}+p_j^{n}}-\\gamma_m m_i,\\qquad \\frac{dp_i}{dt}=\\beta m_i-\\gamma_p p_i,\\qquad (i,j)=(1,3),(2,1),(3,2)",
+      "plain": "dm_i/dt = alpha0 + alpha*K^n/(K^n+p_j^n) - gamma_m*m_i; dp_i/dt = beta*m_i - gamma_p*p_i; 环状连接 1<-3, 2<-1, 3<-2",
+      "terms": {
+        "m_i_p_i": "第 i 个基因的 mRNA 与蛋白（nM）",
+        "alpha0": "渗漏转录（nM/min），过大会破坏振荡",
+        "alpha": "最大转录速率（nM/min）",
+        "K_n": "抑制半效浓度与 Hill 系数；n≥2 才可能振荡（对称情形）",
+        "beta_gamma_m_gamma_p": "翻译（1/min）、mRNA 降解（1/min）、蛋白降解/稀释（1/min）",
+        "design_principle": "对称 repressilator 的极限环要求足够的时间尺度分离（蛋白寿命 >> mRNA 寿命）、足够小的渗漏与合适的 alpha/(gamma*K)；线性稳定性可用对称点 Jacobian（循环矩阵）解析判断"
+      }
+    },
+    {
+      "name": "含显式时滞的负反馈（连续时间）",
+      "latex": "\\frac{dx}{dt}=f\\left(x(t-\\tau)\\right)-\\gamma x",
+      "plain": "dx/dt = f(x(t-tau)) - gamma*x",
+      "terms": {
+        "tau": "反馈时滞（min），由转录延伸+翻译+运输构成，常 1-20 min",
+        "hopf_condition": "线性化特征方程 s = -gamma + f'(x*) e^{-s tau}；当环路增益 |f'(x*)| 足够大且 gamma*tau 足够小（时滞相位滞后 > 90°）时一对共轭特征值穿越虚轴，产生振荡",
+        "usage": "当级联变量数不足以表达延迟或实验给出明确时滞时，优先用延迟方程（v1 不支持 delay，可用多级级联或线性链近似）"
+      }
+    },
+    {
+      "name": "周期与振幅的标度",
+      "latex": "T\\sim \\frac{c}{\\gamma}\\ \\ (c=O(1)\\sim O(10)),\\qquad A\\sim \\Delta\\alpha/\\gamma_{eff}",
+      "plain": "周期 T 由最慢的降解/传递速率主导（常为蛋白降解/稀释），T ~ c/gamma，c 与反馈阶数/n 有关；振幅随合成速率差增大、随降解速率增大而减小",
+      "terms": {
+        "implication": "同一网络整体上调所有速率（时间标度变换）只改变周期、不改变波形——周期数据本身不能定绝对时间常数，需配合扰动响应/已知半衰期",
+        "note": "T 的估计精度取决于采样率；每个周期至少 10 个采样点，记录 ≥ 3-5 个周期"
+      }
+    },
+    {
+      "name": "Hopf 分岔判据（线性稳定性）",
+      "latex": "J(x^{*})\\,v=\\lambda v,\\quad \\mathrm{Re}\\,\\lambda_{1,2}(\\mu_c)=0,\\ \\frac{d}{d\\mu}\\mathrm{Re}\\,\\lambda_{1,2}\\big|_{\\mu_c}\\neq 0",
+      "plain": "在稳态处求 Jacobian；当参数 mu 变化使一对共轭特征值实部由负变正（穿过虚轴）且横截条件成立时发生 Hopf 分岔，产生小振幅极限环",
+      "terms": {
+        "implementation": "bma.model.analyze 给稳态与 Jacobian 特征值；参数扫描记录 Re(lambda_max) 变号即定位分岔点",
+        "discrimination": "全部特征值实部 < 0 为稳定稳态（阻尼振荡）；一阶复特征值实部 > 0 且存在有界极限环为持续振荡",
+        "note": "特征值穿过虚轴只说明线性失稳；要确认极限环需数值仿真观察振幅是否饱和"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "repressilator",
+    "title": "Repressilator 三基因环状负反馈振荡器",
+    "description": "三个阻遏基因首尾相接形成环状互斥抑制：每个基因被前一个基因的蛋白以 Hill 型抑制转录；mRNA 翻译为蛋白，两者一阶降解。用于振荡周期/振幅数据与 Hopf 分岔分析。",
+    "kind": "ode",
+    "time": { "unit": "min", "start": 0, "end": 1200, "n": 2401 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "m1", "name": "基因 1 mRNA", "unit": "nM", "initial": { "value": 1.0 } },
+      { "id": "m2", "name": "基因 2 mRNA", "unit": "nM", "initial": { "value": 0.5 } },
+      { "id": "m3", "name": "基因 3 mRNA", "unit": "nM", "initial": { "value": 2.0 } },
+      { "id": "p1", "name": "基因 1 蛋白", "unit": "nM", "initial": { "value": 20.0 } },
+      { "id": "p2", "name": "基因 2 蛋白", "unit": "nM", "initial": { "value": 5.0 } },
+      { "id": "p3", "name": "基因 3 蛋白", "unit": "nM", "initial": { "value": 10.0 } }
+    ],
+    "parameters": [
+      { "id": "alpha0", "name": "渗漏转录速率", "unit": "nM/min", "value": { "value": 0.5 }, "estimate": true, "bounds": [0, 20] },
+      { "id": "alpha", "name": "最大转录速率", "unit": "nM/min", "value": { "value": 20.0 }, "estimate": true, "bounds": [0.01, 500] },
+      { "id": "K", "name": "抑制半效浓度", "unit": "nM", "value": { "value": 5.0 }, "estimate": true, "bounds": [0.01, 500] },
+      { "id": "n", "name": "抑制 Hill 系数", "unit": "1", "value": { "value": 2.5 }, "estimate": true, "bounds": [1, 8] },
+      { "id": "gamma_m", "name": "mRNA 降解速率", "unit": "1/min", "value": { "value": 0.5 }, "estimate": true, "bounds": [0.001, 5] },
+      { "id": "beta", "name": "翻译速率常数", "unit": "1/min", "value": { "value": 1.0 }, "estimate": true, "bounds": [0.001, 20] },
+      { "id": "gamma_p", "name": "蛋白降解/稀释速率", "unit": "1/min", "value": { "value": 0.05 }, "estimate": true, "bounds": [1e-05, 1] }
+    ],
+    "reactions": [
+      { "id": "m1_basal", "name": "基因 1 渗漏转录", "stoichiometry": { "m1": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "alpha0" } } },
+      { "id": "m1_transcription", "name": "基因 1 转录（受 p3 抑制）", "stoichiometry": { "m1": 1 },
+        "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha", "k": "K", "n": "n" }, "species": { "regulator": "p3" } } },
+      { "id": "m1_decay", "name": "mRNA1 降解", "stoichiometry": { "m1": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_m" }, "species": { "m1": 1 } } },
+      { "id": "p1_translation", "name": "蛋白 1 翻译", "stoichiometry": { "p1": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "beta" }, "species": { "m1": 1 } } },
+      { "id": "p1_decay", "name": "蛋白 1 降解", "stoichiometry": { "p1": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_p" }, "species": { "p1": 1 } } },
+      { "id": "m2_basal", "name": "基因 2 渗漏转录", "stoichiometry": { "m2": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "alpha0" } } },
+      { "id": "m2_transcription", "name": "基因 2 转录（受 p1 抑制）", "stoichiometry": { "m2": 1 },
+        "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha", "k": "K", "n": "n" }, "species": { "regulator": "p1" } } },
+      { "id": "m2_decay", "name": "mRNA2 降解", "stoichiometry": { "m2": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_m" }, "species": { "m2": 1 } } },
+      { "id": "p2_translation", "name": "蛋白 2 翻译", "stoichiometry": { "p2": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "beta" }, "species": { "m2": 1 } } },
+      { "id": "p2_decay", "name": "蛋白 2 降解", "stoichiometry": { "p2": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_p" }, "species": { "p2": 1 } } },
+      { "id": "m3_basal", "name": "基因 3 渗漏转录", "stoichiometry": { "m3": 1 },
+        "rate": { "kind": "constant", "parameters": { "k": "alpha0" } } },
+      { "id": "m3_transcription", "name": "基因 3 转录（受 p2 抑制）", "stoichiometry": { "m3": 1 },
+        "rate": { "kind": "hill", "mode": "repression", "parameters": { "vmax": "alpha", "k": "K", "n": "n" }, "species": { "regulator": "p2" } } },
+      { "id": "m3_decay", "name": "mRNA3 降解", "stoichiometry": { "m3": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_m" }, "species": { "m3": 1 } } },
+      { "id": "p3_translation", "name": "蛋白 3 翻译", "stoichiometry": { "p3": 1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "beta" }, "species": { "m3": 1 } } },
+      { "id": "p3_decay", "name": "蛋白 3 降解", "stoichiometry": { "p3": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "gamma_p" }, "species": { "p3": 1 } } }
+    ],
+    "outputs": [
+      { "id": "p1_obs", "name": "蛋白 1 报告信号", "unit": "nM", "expression": "p1" },
+      { "id": "p2_obs", "name": "蛋白 2 报告信号", "unit": "nM", "expression": "p2" },
+      { "id": "p3_obs", "name": "蛋白 3 报告信号", "unit": "nM", "expression": "p3" }
+    ],
+    "assumptions": [
+      "三个阻遏节点在功能上对称（共享 alpha、K、n、gamma）；不对称网络应分别给参数",
+      "转录与翻译快于蛋白降解，mRNA 动态可并入有效 Hill 速率（本模板仍显式保留 mRNA）",
+      "充分混合单细胞；忽略细胞分裂导致的体积变化与蛋白分配噪声",
+      "无外部节律输入；振荡来自内源性 Hopf 分岔而非强迫"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板。初值不对称用于落入不同相位；对称参数下极限环周期约 40-60 min（本参数集需仿真确认）。" }
+  },
+  "spec_notes": [
+    "Goodwin 版本可直接复用 spec/examples/goodwin.json（三变量 Hill 抑制 + 线性降解链），它已在 spec/examples/ 作为回归样例，validate/build/simulate/fit 全链路有保证。",
+    "本模板的对称 repressilator 参数是起点：若仿真衰减到稳态，说明未进入 Hopf 区；调大 n（≥3）、调小 alpha0、增大 alpha/(gamma_m*K) 或增大蛋白/mRNA 寿命比 beta/gamma_p 均有助于振荡。",
+    "若文献给周期而不给速率常数：先用时间标度变换（所有速率乘同一因子）匹配周期，再依据独立测得的 mRNA/蛋白半衰期固定绝对速率。",
+    "若系统含显式时滞（如转录延伸+运输 > 10 min），v1 用三级级联近似延迟；报告需说明该近似的有效范围。",
+    "相位数据（多组织/多细胞相位差）需要轨迹模型或多起点相位拟合；单一同步群体的平均信号无法辨识相位。",
+    "昼夜节律等强强迫振荡应加外部输入项（如 hill/expression 中的 sin 无法用白名单函数，改用分段常数或额外状态变量近似）。"
+  ],
+  "variables": [
+    { "id": "m1", "name": "mRNA 1", "unit": "nM", "typical_range": [0.001, 100], "notes": "" },
+    { "id": "m2", "name": "mRNA 2", "unit": "nM", "typical_range": [0.001, 100], "notes": "" },
+    { "id": "m3", "name": "mRNA 3", "unit": "nM", "typical_range": [0.001, 100], "notes": "" },
+    { "id": "p1", "name": "蛋白 1", "unit": "nM", "typical_range": [0.01, 1000], "notes": "阻遏物常 10-500 nM" },
+    { "id": "p2", "name": "蛋白 2", "unit": "nM", "typical_range": [0.01, 1000], "notes": "" },
+    { "id": "p3", "name": "蛋白 3", "unit": "nM", "typical_range": [0.01, 1000], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "alpha0", "symbol": "\\alpha_0", "unit": "nM/min", "typical_range": [0, 20], "notes": "渗漏；> ~0.1*alpha 会抑制振荡" },
+    { "id": "alpha", "symbol": "\\alpha", "unit": "nM/min", "typical_range": [0.01, 500], "notes": "强启动子可达 100 nM/min" },
+    { "id": "K", "symbol": "K", "unit": "nM", "typical_range": [0.01, 500], "notes": "" },
+    { "id": "n", "symbol": "n", "unit": "1", "typical_range": [1, 8], "notes": "repressilator 需 n≥2；Goodwin 三变量需 n>8" },
+    { "id": "gamma_m", "symbol": "\\gamma_m", "unit": "1/min", "typical_range": [0.001, 5], "notes": "mRNA 半衰期 2-5 min（细菌）" },
+    { "id": "beta", "symbol": "\\beta", "unit": "1/min", "typical_range": [0.001, 20], "notes": "" },
+    { "id": "gamma_p", "symbol": "\\gamma_p", "unit": "1/min", "typical_range": [1e-05, 1], "notes": "决定周期的主要慢时间常数；昼夜节律相关蛋白半衰期可达数小时" }
+  ],
+  "assumptions": [
+    "低维确定性描述：分子数足够多、振荡相位在细胞群中同步或被平均处理",
+    "负反馈是唯一的振荡来源；无正反馈双稳态导致的松弛振荡（若要建模需加自激活项）",
+    "转录/翻译速率不随时间变化，无细胞周期耦合",
+    "无外部强迫输入；若有节律刺激，需显式输入项"
+  ],
+  "evidence_cues": [
+    "「period of ~2.5 h」「amplitude」「damped oscillations」「sustained oscillations」「phase shift」",
+    "「negative feedback loop」「delayed negative feedback」「transcription-translation delay」",
+    "「Hopf bifurcation」「limit cycle」「oscillator」",
+    "「circadian」「somitogenesis」「p53-Mdm2」「NF-kB oscillation」「Hes1 oscillation」",
+    "「repressilator」「synthetic oscillator」「relaxation oscillator」",
+    "「phase resetting」「entrainment」「synchronization」→ 需要相位/多细胞耦合扩展"
+  ],
+  "fitting_notes": "1) 拟合振荡数据时丢弃初始瞬态（至少 1-2 个周期），只比较周期、振幅、波形（相位可变，需先对齐相位或只用周期/包络）；2) 目标函数用周期误差 + 波形距离（如傅里叶系数幅度），避免相位误差主导；3) 采样率必须 ≥10 点/周期，否则混叠会导致周期/振幅估计偏差；4) 参数强相关：先固定从独立实验得到的 gamma_m、gamma_p（shutoff 实验），再拟合 alpha、K、n；5) 多起点（≥16）并记录每个收敛解是否振荡（特征值实部/振幅不衰减），失败解用于报告不可辨识区间；6) 若数据是阻尼振荡，需要更长时间序列才能区分「稳定焦点」与「弱极限环」；7) 用 BIC/AICc 对手工参数化模型与延迟模型比较，报告延迟时间估计。",
+  "identifiability_notes": "1) 时间标度不变性：所有速率同时乘 c 只改变周期（T→T/c）、形状不变；没有绝对半衰期或已知时间单位时，只能得到相对速率；2) 从周期数据难以分离 alpha 与 K（都影响振幅/非线性），需要剂量-响应或扰动实验；3) 振幅对 gamma_p 与 alpha 敏感，周期对 gamma 组更敏感；4) 极限环相位不可辨识（单群体同步数据），除非有相位锚点（如刺激时刻）；5) 接近 Hopf 分岔点时振幅很小、信噪比差、参数可信区间极宽；6) 只观测一个节点的振荡时，其他节点的状态与连接强度部分不可观测（需多报告通道）；7) 显式时滞 tau 与多级级联的有效延迟在数据上可近似等价（结构不可辨识），应报告模型选择依据。",
+  "references": [
+    { "citation": "Goodwin BC (1965). Oscillatory behavior of enzymatic control processes. Advances in Enzyme Regulation 3:425-439.", "authors": ["Goodwin BC"], "year": 1965, "title": "Oscillatory behavior of enzymatic control processes", "journal": "Advances in Enzyme Regulation", "volume": "3", "pages": "425-439" },
+    { "citation": "Elowitz MB, Leibler S (2000). A synthetic oscillatory network of transcriptional regulators. Nature 403(6767):335-338.", "authors": ["Elowitz MB", "Leibler S"], "year": 2000, "title": "A synthetic oscillatory network of transcriptional regulators", "journal": "Nature", "volume": "403", "pages": "335-338", "doi": "10.1038/35002125" },
+    { "citation": "Novak B, Tyson JJ (2008). Design principles of biochemical oscillators. Nature Reviews Molecular Cell Biology 9(12):981-991.", "authors": ["Novak B", "Tyson JJ"], "year": 2008, "title": "Design principles of biochemical oscillators", "journal": "Nature Reviews Molecular Cell Biology", "volume": "9", "pages": "981-991", "doi": "10.1038/nrm2530" },
+    { "citation": "Tyson JJ, Othmer HG (1978). The dynamics of feedback control circuits in biochemical pathways. Progress in Theoretical Biology 5:1-62.", "authors": ["Tyson JJ", "Othmer HG"], "year": 1978, "title": "The dynamics of feedback control circuits in biochemical pathways", "journal": "Progress in Theoretical Biology", "volume": "5", "pages": "1-62" },
+    { "citation": "Hirata H, Yoshiura S, Ohtsuka T, Bessho Y, Harada T, Yoshikawa K, Kageyama R (2002). Oscillatory expression of the bHLH factor Hes1 regulated by a negative feedback loop. Science 298(5594):840-843.", "authors": ["Hirata H", "Yoshiura S", "Ohtsuka T", "Bessho Y", "Harada T", "Yoshikawa K", "Kageyama R"], "year": 2002, "title": "Oscillatory expression of the bHLH factor Hes1 regulated by a negative feedback loop", "journal": "Science", "volume": "298", "pages": "840-843" }
+  ],
+  "related": ["gene_expression", "hill_regulation_toggle", "mapk_cascade", "reaction_diffusion_turing"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9",
+    "sibling_example": "spec/examples/goodwin.json（Goodwin 三变量版本）"
+  }
+}

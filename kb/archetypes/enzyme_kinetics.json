@@ -1,0 +1,159 @@
+{
+  "id": "enzyme_kinetics",
+  "type": "archetype",
+  "name": "酶动力学与抑制（Michaelis-Menten + 竞争/非竞争抑制）",
+  "name_en": "Enzyme kinetics: Michaelis-Menten and inhibition",
+  "domain": "enzyme_kinetics",
+  "scale": "molecule",
+  "model_class": "ode",
+  "summary": "把酶催化抽象为「底物饱和的双曲速率 + 可选抑制剂修饰」，用于从初速度/进程曲线估计 Vmax、Km、Ki 并判断抑制类型。最小集总形式 v = Vmax*S/(Km+S) 即 Michaelis-Menten；需要解释过渡态与守恒时升级为 E+S<->ES->E+P 的质量作用机制模型（见 spec/examples/enzyme_mm.json）。抑制类型由速率定律分母中 (1+I/Ki) 的位置区分：竞争性只改表观 Km、非竞争性只改表观 Vmax、反竞争性两者都改。",
+  "when_to_use": [
+    "文献报告底物饱和曲线（v 对 [S] 呈双曲、趋于平台 Vmax），或给出 Km、Vmax、kcat、kcat/Km 数值",
+    "方法学出现「初始速度法」「Lineweaver-Burk / Eadie-Hofstee 作图」「progress curve 全局拟合」「酶标仪动力学读数」",
+    "讨论抑制剂类型：IC50 随底物浓度右移提示竞争性；IC50 不变提示非竞争性；IC50 左移提示反竞争性",
+    "报告固定酶量下的剂量-反应、或高通量筛选用固定时间终点读取产物",
+    "出现 tight-binding（[E] 与 Ki 同量级）、底物抑制、产物抑制、变构/协同等需要升级机制的信号"
+  ],
+  "tags": ["酶动力学", "Michaelis-Menten", "抑制", "剂量-反应", "参数估计", "enzyme_assay"],
+  "keywords": ["酶动力学", "米氏方程", "Michaelis-Menten", "Km", "Vmax", "kcat", "催化效率", "竞争性抑制", "非竞争性抑制", "IC50", "initial velocity", "progress curve", "enzyme kinetics", "inhibition"],
+  "equations": [
+    {
+      "name": "米氏速率（饱和双曲）",
+      "latex": "v = \\frac{V_{max}\\,S}{K_m+S},\\qquad V_{max}=k_{cat}[E]_0,\\qquad K_m=\\frac{k_r+k_{cat}}{k_f}",
+      "plain": "v = Vmax*S/(Km+S); Vmax = kcat*E0; Km = (kr + kcat)/kf",
+      "terms": {
+        "v": "反应初速度（uM/s），产物生成或底物消耗速率",
+        "S": "游离底物浓度（uM）；充分混合、[S] 远大于 [E]",
+        "Vmax": "最大速率（uM/s）= 总酶浓度与 kcat 的乘积，需要独立测 [E]0 才能拆出 kcat",
+        "Km": "半饱和常数（uM），v = Vmax/2 时的 [S]；机制上 = (k_r + k_cat)/k_f",
+        "kcat": "转换数（1/s），每个酶分子每秒催化次数",
+        "kcat_Km": "催化效率/特异性常数 1/(uM*s)，上限约扩散限制 1e3-1e6 1/(uM*s)"
+      }
+    },
+    {
+      "name": "竞争性抑制",
+      "latex": "v = \\frac{V_{max} S}{K_m\\left(1+\\frac{I}{K_i}\\right)+S}",
+      "plain": "v = Vmax*S/(Km*(1+I/Ki)+S)",
+      "terms": {
+        "I": "抑制剂浓度（uM），通常假设不变或缓慢清除",
+        "Ki": "抑制常数（uM），I 与 E 结合的解离常数；竞争性与底物争同一结合位点",
+        "apparent_Km": "Km_app = Km*(1+I/Ki)，Vmax 不变；IC50 = Ki*(1+S/Km)，随 [S] 增大而右移"
+      }
+    },
+    {
+      "name": "非竞争性抑制（纯）",
+      "latex": "v = \\frac{V_{max} S}{(K_m+S)\\left(1+\\frac{I}{K_i}\\right)}",
+      "plain": "v = Vmax*S/((Km+S)*(1+I/Ki))",
+      "terms": {
+        "mechanism": "I 与游离酶和 ES 复合物等价结合；Km 不变、Vmax 降为 Vmax/(1+I/Ki)",
+        "IC50": "IC50 = Ki（与 [S] 无关）"
+      }
+    },
+    {
+      "name": "反竞争性抑制 / 混合抑制",
+      "latex": "v=\\frac{V_{max}S}{K_m+S\\left(1+\\frac{I}{K_i}\\right)}\\quad(\\text{uncompetitive});\\qquad v=\\frac{V_{max}S}{K_m\\left(1+\\frac{I}{K_i}\\right)+S\\left(1+\\frac{I}{K_i'}\\right)}\\quad(\\text{mixed})",
+      "plain": "反竞争: v=Vmax*S/(Km+S*(1+I/Ki))；混合: v=Vmax*S/(Km*(1+I/Ki)+S*(1+I/Ki'))",
+      "terms": {
+        "uncompetitive": "I 只与 ES 结合；Vmax 与 Km 等比例下降，IC50 < Ki",
+        "mixed_inhibition": "两处都能结合但亲和力不同（Ki != Ki'）；Biochemical 上最常见，纯竞争/纯非竞争是极限情形"
+      }
+    },
+    {
+      "name": "可逆反应的 Haldane/细致平衡约束",
+      "latex": "K_{eq}=\\frac{P_{eq}}{S_{eq}}=\\frac{V_{max}^{f}K_m^{P}}{V_{max}^{r}K_m^{S}}=\\frac{k_{cat}^{f}K_m^{P}}{k_{cat}^{r}K_m^{S}}",
+      "plain": "Keq = P_eq/S_eq = (Vmax_f*Km_P)/(Vmax_r*Km_S)",
+      "terms": {
+        "usage": "可逆酶动力学四参数 (Vmax_f,Km_S,Vmax_r,Km_P) 只有 3 个自由度；拟合时若产物积累到接近平衡，必须满足该约束，否则会出现热力学不一致的假象",
+        "check": "用文献平衡常数或 ΔG° 反推验证；不满足时优先怀疑测量误差或机制缺失（如产物抑制）"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "enzyme_mm_inhibited",
+    "title": "米氏酶动力学（集总形式 + 竞争性抑制剂）",
+    "description": "底物 S 以 Michaelis-Menten 速率转化为产物 P；抑制剂 I 与酶竞争结合位点；I 一阶清除。用于初速度/进程曲线参数估计与抑制类型判别。",
+    "kind": "ode",
+    "time": { "unit": "s", "start": 0, "end": 60, "n": 601 },
+    "compartments": [{ "id": "cell", "volume": 1, "unit": "L" }],
+    "variables": [
+      { "id": "S", "name": "底物浓度", "unit": "uM", "initial": { "value": 10, "note": "接近或高于 Km 以覆盖饱和段" } },
+      { "id": "P", "name": "产物浓度", "unit": "uM", "initial": { "value": 0 } },
+      { "id": "I", "name": "抑制剂浓度", "unit": "uM", "initial": { "value": 5, "note": "与 Ki 同量级才能约束 Ki" } }
+    ],
+    "parameters": [
+      { "id": "Vmax", "name": "最大反应速率", "unit": "uM/s", "value": { "value": 2.0 }, "estimate": true, "bounds": [0.0001, 1000] },
+      { "id": "Km", "name": "米氏常数", "unit": "uM", "value": { "value": 1.5 }, "estimate": true, "bounds": [0.001, 10000] },
+      { "id": "Ki", "name": "抑制常数", "unit": "uM", "value": { "value": 2.0 }, "estimate": true, "bounds": [0.001, 10000] },
+      { "id": "kI", "name": "抑制剂一阶清除速率", "unit": "1/s", "value": { "value": 0.0 }, "estimate": false }
+    ],
+    "reactions": [
+      { "id": "catalysis", "name": "酶催化（竞争性抑制）", "stoichiometry": { "S": -1, "P": 1 },
+        "rate": { "kind": "michaelis_menten", "parameters": { "vmax": "Vmax", "km": "Km" },
+                  "species": { "substrate": "S" },
+                  "inhibitor": { "species": "I", "ki": "Ki", "type": "competitive" } } },
+      { "id": "inhibitor_clearance", "name": "抑制剂清除", "stoichiometry": { "I": -1 },
+        "rate": { "kind": "mass_action", "parameters": { "k": "kI" }, "species": { "I": 1 } } }
+    ],
+    "outputs": [
+      { "id": "S_obs", "name": "底物浓度", "unit": "uM", "expression": "S" },
+      { "id": "P_obs", "name": "产物浓度", "unit": "uM", "expression": "P" },
+      { "id": "v_obs", "name": "瞬时反应速率", "unit": "uM/s", "expression": "Vmax*S/(Km*(1+I/Ki)+S)" }
+    ],
+    "assumptions": [
+      "充分混合、恒温恒容单室系统，酶总量恒定",
+      "底物过量于酶（[S] >> [E]0），可忽略酶-底物复合物对底物的扣减（QSSA）",
+      "抑制为可逆、快速平衡的竞争性机制；抑制剂自身一阶清除",
+      "无底物抑制、无产物抑制、无变构协同"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；机制版本（E/ES 显式）见 spec/examples/enzyme_mm.json。" }
+  },
+  "spec_notes": [
+    "本模板用 michaelis_menten 速率定律（集总 Vmax），适合只有初速度/进程曲线、未测酶浓度的场景；若文献给出 [E]0、kcat、kon/koff，应改用 mass_action 显式建模 E+S<->ES->E+P（参考 spec/examples/enzyme_mm.json）。",
+    "抑制类型切换：竞争性 -> kind 不变（inhibitor.type=competitive）；非竞争性 -> 用 expression 速率 \"Vmax*S/((Km+S)*(1+I/Ki))\"；反竞争性 -> expression \"Vmax*S/(Km+S*(1+I/Ki))\"。michaelis_menten 内建只支持 competitive/noncompetitive，后者按 Vmax/(1+I/Ki) 处理。",
+    "若抑制剂浓度视为恒定（一次性加药、短时间内不代谢），把 kI=0 并 estimate=false，或把 I 改为 parameter 后用 expression 速率（hill 速率要求 regulator 是 species）。",
+    "多底物（随机/有序机制）不能用一个 Km 表达；需显式机制或 Cleland 双底物速率形式，建议拆成两组反应分别拟合。"
+  ],
+  "variables": [
+    { "id": "S", "name": "底物浓度", "unit": "uM", "typical_range": [0.001, 10000], "notes": "体外酶活 [S] 常跨 0.1-10 倍 Km" },
+    { "id": "P", "name": "产物浓度", "unit": "uM", "typical_range": [0, 10000], "notes": "产物积累需 < 平衡浓度，否则逆反应不可忽略" },
+    { "id": "I", "name": "抑制剂浓度", "unit": "uM", "typical_range": [0.001, 10000], "notes": "设 0.1-10 倍 Ki 才能约束 Ki" }
+  ],
+  "parameters": [
+    { "id": "Vmax", "symbol": "V_{max}", "unit": "uM/s", "typical_range": [0.0001, 1000], "notes": "取决于酶浓度；纯化酶 kcat 常 1e-3-1e5 1/s，E0 常 1e-3-10 uM" },
+    { "id": "Km", "symbol": "K_m", "unit": "uM", "typical_range": [0.001, 10000], "notes": "常见 1-1000 uM；高亲和酶可到 nM（此时用 nM 单位更合适）" },
+    { "id": "Ki", "symbol": "K_i", "unit": "uM", "typical_range": [0.001, 10000], "notes": "药物抑制常数可从 nM 到 mM；tight-binding 时需 Morrison 方程" },
+    { "id": "kI", "symbol": "k_I", "unit": "1/s", "typical_range": [0, 1], "notes": "抑制剂清除/失活速率；固定浓度实验设 0" }
+  ],
+  "assumptions": [
+    "准稳态假设（QSSA）：ES 的形成与分解快于底物消耗，故可用代数速率；要求 [E]0 << [S] + Km",
+    "分子数足够多，可用连续浓度；不考虑单分子涨落",
+    "酶在实验时间窗内不失活、不降解",
+    "速率仅取决于当前 [S]、[I]（马尔可夫性），无滞后/记忆"
+  ],
+  "evidence_cues": [
+    "「Km = 12.5 uM」「Vmax = 3.4 uM/s」「kcat = 45 s-1」「kcat/Km = 1.2e6 M-1 s-1」",
+    "「initial velocity vs. substrate concentration」「saturation curve」「hyperbolic fit」",
+    "「IC50 = 0.8 uM, shifted by substrate」→ 竞争性；「IC50 unchanged」→ 非竞争性",
+    "「progress curve」「continuous assay」「NADH absorbance at 340 nm」→ 可用进程曲线全局拟合",
+    "「tight-binding inhibitor」「Morrison equation」「Ki* = ...」→ 集总 MM 失效，需结合二次结合方程",
+    "「substrate inhibition at high [S]」→ 需 v = Vmax*S/(Km+S+S^2/Ksi)",
+    "「allosteric」「cooperativity」「Hill coefficient」→ 改用 Hill 速率或 Monod-Wyman-Changeux 机制"
+  ],
+  "fitting_notes": "1) 优先用初速度数据非线性拟合 v(S)，并对 v 做加权（Poisson/相对误差），不要对 1/v 做线性回归（Lineweaver-Burk 会放大低 [S] 误差）；2) 若有多条抑制剂浓度曲线，做全局拟合（共享 Vmax、Km，逐条 Ki 或共享 Ki）并用 F 检验/AICc 判别抑制类型；3) 进程曲线信息量更大：把 [S](t)、[P](t) 同时作为 outputs 拟合，注意初值（t=0 时 P=0）与测量尺度；4) 估计 kcat 必须独立测 [E]0（活性位点滴定或 Bradford/吸收光谱）；5) 拟合 bounds 用对数尺度（Km、Ki 跨 4-6 个数量级），多起点 >= 8 个避免局部极小；6) 温度、pH、离子强度会影响参数，报告需注明实验条件；7) 残差若呈系统性弯曲，提示机制缺失（产物抑制/酶失活/底物抑制），不要靠增加参数硬压。",
+  "identifiability_notes": "1) 只观测 v 或 P 时，Vmax 与 kcat 只有在 [E]0 已知时才可分离；否则只能得到 Vmax；2) kon 与 koff 从进程曲线通常不可分别辨识，只有 Km=(kr+kcat)/kf 和 kcat 可辨识；3) Km 的精度取决于 [S] 覆盖范围：数据集中在 S>>Km 或 S<<Km 时 Km 与 Vmax 强相关；理想覆盖 0.1-10 Km；4) 抑制类型判别依赖多个 [S] 水平：只有单一 [S] 时竞争性与非竞争性可互换（IC50 单点无法区分）；5) Ki 只有在 [I] 与 Ki 同量级时才可辨识；[I]<<Ki 时 Ki 置信区间极宽；6) tight-binding（[E]0~Ki）时集总模型会系统高估 Ki，必须改用二次/Morrison 形式；7) 产物接近平衡时正逆反应参数不可分离，必须用 Haldane 约束固定一个自由度。",
+  "references": [
+    { "citation": "Michaelis L, Menten ML (1913). Die Kinetik der Invertinwirkung. Biochemische Zeitschrift 49:333-369.", "authors": ["Michaelis L", "Menten ML"], "year": 1913, "title": "Die Kinetik der Invertinwirkung", "journal": "Biochemische Zeitschrift", "note": "原始米氏方程；英译见 Johnson KA, Goody RS (2011) Biochemistry 50:8264-8269" },
+    { "citation": "Briggs GE, Haldane JBS (1925). A note on the kinetics of enzyme action. Biochemical Journal 19(2):338-339.", "authors": ["Briggs GE", "Haldane JBS"], "year": 1925, "title": "A note on the kinetics of enzyme action", "journal": "Biochemical Journal", "volume": "19", "pages": "338-339", "doi": "10.1042/bj0190338" },
+    { "citation": "Lineweaver H, Burk D (1934). The determination of enzyme dissociation constants. Journal of the American Chemical Society 56(3):658-666.", "authors": ["Lineweaver H", "Burk D"], "year": 1934, "title": "The determination of enzyme dissociation constants", "journal": "Journal of the American Chemical Society", "volume": "56", "pages": "658-666" },
+    { "citation": "Cornish-Bowden A (2012). Fundamentals of Enzyme Kinetics, 4th ed. Wiley-Blackwell.", "authors": ["Cornish-Bowden A"], "year": 2012, "title": "Fundamentals of Enzyme Kinetics", "journal": "Wiley-Blackwell", "note": "教材：抑制类型判别、进程曲线、Morrison 方程" },
+    { "citation": "Segel IH (1975). Enzyme Kinetics: Behavior and Analysis of Rapid Equilibrium and Steady-State Enzyme Systems. Wiley.", "authors": ["Segel IH"], "year": 1975, "title": "Enzyme Kinetics: Behavior and Analysis of Rapid Equilibrium and Steady-State Enzyme Systems", "journal": "Wiley", "note": "教材：各类抑制、双底物机制、推导" }
+  ],
+  "related": ["hill_regulation_toggle", "metabolic_pathway", "receptor_ligand_dose_response", "mapk_cascade"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3（bma.modelSpec.v1）、§9（知识库格式）",
+    "sibling_example": "spec/examples/enzyme_mm.json（显式 E/ES 机制版）"
+  }
+}

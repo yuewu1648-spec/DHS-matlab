@@ -1,0 +1,179 @@
+{
+  "id": "population_dynamics",
+  "type": "archetype",
+  "name": "种群增长与种间竞争（Logistic / Lotka-Volterra）",
+  "name_en": "Population growth and competition: logistic and Lotka-Volterra",
+  "domain": "population",
+  "scale": "population",
+  "model_class": "ode",
+  "summary": "单种群受资源限制按 logistic 增长（内禀增长率 r、承载量 K）；两种群竞争用 Lotka-Volterra 竞争模型，其中种内竞争强于种间竞争时共存，否则竞争排斥。捕食者-猎物版本会给出中性周期（经典 LV），加入饱和功能反应后可出现稳定极限环。该框架是从生长曲线、竞争实验、丰度时间序列中估计 r、K、相互作用系数的标准工具。",
+  "when_to_use": [
+    "文献报告生长曲线、倍增时间、carrying capacity、logistic/exponential growth、最大种群密度",
+    "出现「Lotka-Volterra」「competitive exclusion」「coexistence」「predator-prey」「competition coefficient」「Gause」",
+    "两种或多种生物在相同资源/培养条件下竞争，或捕食者-猎物丰度时间序列",
+    "生态/微生物/肿瘤学中的克隆竞争、定殖与入侵、灭绝/共存判断",
+    "需要把个体水平参数（增长率、互作强度）与种群水平观测（丰度、周期）联系起来"
+  ],
+  "tags": ["种群", "Logistic", "Lotka-Volterra", "竞争", "捕食", "生态", "population"],
+  "keywords": ["种群增长", "逻辑斯谛增长", "承载量", "种间竞争", "竞争排斥", "共存", "捕食者-猎物", "内禀增长率", "logistic growth", "carrying capacity", "Lotka-Volterra", "competition", "predator-prey", "coexistence"],
+  "equations": [
+    {
+      "name": "Logistic 增长",
+      "latex": "\\frac{dN}{dt}=rN\\left(1-\\frac{N}{K}\\right)",
+      "plain": "dN/dt = r*N*(1 - N/K)",
+      "terms": {
+        "N": "种群大小（个体数或归一化密度）",
+        "r": "内禀增长率（1/day），指数增长阶段 dN/dt≈rN",
+        "K": "环境承载量（个体数），稳态 N→K",
+        "solution": "解析解 N(t)=K/(1+((K-N0)/N0)e^{-rt})；倍增时间 t_d=ln2/r（早期）",
+        "timescale": "r 与 1/K 的相对大小决定瞬态：短观测窗内 r 与 K 强相关"
+      }
+    },
+    {
+      "name": "两种群竞争（Lotka-Volterra competition）",
+      "latex": "\\frac{dN_1}{dt}=r_1N_1\\left(1-\\frac{N_1+\\alpha_{12}N_2}{K_1}\\right),\\qquad \\frac{dN_2}{dt}=r_2N_2\\left(1-\\frac{N_2+\\alpha_{21}N_1}{K_2}\\right)",
+      "plain": "dN1/dt = r1*N1*(1-(N1+a12*N2)/K1); dN2/dt = r2*N2*(1-(N2+a21*N1)/K2)",
+      "terms": {
+        "N1_N2": "两种群大小（个体）",
+        "r1_r2": "内禀增长率（1/day）",
+        "K1_K2": "各自承载力（个体）",
+        "alpha12": "物种 2 对 1 的竞争系数（1 个个体 2 相当于 α12 个个体 1）",
+        "coexistence_condition": "α12 < K1/K2 且 α21 < K2/K1（且 α12α21<1 保证稳定共存）；否则竞争排斥",
+        "equilibrium": "N1* = (K1 - α12 K2)/(1 - α12α21)，N2* = (K2 - α21 K1)/(1 - α12α21)"
+      }
+    },
+    {
+      "name": "捕食者-猎物（经典 LV）",
+      "latex": "\\frac{dV}{dt}=rV-aVP,\\qquad \\frac{dP}{dt}=baVP-mP",
+      "plain": "dV/dt = r*V - a*V*P; dP/dt = b*a*V*P - m*P",
+      "terms": {
+        "V_P": "猎物与捕食者丰度",
+        "r": "猎物内禀增长率；a 捕食率系数；b 转化效率；m 捕食者死亡率",
+        "equilibrium": "V* = m/(ba)，P* = r/a；平衡点为中心（中性周期，不收敛也不发散）",
+        "limitation": "经典 LV 无阻尼；要得到稳定极限环需饱和功能反应（Rosenzweig-MacArthur：aV/(1+aThV)）",
+        "note": "捕食者-猎物模型预测相位滞后（捕食者峰值晚于猎物），是判别因果关系的关键特征"
+      }
+    },
+    {
+      "name": "Rosenzweig-MacArthur（饱和捕食 + 稳定极限环）",
+      "latex": "\\frac{dV}{dt}=rV\\left(1-\\frac{V}{K}\\right)-\\frac{aV}{1+aT_hV}P,\\qquad \\frac{dP}{dt}=b\\frac{aV}{1+aT_hV}P-mP",
+      "plain": "dV/dt = r*V*(1-V/K) - a*V*P/(1+a*Th*V); dP/dt = b*a*V*P/(1+a*Th*V) - m*P",
+      "terms": {
+        "Th": "处理时间（1/攻击率饱和点）；Th=0 退化为经典 LV",
+        "paradox": "富营养化（K 增大）可能破坏稳定平衡、产生振幅增大的极限环（paradox of enrichment）",
+        "usage": "生态中常见的稳定振荡机制；也是解释浮游生物/害虫周期爆发的候选机制"
+      }
+    },
+    {
+      "name": "Allee 效应（低密度增长受阻）",
+      "latex": "\\frac{dN}{dt}=rN\\left(1-\\frac{N}{K}\\right)\\left(\\frac{N}{A}-1\\right),\\quad 0<A<K",
+      "plain": "dN/dt = r*N*(1 - N/K)*(N/A - 1)，A 为 Allee 阈值",
+      "terms": {
+        "A": "Allee 阈值：N<A 时增长率为负（寻找配偶/合作防御失败）",
+        "consequence": "双稳态 + 临界点：低于阈值灭绝、高于阈值趋向 K；有灭绝阈值与滞后",
+        "modeling": "用两个稳定平衡（0 与 K）+ 一个不稳定平衡（A）；判断恢复力需扰动实验"
+      }
+    },
+    {
+      "name": "克隆/肿瘤竞争（指数 + 竞争）",
+      "latex": "\\frac{dC_i}{dt}=r_iC_i\\left(1-\\frac{\\sum_j C_j}{K}\\right)/\\ \\frac{dC_i}{dt}=r_iC_i-\\sum_j \\gamma_{ij}C_iC_j",
+      "plain": "dCi/dt = ri*Ci*(1 - ΣCj/K) 或 dCi/dt = ri*Ci - Σγij*Ci*Cj",
+      "terms": {
+        "usage": "多克隆竞争（细菌菌株、肿瘤亚克隆、免疫细胞）",
+        "prediction": "指数选择系数差异决定克隆替换速度；频率依赖的 γij 决定共存",
+        "data": "测序频率/流式比例随时间的 logit 变换斜率可估选择系数"
+      }
+    }
+  ],
+  "spec_template": {
+    "schema_version": "bma.modelSpec.v1",
+    "name": "lotka_volterra_competition",
+    "title": "两种群 Lotka-Volterra 竞争（logistic 增长）",
+    "description": "两个物种各自按 logistic 增长并相互竞争；种间竞争系数 a12、a21 修正有效承载力。用于竞争实验的共存/排斥判断与参数估计。",
+    "kind": "ode",
+    "time": { "unit": "day", "start": 0, "end": 60, "n": 601 },
+    "variables": [
+      { "id": "N1", "name": "物种 1 个体数", "unit": "individual", "initial": { "value": 10 } },
+      { "id": "N2", "name": "物种 2 个体数", "unit": "individual", "initial": { "value": 10 } }
+    ],
+    "parameters": [
+      { "id": "r1", "name": "物种 1 内禀增长率", "unit": "1/day", "value": { "value": 0.5 }, "estimate": true, "bounds": [0.001, 10] },
+      { "id": "r2", "name": "物种 2 内禀增长率", "unit": "1/day", "value": { "value": 0.4 }, "estimate": true, "bounds": [0.001, 10] },
+      { "id": "K1", "name": "物种 1 承载量", "unit": "individual", "value": { "value": 1000 }, "estimate": true, "bounds": [1, 1e9] },
+      { "id": "K2", "name": "物种 2 承载量", "unit": "individual", "value": { "value": 1200 }, "estimate": true, "bounds": [1, 1e9] },
+      { "id": "a12", "name": "物种 2 对 1 的竞争系数", "unit": "1", "value": { "value": 0.6 }, "estimate": true, "bounds": [0, 10] },
+      { "id": "a21", "name": "物种 1 对 2 的竞争系数", "unit": "1", "value": { "value": 0.5 }, "estimate": true, "bounds": [0, 10] }
+    ],
+    "reactions": [
+      { "id": "birth1", "name": "物种 1 繁殖", "stoichiometry": { "N1": 1 },
+        "rate": { "kind": "expression", "expression": "r1*N1" } },
+      { "id": "death1", "name": "物种 1 竞争死亡", "stoichiometry": { "N1": -1 },
+        "rate": { "kind": "expression", "expression": "r1*N1*(N1+a12*N2)/K1" } },
+      { "id": "birth2", "name": "物种 2 繁殖", "stoichiometry": { "N2": 1 },
+        "rate": { "kind": "expression", "expression": "r2*N2" } },
+      { "id": "death2", "name": "物种 2 竞争死亡", "stoichiometry": { "N2": -1 },
+        "rate": { "kind": "expression", "expression": "r2*N2*(N2+a21*N1)/K2" } }
+    ],
+    "outputs": [
+      { "id": "N1_obs", "name": "物种 1 丰度", "unit": "individual", "expression": "N1" },
+      { "id": "N2_obs", "name": "物种 2 丰度", "unit": "individual", "expression": "N2" },
+      { "id": "fraction1", "name": "物种 1 比例", "unit": "1", "expression": "N1/(N1+N2)" }
+    ],
+    "assumptions": [
+      "均匀混合封闭环境，无迁入/迁出；资源限制可集总为承载力 K",
+      "竞争系数恒定（不随密度/环境变化）；无 Allee 效应",
+      "连续确定性动力学，个体数足够大（随机灭绝可忽略）",
+      "世代重叠、出生/死亡连续发生"
+    ],
+    "metadata": { "source_docs": [], "notes": "KB archetype 模板；捕食者-猎物版本用 LV 方程替换反应。" }
+  },
+  "spec_notes": [
+    "竞争结局判断：参数满足 a12 < K1/K2 且 a21 < K2/K1 时共存（本模板 0.6<0.833、0.5<1.2，故共存）；否则一个物种被排斥。simulate_cases 可扫描 a12、a21 画结局相图。",
+    "捕食者-猎物版本：把 N2 解释为捕食者，替换反应为 dV/dt=rV-aVP、dP/dt=baVP-mP（用 expression 速率）；注意经典 LV 产生中性周期，拟合时需要额外阻尼（饱和功能反应或密度依赖死亡）。",
+    "计数数据拟合：用 log 变换或负二项/泊松观测模型；个体数少时（<100）确定性 ODE 的灭绝预测不可靠。",
+    "实验设计：竞争实验需多起始比例（尤其是 1:10、1:1、10:1）以区分竞争系数与 r/K 的混淆；单一起始比例的单一时间序列通常不足以辨识全部参数。",
+    "微生物 chemostat：用 dN/dt = (μ(S)-D)N 型结构，D 为稀释率；此时承载力由资源供给决定而非固定 K，需换用资源-消费者模型。",
+    "肿瘤/免疫竞争：若需处理空间结构或克隆演化，可用多克隆扩展（每个克隆一个状态）或转到 agent-based。"
+  ],
+  "variables": [
+    { "id": "N1", "name": "物种 1 个体数", "unit": "individual", "typical_range": [1, 1e9], "notes": "微生物 CFU 可达 1e9；大型动物 1e2-1e6" },
+    { "id": "N2", "name": "物种 2 个体数", "unit": "individual", "typical_range": [1, 1e9], "notes": "" }
+  ],
+  "parameters": [
+    { "id": "r1", "symbol": "r_1", "unit": "1/day", "typical_range": [0.001, 10], "notes": "微生物 0.03-0.1/min（≈1.7-6/h）；昆虫/小型动物 0.01-0.5/day；大型动物 <0.01/day" },
+    { "id": "r2", "symbol": "r_2", "unit": "1/day", "typical_range": [0.001, 10], "notes": "" },
+    { "id": "K1", "symbol": "K_1", "unit": "individual", "typical_range": [1, 1e9], "notes": "取决于培养体积/栖息地；用归一化密度时可取 1" },
+    { "id": "K2", "symbol": "K_2", "unit": "individual", "typical_range": [1, 1e9], "notes": "" },
+    { "id": "a12", "symbol": "\\alpha_{12}", "unit": "1", "typical_range": [0, 10], "notes": "0 表示无竞争；1 表示两物种对资源需求等价；>1 表示种间竞争强于种内" },
+    { "id": "a21", "symbol": "\\alpha_{21}", "unit": "1", "typical_range": [0, 10], "notes": "" }
+  ],
+  "assumptions": [
+    "环境容量恒定（无季节性/资源脉冲）",
+    "种内竞争效应随密度线性累积；种间竞争可折算为等效密度",
+    "参数在观测期内恒定；无进化/表型可塑性",
+    "种群足够大，忽略人口随机性与 Allee 效应"
+  ],
+  "evidence_cues": [
+    "「logistic growth」「carrying capacity K」「intrinsic growth rate r」「doubling time」",
+    "「Lotka-Volterra」「competition coefficient」「competitive exclusion principle」「coexistence」",
+    "「predator-prey cycles」「phase lag」「functional response」「Rosenzweig-MacArthur」",
+    "「monoculture vs co-culture growth curves」→ 可估计 α",
+    "「Allee effect」「critical population size」「extinction threshold」",
+    "「clone competition」「fitness advantage」→ 指数选择模型"
+  ],
+  "fitting_notes": "1) 生长曲线：先拟合指数相得 r，再拟合全曲线得 r、K；短序列建议固定 K（从文献/晚期平台读）；2) 竞争实验：分别拟合单培养（得 r、K）与共培养时间序列（约束 α）；多起始比例能显著改善 α 的可辨识性；3) 观测误差模型：计数数据用 Poisson/负二项或 log 正态，比例数据用 logit 变换；4) 权重随丰度变化（方差∝均值），用相对误差/加权最小二乘；5) 若数据是相对密度（如 qPCR/流式比例），需要总密度或一个锚定值才能同时定 K；6) 捕食-猎物周期：先看互相关函数判断相位滞后方向，再用包含饱和反应/阻尼的模型拟合周期与振幅；7) 模型选择：logistic vs Gompertz vs Richards（形状参数）用 AICc 比较，不要默认 logistic。",
+  "identifiability_notes": "1) 单条生长曲线早期只有 r 可辨识，K 要到接近平台才可辨识；两者在短序列中强相关；2) 竞争系数 α 只能从混合培养数据辨识；单培养数据只给 r、K；3) 若两物种生长速率接近，α12、α21 与 r 的微小差异混淆（克隆比例数据需要高精度）；4) 确定性模型无法预测灭绝；小种群需要随机模型；5) Allee 模型有 3 个稳态，单一轨迹只能确定所在吸引域，恢复力与阈值需扰动实验；6) 捕食者-猎物中性周期对参数/初值高度敏感，实际拟合应使用带阻尼机制（饱和/密度依赖）避免参数不可辨识。",
+  "references": [
+    { "citation": "Verhulst PF (1838). Notice sur la loi que la population suit dans son accroissement. Correspondance Mathematique et Physique 10:113-121.", "authors": ["Verhulst PF"], "year": 1838, "title": "Notice sur la loi que la population suit dans son accroissement", "journal": "Correspondance Mathematique et Physique", "volume": "10", "pages": "113-121" },
+    { "citation": "Lotka AJ (1925). Elements of Physical Biology. Williams & Wilkins, Baltimore.", "authors": ["Lotka AJ"], "year": 1925, "title": "Elements of Physical Biology", "journal": "Williams & Wilkins", "note": "捕食者-猎物与竞争方程的系统表述" },
+    { "citation": "Volterra V (1926). Variazioni e fluttuazioni del numero d'individui in specie animali conviventi. Memorie della R. Accademia Nazionale dei Lincei 2:31-113.", "authors": ["Volterra V"], "year": 1926, "title": "Variazioni e fluttuazioni del numero d'individui in specie animali conviventi", "journal": "Memorie della R. Accademia Nazionale dei Lincei", "volume": "2", "pages": "31-113" },
+    { "citation": "Gause GF (1934). The Struggle for Existence. Williams & Wilkins, Baltimore.", "authors": ["Gause GF"], "year": 1934, "title": "The Struggle for Existence", "journal": "Williams & Wilkins", "note": "竞争排斥原理的实验基础（草履虫竞争实验）" },
+    { "citation": "Rosenzweig ML, MacArthur RH (1963). Graphical representation and stability conditions of predator-prey interactions. American Naturalist 97(895):209-223.", "authors": ["Rosenzweig ML", "MacArthur RH"], "year": 1963, "title": "Graphical representation and stability conditions of predator-prey interactions", "journal": "American Naturalist", "volume": "97", "pages": "209-223" }
+  ],
+  "related": ["sir_seir", "metabolic_pathway", "chemotaxis"],
+  "metadata": {
+    "author": "kb-author",
+    "version": "1.0",
+    "design_ref": "docs/DESIGN.md §3、§9"
+  }
+}

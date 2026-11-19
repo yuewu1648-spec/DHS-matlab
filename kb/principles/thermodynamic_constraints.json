@@ -1,0 +1,109 @@
+{
+  "id": "thermodynamic_constraints",
+  "type": "principle",
+  "name": "热力学约束（ΔG、细致平衡与能量耗散）",
+  "name_en": "Thermodynamic constraints: free energy, detailed balance and dissipation",
+  "domain": "physical_chemistry",
+  "scale": "pathway",
+  "model_class": "ode",
+  "summary": "反应方向与平衡位置由自由能变化决定：ΔG<0 正向自发、ΔG=0 平衡；平衡常数 K_eq=exp(-ΔG°/RT)。对基元反应，正逆速率常数之比必须等于 K_eq（细致平衡）；对反应环，Wegscheider 条件要求环上各步 ΔG 之和为零，否则模型能在封闭系统中自发循环（永动机）。细胞是开放的能量耗散系统：ATP 水解驱动非平衡稳态，允许持续通量与循环，但总熵产率必须非负。",
+  "statement": "热力学第二定律要求任何封闭系统的净反应方向使总自由能下降；平衡时所有正向通量等于逆向通量（细致平衡），且环路上正逆速率常数之积满足 ∏(k_f/k_r)=1。对可逆酶动力学，Haldane 关系把正逆动力学参数与平衡常数绑定，减少一个自由度。开放系统（有 ATP/GTP 水解、跨膜离子梯度等能量输入）可维持非平衡稳态与循环通量，但必须显式建模能量输入并满足熵产率 ≥0。",
+  "formulas": [
+    {
+      "name": "反应自由能变化",
+      "latex": "\\Delta G=\\Delta G^{\\circ}+RT\\ln Q,\\qquad Q=\\prod_i a_i^{\\nu_i}",
+      "plain": "ΔG = ΔG° + RT*ln Q; Q = prod(a_i^ν_i)（生成物在分子、反应物在分母）",
+      "terms": {
+        "delta_g_zero": "标准自由能变化（pH 7、1 M 等标准态，生化中常用 ΔG°′，固定 pH 7.4）",
+        "Q": "反应商（活度/浓度）；生理浓度下 ΔG 可与 ΔG° 差很多（如 ATP 水解在细胞内约 -50~-60 kJ/mol）",
+        "criterion": "ΔG<0 自发正向；ΔG>0 需能量耦合；ΔG=0 平衡"
+      }
+    },
+    {
+      "name": "平衡常数与细致平衡",
+      "latex": "K_{eq}=e^{-\\Delta G^{\\circ}/RT};\\qquad \\frac{k_f}{k_r}=K_{eq}\\ (\\text{基元反应})",
+      "plain": "Keq = exp(-ΔG°/RT)；基元反应 kf/kr = Keq",
+      "terms": {
+        "constraint": "正逆速率常数不能独立拟合；给定 Keq 时只需拟合一个方向，另一个由约束确定",
+        "check": "用 eQuilibrator/文献 ΔG°′ 计算 Keq，与拟合出的 kf/kr 比较；矛盾说明机制缺失或参数受数据范围限制",
+        "Haldane": "可逆 MM：Keq = (Vmax_f*Km_P)/(Vmax_r*Km_S)（正逆 Vmax、Km 必须满足）"
+      }
+    },
+    {
+      "name": "Wegscheider/环约束（封闭系统）",
+      "latex": "\\text{对任意闭合环路：}\\sum_{\\text{cycle}}\\Delta G_i=0\\ \\Longleftrightarrow\\ \\prod_{\\text{cycle}}\\frac{k_i^{+}}{k_i^{-}}=1",
+      "plain": "闭合环路：ΣΔG_i = 0；等价地 ∏(k_i^+/k_i^-) = 1",
+      "terms": {
+        "meaning": "封闭系统中不能存在净循环通量；若拟合出的速率常数违反该条件，模型会自发产生「永动」循环",
+        "open_system": "若有 ATP 水解/离子梯度等外部能源，环路可以携带净通量（分子马达、泵、激酶循环），此时必须把能量供体显式写成反应（如 ATP→ADP+Pi），并检查总 ΔG 为负",
+        "implementation": "在拟合中把环约束作为等式约束，或先固定平衡常数再拟合动力学"
+      }
+    },
+    {
+      "name": "ATP 水解与磷酸化势",
+      "latex": "\\mathrm{ATP}+\\mathrm{H_2O}\\to\\mathrm{ADP}+\\mathrm{P_i},\\quad \\Delta G_{ATP}\\approx-50\\ \\text{至}\\ -60\\ \\text{kJ/mol}\\ (\\text{胞内})",
+      "plain": "ATP + H2O → ADP + Pi，胞内 ΔG_ATP ≈ -50 至 -60 kJ/mol",
+      "terms": {
+        "phosphorylation_potential": "ΔG_p = ΔG°′ + RT ln([ADP][Pi]/[ATP])；决定激酶能否推动磷酸化",
+        "usage": "激酶/泵/分子马达模型必须包含 ATP 水解项，否则无法维持非平衡稳态",
+        "note": "ATP/ADP/Pi 浓度变化会改变驱动力；能量耗尽时泵停摆、梯度耗散"
+      }
+    },
+    {
+      "name": "熵产率（非平衡稳态）",
+      "latex": "\\sigma=\\sum_r J_r\\left(-\\frac{\\Delta G_r}{T}\\right)\\ge0",
+      "plain": "σ = Σ_r J_r*(-ΔG_r/T) ≥ 0",
+      "terms": {
+        "sigma": "单位体积熵产率；热力学第二定律要求非负",
+        "usage": "检验模型是否物理可行：若出现负熵产（某些通量与驱动力同向但总熵产为负），说明速率定律/结构违反热力学",
+        "implication": "维持非平衡稳态需要持续的自由能输入（ATP 水解、离子梯度），耗尽后系统趋于平衡"
+      }
+    }
+  ],
+  "modeling_implications": [
+    "可逆反应建模时先确定平衡常数/ΔG°，再用细致平衡约束正逆速率常数，避免过参数化与热力学不一致。",
+    "循环通路（激酶-磷酸酶循环、泵、代谢环）必须在开放系统框架中建模：显式写出 ATP 水解或离子梯度能量源，并检查环路总 ΔG<0。",
+    "封闭系统的长期仿真应收敛到平衡（所有净通量为零）；若模型持续循环，说明缺少约束或速率定律违反细致平衡。",
+    "Haldane 关系（可逆 MM）与 Wegscheider 条件（环）是拟合中的重要约束，可用于减少自由参数、改善可辨识性。",
+    "代谢模型的通量可行性、热力学可行性要一起检查：FBA 可行解中可能存在热力学不可行的内部循环（需热力学约束排除）。"
+  ],
+  "how_to_apply": [
+    "收集每个反应的 ΔG°′（数据库/文献/eQuilibrator），计算 Keq 与生理 ΔG。",
+    "对每条可逆基元反应，用 kf/kr=Keq 固定一个速率常数；对可逆 MM 使用 Haldane 关系。",
+    "识别模型中的闭合环路，检查 ∏(k_f/k_r)=1；若输入能量（ATP），把能量反应加入环路并确认总 ΔG<0。",
+    "在报告中给出关键反应的 ΔG/Keq 表，以及模型是否满足细致平衡/Wegscheider 条件的说明。",
+    "若数据只支持不可逆近似（ΔG<<0），可在假设中声明「该步近似不可逆」，并说明误差范围。"
+  ],
+  "pitfalls": [
+    "只拟合正向速率、把逆反应忽略，导致产物无法回到平衡或出现假稳态。",
+    "可逆 MM 的正逆 Vmax/Km 任意独立拟合，违反 Haldane，模型在接近平衡时行为错误。",
+    "封闭系统模型中存在净循环通量（热力学不可能），常见于环路速率常数随意设定。",
+    "把 ΔG° 与 ΔG 混淆（生理浓度下相差很大）；忽略 pH、离子强度、Mg²⁺ 对 ΔG°′ 的影响。",
+    "开放系统不建模能量输入，却要求持续通量/浓度梯度（无源之水）。",
+    "忽略温度对 Keq 的影响（van't Hoff），跨温度套用同一组参数。"
+  ],
+  "matlab_notes": [
+    "spec 中可逆反应写成两条 mass_action；参数拟合时可用等式约束或直接由 Keq 计算逆反应 k。",
+    "Haldane 关系与环约束可在拟合后检查（报告表格）；bma.fit.estimate 本身不内置热力学约束，需在报告/参数设定中体现。",
+    "代谢模型若需要热力学可行性，可用 eQuilibrator 的 ΔG 数据与线性约束；v1 中作为报告附加分析。",
+    "开放式能量循环（泵/激酶）可把 ATP→ADP+Pi 写成不可逆 constant 或 mass_action 反应，并在报告中标注能量来源。"
+  ],
+  "spec_mapping": "可逆反应 = 一对 mass_action；Keq/ΔG 不直接出现在 spec（v1 无热力学字段），但应在参数 evidence/metadata 中注明来源，并在报告中校验 kf/kr 与 Haldane 关系。ATP 水解作为显式反应（消耗 ATP、生成 ADP、Pi 可省略）。",
+  "diagnostics": [
+    "每条可逆反应 kf/kr 与 Keq 的相对误差（应 < 一个数量级或按文献不确定度）",
+    "环路 ∏(kf/kr) 是否接近 1（封闭系统）；开放环的总 ΔG 是否 <0",
+    "封闭系统仿真末态是否趋于平衡（净通量→0）",
+    "开放系统是否显式包含能量输入反应",
+    "熵产率是否非负（若可计算）"
+  ],
+  "keywords": ["热力学", "自由能", "细致平衡", "平衡常数", "Haldane 关系", "ATP 水解", "熵产", "thermodynamics", "detailed balance", "free energy"],
+  "tags": ["physical_chemistry", "constraints", "metabolism"],
+  "related": ["mass_action", "conservation_stoichiometry", "enzyme_kinetics", "metabolic_pathway"],
+  "references": [
+    { "citation": "Wegscheider R (1901). Über simultane Gleichgewichte und die Beziehungen zwischen Thermodynamik und Reactionskinetik homogener Systeme. Zeitschrift für Physikalische Chemie 39:257-303.", "authors": ["Wegscheider R"], "year": 1901, "title": "Über simultane Gleichgewichte und die Beziehungen zwischen Thermodynamik und Reactionskinetik homogener Systeme", "journal": "Zeitschrift für Physikalische Chemie", "volume": "39", "pages": "257-303" },
+    { "citation": "Alberty RA (2003). Thermodynamics of Biochemical Reactions. Wiley-Interscience.", "authors": ["Alberty RA"], "year": 2003, "title": "Thermodynamics of Biochemical Reactions", "journal": "Wiley-Interscience", "note": "生化标准态、ΔG°′ 与平衡常数的系统处理" },
+    { "citation": "Beard DA, Qian H (2008). Chemical Biophysics: Quantitative Analysis of Cellular Systems. Cambridge University Press.", "authors": ["Beard DA", "Qian H"], "year": 2008, "title": "Chemical Biophysics: Quantitative Analysis of Cellular Systems", "journal": "Cambridge University Press", "note": "非平衡热力学、细致平衡与能量耗散在细胞系统中的应用" },
+    { "citation": "Hill TL (1989). Free Energy Transduction and Biochemical Cycle Kinetics. Springer.", "authors": ["Hill TL"], "year": 1989, "title": "Free Energy Transduction and Biochemical Cycle Kinetics", "journal": "Springer", "note": "循环动力学与能量耦合的热力学约束" }
+  ],
+  "metadata": { "author": "kb-author", "version": "1.0", "design_ref": "docs/DESIGN.md §3、§9" }
+}

@@ -1,0 +1,1086 @@
+{
+  "id": "units",
+  "type": "units",
+  "name": "单位表（Units registry）",
+  "name_en": "BioModel-MATLAB units registry",
+  "schema_version": "bma.kb.units.v2",
+  "description": "bma.modelSpec.v1 中 unit 字段的权威词表。spec.validate 应按单位 id 在此表中查找；找不到时报 BMA_UNIT_UNKNOWN 并提示本表可用单位。factor 统一换算到 base（基准单位），供量纲一致性检查：dim 相同即可相加/比较；rate = 某维度 / 时间。",
+  "units_format": "array of objects with ASCII keys {id, dim, factor, base, symbol, aliases, note}; lookup by id = units[i].id. MATLAB jsondecode cannot preserve non-identifier object keys ('1' -> 'x1', '1/s' -> 'x1_s'), so the array form is required for spec.validate.",
+  "dimensions": {
+    "dimensionless": "无量纲（比例、Hill 系数、R0、控制系数等）",
+    "count": "个体/细胞计数（person、individual、cell、cfu），彼此可换算，基准 1 个个体",
+    "concentration": "物质的量浓度，基准 M = mol/L",
+    "amount": "物质的量，基准 mol",
+    "mass": "质量，基准 g",
+    "mass_concentration": "质量浓度，基准 g/L（= mg/mL）",
+    "volume": "体积，基准 L",
+    "time": "时间，基准 s",
+    "frequency": "一阶速率常数 / 时间倒数，基准 1/s",
+    "rate_per_concentration": "双分子速率常数 / (浓度·时间)，基准 1/(M*s)",
+    "concentration_rate": "浓度变化速率（反应通量），基准 M/s",
+    "count_rate": "计数变化速率，基准 count/s",
+    "length": "长度，基准 m",
+    "area": "面积，基准 m^2",
+    "diffusion_coefficient": "扩散系数，基准 m^2/s",
+    "voltage": "电位，基准 V",
+    "current_density": "电流密度（膜电流），基准 A/m^2",
+    "conductance_per_area": "电导密度（膜电导），基准 S/m^2",
+    "capacitance_per_area": "电容密度（膜电容），基准 F/m^2",
+    "voltage_rate": "电位变化速率（dV/dt），基准 V/s",
+    "energy": "能量，基准 J = kg·m²/s²",
+    "molar_energy": "摩尔能量，基准 J/mol（ΔG/ΔH 常用）",
+    "power": "功率，基准 W = J/s",
+    "specific_power": "比功率，基准 W/kg",
+    "pressure": "压强，基准 Pa = N/m²",
+    "molality": "质量摩尔浓度，基准 mol/kg（注意与 M=mol/L 不同）"
+  },
+  "units": [
+    {
+      "id": "1",
+      "dim": "dimensionless",
+      "factor": 1,
+      "base": "1",
+      "symbol": "1",
+      "aliases": [
+        "dimensionless",
+        "unitless",
+        "ratio"
+      ],
+      "note": "比例、Hill 系数 n、R0、控制系数、分数占据等；也用于以归一化计数表示的种群变量"
+    },
+    {
+      "id": "%",
+      "dim": "dimensionless",
+      "factor": 0.01,
+      "base": "1",
+      "symbol": "%",
+      "aliases": [],
+      "note": "百分数；写入 spec 时建议先折算为 1"
+    },
+    {
+      "id": "count",
+      "dim": "count",
+      "factor": 1,
+      "base": "count",
+      "symbol": "count",
+      "aliases": [
+        "counts"
+      ],
+      "note": "计数基准单位（个体/细胞/人数均换算到 count）"
+    },
+    {
+      "id": "person",
+      "dim": "count",
+      "factor": 1,
+      "base": "count",
+      "symbol": "person",
+      "aliases": [
+        "persons",
+        "people"
+      ],
+      "note": "流行病学人数（SIR/SEIR）"
+    },
+    {
+      "id": "individual",
+      "dim": "count",
+      "factor": 1,
+      "base": "count",
+      "symbol": "individual",
+      "aliases": [
+        "ind",
+        "organism"
+      ],
+      "note": "生态学个体数（种群/种间竞争）"
+    },
+    {
+      "id": "cell",
+      "dim": "count",
+      "factor": 1,
+      "base": "count",
+      "symbol": "cell",
+      "aliases": [
+        "cells"
+      ],
+      "note": "细胞数（趋化、细胞增殖）"
+    },
+    {
+      "id": "cfu",
+      "dim": "count",
+      "factor": 1,
+      "base": "count",
+      "symbol": "CFU",
+      "aliases": [
+        "CFU"
+      ],
+      "note": "菌落形成单位（微生物计数）"
+    },
+    {
+      "id": "M",
+      "dim": "concentration",
+      "factor": 1,
+      "base": "M",
+      "symbol": "M",
+      "aliases": [
+        "mol/L",
+        "mol L-1"
+      ],
+      "note": "摩尔浓度（1 M = 1 mol/L）"
+    },
+    {
+      "id": "mM",
+      "dim": "concentration",
+      "factor": 0.001,
+      "base": "M",
+      "symbol": "mM",
+      "aliases": [
+        "mmol/L"
+      ],
+      "note": "毫摩尔浓度，代谢物常用"
+    },
+    {
+      "id": "uM",
+      "dim": "concentration",
+      "factor": 0.000001,
+      "base": "M",
+      "symbol": "uM",
+      "aliases": [
+        "µM",
+        "μM",
+        "umol/L",
+        "micromolar"
+      ],
+      "note": "微摩尔浓度，酶动力学最常用；UTF-8 环境中统一写 uM，避免 µ 造成 MATLAB 字符串比较失败"
+    },
+    {
+      "id": "nM",
+      "dim": "concentration",
+      "factor": 1e-9,
+      "base": "M",
+      "symbol": "nM",
+      "aliases": [
+        "nmol/L",
+        "nanomolar"
+      ],
+      "note": "纳摩尔浓度，受体/信号通路常用"
+    },
+    {
+      "id": "pM",
+      "dim": "concentration",
+      "factor": 1e-12,
+      "base": "M",
+      "symbol": "pM",
+      "aliases": [
+        "pmol/L"
+      ],
+      "note": "皮摩尔浓度，高亲和受体 Kd 常用"
+    },
+    {
+      "id": "fM",
+      "dim": "concentration",
+      "factor": 1e-15,
+      "base": "M",
+      "symbol": "fM",
+      "aliases": [
+        "fmol/L"
+      ],
+      "note": "飞摩尔浓度，细胞因子/内分泌激素常用"
+    },
+    {
+      "id": "mol",
+      "dim": "amount",
+      "factor": 1,
+      "base": "mol",
+      "symbol": "mol",
+      "aliases": [],
+      "note": "物质的量"
+    },
+    {
+      "id": "mmol",
+      "dim": "amount",
+      "factor": 0.001,
+      "base": "mol",
+      "symbol": "mmol",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "umol",
+      "dim": "amount",
+      "factor": 0.000001,
+      "base": "mol",
+      "symbol": "umol",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "nmol",
+      "dim": "amount",
+      "factor": 1e-9,
+      "base": "mol",
+      "symbol": "nmol",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "pmol",
+      "dim": "amount",
+      "factor": 1e-12,
+      "base": "mol",
+      "symbol": "pmol",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "kg",
+      "dim": "mass",
+      "factor": 1000,
+      "base": "g",
+      "symbol": "kg",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "g",
+      "dim": "mass",
+      "factor": 1,
+      "base": "g",
+      "symbol": "g",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "mg",
+      "dim": "mass",
+      "factor": 0.001,
+      "base": "g",
+      "symbol": "mg",
+      "aliases": [],
+      "note": "药代动力学给药量常用"
+    },
+    {
+      "id": "ug",
+      "dim": "mass",
+      "factor": 0.000001,
+      "base": "g",
+      "symbol": "ug",
+      "aliases": [
+        "µg",
+        "μg"
+      ],
+      "note": ""
+    },
+    {
+      "id": "ng",
+      "dim": "mass",
+      "factor": 1e-9,
+      "base": "g",
+      "symbol": "ng",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "g/L",
+      "dim": "mass_concentration",
+      "factor": 1,
+      "base": "g/L",
+      "symbol": "g/L",
+      "aliases": [
+        "mg/mL"
+      ],
+      "note": "质量浓度基准（1 g/L = 1 mg/mL）"
+    },
+    {
+      "id": "mg/L",
+      "dim": "mass_concentration",
+      "factor": 0.001,
+      "base": "g/L",
+      "symbol": "mg/L",
+      "aliases": [
+        "ug/mL",
+        "µg/mL"
+      ],
+      "note": "血药浓度常用（1 mg/L = 1 ug/mL）"
+    },
+    {
+      "id": "ng/mL",
+      "dim": "mass_concentration",
+      "factor": 0.000001,
+      "base": "g/L",
+      "symbol": "ng/mL",
+      "aliases": [],
+      "note": "高活性药物血药浓度常用"
+    },
+    {
+      "id": "L",
+      "dim": "volume",
+      "factor": 1,
+      "base": "L",
+      "symbol": "L",
+      "aliases": [
+        "liter",
+        "litre",
+        "dm^3"
+      ],
+      "note": "体积基准；表观分布容积 Vd 常用 L"
+    },
+    {
+      "id": "mL",
+      "dim": "volume",
+      "factor": 0.001,
+      "base": "L",
+      "symbol": "mL",
+      "aliases": [
+        "ml"
+      ],
+      "note": ""
+    },
+    {
+      "id": "uL",
+      "dim": "volume",
+      "factor": 0.000001,
+      "base": "L",
+      "symbol": "uL",
+      "aliases": [
+        "µL",
+        "μL",
+        "ul"
+      ],
+      "note": "微孔板/细胞培养体积常用"
+    },
+    {
+      "id": "nL",
+      "dim": "volume",
+      "factor": 1e-9,
+      "base": "L",
+      "symbol": "nL",
+      "aliases": [
+        "nl"
+      ],
+      "note": ""
+    },
+    {
+      "id": "ms",
+      "dim": "time",
+      "factor": 0.001,
+      "base": "s",
+      "symbol": "ms",
+      "aliases": [],
+      "note": "电生理时间尺度"
+    },
+    {
+      "id": "s",
+      "dim": "time",
+      "factor": 1,
+      "base": "s",
+      "symbol": "s",
+      "aliases": [
+        "sec"
+      ],
+      "note": "时间基准"
+    },
+    {
+      "id": "min",
+      "dim": "time",
+      "factor": 60,
+      "base": "s",
+      "symbol": "min",
+      "aliases": [
+        "minute"
+      ],
+      "note": "生化/基因表达常用"
+    },
+    {
+      "id": "h",
+      "dim": "time",
+      "factor": 3600,
+      "base": "s",
+      "symbol": "h",
+      "aliases": [
+        "hr",
+        "hour"
+      ],
+      "note": "药代/细胞周期常用"
+    },
+    {
+      "id": "day",
+      "dim": "time",
+      "factor": 86400,
+      "base": "s",
+      "symbol": "day",
+      "aliases": [
+        "d"
+      ],
+      "note": "流行病/生态常用"
+    },
+    {
+      "id": "week",
+      "dim": "time",
+      "factor": 604800,
+      "base": "s",
+      "symbol": "week",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "year",
+      "dim": "time",
+      "factor": 31536000,
+      "base": "s",
+      "symbol": "year",
+      "aliases": [
+        "yr"
+      ],
+      "note": "生态/进化常用（按 365 day）"
+    },
+    {
+      "id": "1/ms",
+      "dim": "frequency",
+      "factor": 1000,
+      "base": "1/s",
+      "symbol": "1/ms",
+      "aliases": [
+        "ms^-1"
+      ],
+      "note": "HH 门控速率 alpha/beta 常用"
+    },
+    {
+      "id": "1/s",
+      "dim": "frequency",
+      "factor": 1,
+      "base": "1/s",
+      "symbol": "1/s",
+      "aliases": [
+        "s^-1",
+        "per_s"
+      ],
+      "note": "一级速率常数基准"
+    },
+    {
+      "id": "1/min",
+      "dim": "frequency",
+      "factor": 0.016666666666666666,
+      "base": "1/s",
+      "symbol": "1/min",
+      "aliases": [
+        "min^-1",
+        "per_min"
+      ],
+      "note": "基因表达/酶动力学常用（= 1/60 s^-1）"
+    },
+    {
+      "id": "1/h",
+      "dim": "frequency",
+      "factor": 0.0002777777777777778,
+      "base": "1/s",
+      "symbol": "1/h",
+      "aliases": [
+        "h^-1",
+        "per_h"
+      ],
+      "note": "药代消除速率常数常用（= 1/3600 s^-1）"
+    },
+    {
+      "id": "1/day",
+      "dim": "frequency",
+      "factor": 0.000011574074074074073,
+      "base": "1/s",
+      "symbol": "1/day",
+      "aliases": [
+        "day^-1",
+        "per_day"
+      ],
+      "note": "流行病/生态常用"
+    },
+    {
+      "id": "1/year",
+      "dim": "frequency",
+      "factor": 3.1709791983764586e-8,
+      "base": "1/s",
+      "symbol": "1/year",
+      "aliases": [
+        "year^-1"
+      ],
+      "note": ""
+    },
+    {
+      "id": "1/(M*s)",
+      "dim": "rate_per_concentration",
+      "factor": 1,
+      "base": "1/(M*s)",
+      "symbol": "1/(M*s)",
+      "aliases": [
+        "M^-1 s^-1"
+      ],
+      "note": "双分子速率常数基准（扩散极限约 1e9 1/(M*s)）"
+    },
+    {
+      "id": "1/(uM*s)",
+      "dim": "rate_per_concentration",
+      "factor": 1000000,
+      "base": "1/(M*s)",
+      "symbol": "1/(uM*s)",
+      "aliases": [
+        "uM^-1 s^-1"
+      ],
+      "note": "酶-底物结合 kon、受体-配体 kon 常用（1 1/(uM*s) = 1e6 1/(M*s)）"
+    },
+    {
+      "id": "1/(nM*s)",
+      "dim": "rate_per_concentration",
+      "factor": 1000000000,
+      "base": "1/(M*s)",
+      "symbol": "1/(nM*s)",
+      "aliases": [
+        "nM^-1 s^-1"
+      ],
+      "note": "受体-配体结合 kon 常用（1 1/(nM*s) = 1e9 1/(M*s)）"
+    },
+    {
+      "id": "1/(M*min)",
+      "dim": "rate_per_concentration",
+      "factor": 0.016666666666666666,
+      "base": "1/(M*s)",
+      "symbol": "1/(M*min)",
+      "aliases": [
+        "M^-1 min^-1"
+      ],
+      "note": ""
+    },
+    {
+      "id": "1/(uM*min)",
+      "dim": "rate_per_concentration",
+      "factor": 16666.666666666668,
+      "base": "1/(M*s)",
+      "symbol": "1/(uM*min)",
+      "aliases": [
+        "uM^-1 min^-1"
+      ],
+      "note": "1 1/(uM*min) = 16666.7 1/(M*s)"
+    },
+    {
+      "id": "1/(nM*min)",
+      "dim": "rate_per_concentration",
+      "factor": 16666666.666666668,
+      "base": "1/(M*s)",
+      "symbol": "1/(nM*min)",
+      "aliases": [
+        "nM^-1 min^-1"
+      ],
+      "note": ""
+    },
+    {
+      "id": "1/(nM*h)",
+      "dim": "rate_per_concentration",
+      "factor": 277777.7777777778,
+      "base": "1/(M*s)",
+      "symbol": "1/(nM*h)",
+      "aliases": [
+        "nM^-1 h^-1"
+      ],
+      "note": "Transwell 趋化系数（1 1/(nM*h) = 1/60 1/(nM*min)）"
+    },
+    {
+      "id": "M/s",
+      "dim": "concentration_rate",
+      "factor": 1,
+      "base": "M/s",
+      "symbol": "M/s",
+      "aliases": [],
+      "note": "反应通量基准"
+    },
+    {
+      "id": "uM/s",
+      "dim": "concentration_rate",
+      "factor": 0.000001,
+      "base": "M/s",
+      "symbol": "uM/s",
+      "aliases": [
+        "umol/L/s"
+      ],
+      "note": "酶动力学通量常用（1 uM/s = 60 uM/min）"
+    },
+    {
+      "id": "uM/min",
+      "dim": "concentration_rate",
+      "factor": 1.6666666666666667e-8,
+      "base": "M/s",
+      "symbol": "uM/min",
+      "aliases": [
+        "umol/L/min"
+      ],
+      "note": "代谢通量/酶活常用（1 uM/min = 1e-6/60 M/s）"
+    },
+    {
+      "id": "uM/h",
+      "dim": "concentration_rate",
+      "factor": 2.777777777777778e-10,
+      "base": "M/s",
+      "symbol": "uM/h",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "nM/s",
+      "dim": "concentration_rate",
+      "factor": 1e-9,
+      "base": "M/s",
+      "symbol": "nM/s",
+      "aliases": [
+        "nmol/L/s"
+      ],
+      "note": ""
+    },
+    {
+      "id": "nM/min",
+      "dim": "concentration_rate",
+      "factor": 1.6666666666666667e-11,
+      "base": "M/s",
+      "symbol": "nM/min",
+      "aliases": [
+        "nmol/L/min"
+      ],
+      "note": "基因表达产生速率常用（1 nM/min = 1e-9/60 M/s）"
+    },
+    {
+      "id": "nM/h",
+      "dim": "concentration_rate",
+      "factor": 2.777777777777778e-13,
+      "base": "M/s",
+      "symbol": "nM/h",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "mM/min",
+      "dim": "concentration_rate",
+      "factor": 0.000016666666666666667,
+      "base": "M/s",
+      "symbol": "mM/min",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "individual/day",
+      "dim": "count_rate",
+      "factor": 0.000011574074074074073,
+      "base": "count/s",
+      "symbol": "individual/day",
+      "aliases": [
+        "ind/day"
+      ],
+      "note": "种群增长速率常用"
+    },
+    {
+      "id": "cell/min",
+      "dim": "count_rate",
+      "factor": 0.016666666666666666,
+      "base": "count/s",
+      "symbol": "cell/min",
+      "aliases": [
+        "cells/min"
+      ],
+      "note": "细胞迁移/增殖速率常用"
+    },
+    {
+      "id": "count/s",
+      "dim": "count_rate",
+      "factor": 1,
+      "base": "count/s",
+      "symbol": "count/s",
+      "aliases": [],
+      "note": "计数速率基准"
+    },
+    {
+      "id": "nm",
+      "dim": "length",
+      "factor": 1e-9,
+      "base": "m",
+      "symbol": "nm",
+      "aliases": [],
+      "note": "蛋白尺寸/膜厚"
+    },
+    {
+      "id": "um",
+      "dim": "length",
+      "factor": 0.000001,
+      "base": "m",
+      "symbol": "um",
+      "aliases": [
+        "µm",
+        "μm",
+        "micron"
+      ],
+      "note": "细胞尺度"
+    },
+    {
+      "id": "mm",
+      "dim": "length",
+      "factor": 0.001,
+      "base": "m",
+      "symbol": "mm",
+      "aliases": [],
+      "note": "组织尺度"
+    },
+    {
+      "id": "cm",
+      "dim": "length",
+      "factor": 0.01,
+      "base": "m",
+      "symbol": "cm",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "m",
+      "dim": "length",
+      "factor": 1,
+      "base": "m",
+      "symbol": "m",
+      "aliases": [
+        "meter",
+        "metre"
+      ],
+      "note": ""
+    },
+    {
+      "id": "km",
+      "dim": "length",
+      "factor": 1000,
+      "base": "m",
+      "symbol": "km",
+      "aliases": [],
+      "note": "生态/流行病空间尺度"
+    },
+    {
+      "id": "mm^2",
+      "dim": "area",
+      "factor": 0.000001,
+      "base": "m^2",
+      "symbol": "mm^2",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "cm^2",
+      "dim": "area",
+      "factor": 0.0001,
+      "base": "m^2",
+      "symbol": "cm^2",
+      "aliases": [],
+      "note": "膜面积（HH 经典单位）"
+    },
+    {
+      "id": "um^2",
+      "dim": "area",
+      "factor": 1e-12,
+      "base": "m^2",
+      "symbol": "um^2",
+      "aliases": [
+        "µm^2"
+      ],
+      "note": "细胞截面/受体占位面积"
+    },
+    {
+      "id": "m^2",
+      "dim": "area",
+      "factor": 1,
+      "base": "m^2",
+      "symbol": "m^2",
+      "aliases": [],
+      "note": "面积基准"
+    },
+    {
+      "id": "um^2/s",
+      "dim": "diffusion_coefficient",
+      "factor": 1e-12,
+      "base": "m^2/s",
+      "symbol": "um^2/s",
+      "aliases": [
+        "µm^2/s"
+      ],
+      "note": "细胞内扩散系数常用（小分子 ~100-1000 um^2/s）"
+    },
+    {
+      "id": "cm^2/s",
+      "dim": "diffusion_coefficient",
+      "factor": 0.0001,
+      "base": "m^2/s",
+      "symbol": "cm^2/s",
+      "aliases": [],
+      "note": "Keller-Segel / Turing 经典参数常用（1e-6-1e-5 cm^2/s）"
+    },
+    {
+      "id": "m^2/s",
+      "dim": "diffusion_coefficient",
+      "factor": 1,
+      "base": "m^2/s",
+      "symbol": "m^2/s",
+      "aliases": [],
+      "note": ""
+    },
+    {
+      "id": "mV",
+      "dim": "voltage",
+      "factor": 0.001,
+      "base": "V",
+      "symbol": "mV",
+      "aliases": [],
+      "note": "膜电位（HH 经典单位）"
+    },
+    {
+      "id": "V",
+      "dim": "voltage",
+      "factor": 1,
+      "base": "V",
+      "symbol": "V",
+      "aliases": [],
+      "note": "电压基准；注意与体积单位 L 区分"
+    },
+    {
+      "id": "mV/ms",
+      "dim": "voltage_rate",
+      "factor": 1,
+      "base": "V/s",
+      "symbol": "mV/ms",
+      "aliases": [],
+      "note": "dV/dt 单位（1 mV/ms = 1 V/s）；HH 膜方程使用"
+    },
+    {
+      "id": "V/s",
+      "dim": "voltage_rate",
+      "factor": 1,
+      "base": "V/s",
+      "symbol": "V/s",
+      "aliases": [],
+      "note": "电位变化速率基准"
+    },
+    {
+      "id": "uA/cm^2",
+      "dim": "current_density",
+      "factor": 0.01,
+      "base": "A/m^2",
+      "symbol": "uA/cm^2",
+      "aliases": [
+        "µA/cm^2",
+        "μA/cm^2"
+      ],
+      "note": "膜电流密度（HH 经典单位）"
+    },
+    {
+      "id": "A/m^2",
+      "dim": "current_density",
+      "factor": 1,
+      "base": "A/m^2",
+      "symbol": "A/m^2",
+      "aliases": [],
+      "note": "电流密度基准"
+    },
+    {
+      "id": "mS/cm^2",
+      "dim": "conductance_per_area",
+      "factor": 10,
+      "base": "S/m^2",
+      "symbol": "mS/cm^2",
+      "aliases": [
+        "mS cm^-2"
+      ],
+      "note": "膜电导密度（HH 经典单位）"
+    },
+    {
+      "id": "S/m^2",
+      "dim": "conductance_per_area",
+      "factor": 1,
+      "base": "S/m^2",
+      "symbol": "S/m^2",
+      "aliases": [],
+      "note": "电导密度基准"
+    },
+    {
+      "id": "uF/cm^2",
+      "dim": "capacitance_per_area",
+      "factor": 0.01,
+      "base": "F/m^2",
+      "symbol": "uF/cm^2",
+      "aliases": [
+        "µF/cm^2",
+        "μF/cm^2"
+      ],
+      "note": "膜电容密度（HH 经典 1 uF/cm^2）"
+    },
+    {
+      "id": "F/m^2",
+      "dim": "capacitance_per_area",
+      "factor": 1,
+      "base": "F/m^2",
+      "symbol": "F/m^2",
+      "aliases": [],
+      "note": "电容密度基准"
+    },
+    {
+      "id": "J",
+      "dim": "energy",
+      "base": "J",
+      "symbol": "J",
+      "aliases": [
+        "joule",
+        "joules"
+      ],
+      "note": "能量；1 J = 1 kg·m²/s²"
+    },
+    {
+      "id": "kJ",
+      "dim": "energy",
+      "base": "J",
+      "symbol": "kJ",
+      "aliases": [],
+      "note": "千焦"
+    },
+    {
+      "id": "mJ",
+      "dim": "energy",
+      "base": "J",
+      "symbol": "mJ",
+      "aliases": [],
+      "note": "毫焦"
+    },
+    {
+      "id": "kcal",
+      "dim": "energy",
+      "base": "J",
+      "symbol": "kcal",
+      "aliases": [],
+      "note": "千卡 = 4184 J"
+    },
+    {
+      "id": "J/mol",
+      "dim": "molar_energy",
+      "base": "J/mol",
+      "symbol": "J/mol",
+      "aliases": [],
+      "note": "摩尔能量（ΔG、ΔH 常用）"
+    },
+    {
+      "id": "kJ/mol",
+      "dim": "molar_energy",
+      "base": "J/mol",
+      "symbol": "kJ/mol",
+      "aliases": [],
+      "note": "千焦/摩尔"
+    },
+    {
+      "id": "kcal/mol",
+      "dim": "molar_energy",
+      "base": "J/mol",
+      "symbol": "kcal/mol",
+      "aliases": [],
+      "note": "千卡/摩尔 = 4184 J/mol"
+    },
+    {
+      "id": "W",
+      "dim": "power",
+      "base": "W",
+      "symbol": "W",
+      "aliases": [
+        "watt",
+        "watts"
+      ],
+      "note": "功率 = J/s"
+    },
+    {
+      "id": "mW",
+      "dim": "power",
+      "base": "W",
+      "symbol": "mW",
+      "aliases": [],
+      "note": "毫瓦"
+    },
+    {
+      "id": "kW",
+      "dim": "power",
+      "base": "W",
+      "symbol": "kW",
+      "aliases": [],
+      "note": "千瓦"
+    },
+    {
+      "id": "W/kg",
+      "dim": "specific_power",
+      "base": "W/kg",
+      "symbol": "W/kg",
+      "aliases": [],
+      "note": "比功率（单位质量功率，肌肉能量代谢常用）"
+    },
+    {
+      "id": "Pa",
+      "dim": "pressure",
+      "base": "Pa",
+      "symbol": "Pa",
+      "aliases": [
+        "pascal"
+      ],
+      "note": "压强 = N/m²"
+    },
+    {
+      "id": "kPa",
+      "dim": "pressure",
+      "base": "Pa",
+      "symbol": "kPa",
+      "aliases": [],
+      "note": "千帕"
+    },
+    {
+      "id": "mmHg",
+      "dim": "pressure",
+      "base": "Pa",
+      "symbol": "mmHg",
+      "aliases": [],
+      "note": "毫米汞柱（1 mmHg = 133.322 Pa；血压/组织压常用）"
+    },
+    {
+      "id": "mol/kg",
+      "dim": "molality",
+      "base": "mol/kg",
+      "symbol": "mol/kg",
+      "aliases": [],
+      "note": "质量摩尔浓度（与体积摩尔浓度不同；1 kg 湿肌≈1 L 仅作近似）"
+    },
+    {
+      "id": "mmol/kg",
+      "dim": "molality",
+      "base": "mol/kg",
+      "symbol": "mmol/kg",
+      "aliases": [],
+      "note": "毫摩尔/千克（肌肉代谢物浓度常用）"
+    },
+    {
+      "id": "umol/kg",
+      "dim": "molality",
+      "base": "mol/kg",
+      "symbol": "umol/kg",
+      "aliases": [
+        "µmol/kg",
+        "μmol/kg"
+      ],
+      "note": "微摩尔/千克"
+    }
+  ],
+  "conventions": [
+    "spec 中所有 unit 必须取本表 id（或 aliases 之一，validate 归一化到 id）。不要自造复合单位字符串。",
+    "ASCII 优先：微写 u（uM、um、uL、uA），不写 µ/μ；避免 MATLAB 字符串比较与 JSON 转义差异。",
+    "时间轴单位在 spec.time.unit 中给出，速率常数单位中的时间必须与之一致或可换算（例：time.unit=min 时用 1/min、nM/min，不要混用 1/s）。",
+    "min/max 范围与 bounds 使用参数自身单位；对数参数（Kd、Km、K、ks）的 bounds 建议跨越 4-6 个数量级。",
+    "量纲一致性：dim 相同才可相加/比较；反应通量维度 = 目标 species 维度 / 时间；双分子速率常数 dim=rate_per_concentration。",
+    "复合单位（mS/cm^2、uA/cm^2、mV/ms）已显式列入本表，供电生理模型使用；unit 查找一律以本表为准，不做现场解析。"
+  ],
+  "model_spec_unit_rules": {
+    "variables": "unit 必填；同一反应网络中不同 compartment 的同一物种可用不同单位，但建议统一量纲",
+    "parameters": "unit 必填（无量纲写 \"1\"）；estimate:true 时必须给 bounds，且 bounds 与 value 同单位",
+    "reactions": "reactions[].rate 本身没有 unit 字段；量纲检查由 variables/parameters 的 unit + 速率定律类型推断",
+    "outputs": "unit 必填；expression 的运算结果单位应等于 unit",
+    "time": "unit 决定 tspan 与时间序列的时间单位；建议全局统一（s 或 min 或 h 或 day）"
+  },
+  "notes": [
+    "本表由 kb-author 维护；新增单位请同时更新 dim/factor/base，并在 kb/README.md 的变更记录中登记。",
+    "bma.spec.validate 的 units_check 建议：unit 不在本表 -> BMA_UNIT_UNKNOWN（hint 列出相似 id）；同 dim 不同 factor 的加减 -> BMA_UNIT_MISMATCH。"
+  ]
+}

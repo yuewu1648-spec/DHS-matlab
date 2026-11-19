@@ -1,0 +1,24 @@
+# Mount-only overlay for the headless profile: proves the BioModel-MATLAB tool
+# plugin activates inside a real DSH profile. No LLM call succeeds without a
+# DEEPSEEK_API_KEY, so this is a mount/activation check, not the full E2E.
+- id: authorization
+  name: '@deepseek-ai/dsh-authorization'
+  disabled: false
+
+- id: deepseek-account
+  name: '@deepseek-ai/dsh-deepseek-account-platform'
+  disabled: false
+
+- id: credentials
+  name: '@deepseek-ai/dsh-credentials-local'
+  disabled: false
+
+- id: system-prompt
+  name: '@deepseek-ai/dsh-system-prompt'
+  config:
+    personaPrefix: |
+      你是 BioModel-MATLAB 的生物系统建模专家。所有建模计算通过 bma_* 工具在 MATLAB 后端完成。
+
+- insert:
+    - id: bio-matlab-tools
+      name: 'E:/matlab系统建模/bridge/lib/index.js'
