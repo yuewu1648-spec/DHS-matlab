@@ -27,12 +27,25 @@ bridge（Node 插件）──文件式 JSON-RPC──► MATLAB R2024a 常驻服
 
 ## 快速开始
 
-1. 确认 MATLAB R2024a 可用（默认 `C:\Program Files\MATLAB\R2024a\bin\matlab.exe`）。
-2. 安装 DSH bundle（本机已安装；重装见 `docs/USAGE.md`）：
-   在 DSH 中安装 `E:\matlab系统建模\bridge`（`plugin_manager install_bundle`）。
+1. 确认已安装 DSH 与 MATLAB R2024a（默认 `C:\Program Files\MATLAB\R2024a\bin\matlab.exe`；工具箱要求见 `docs/USAGE.md`）。
+2. 克隆并安装 DSH bundle：
+
+   ```powershell
+   git clone https://github.com/yuewu1648-spec/DHS-matlab.git
+   cd DHS-matlab
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_bundle.ps1
+   ```
+
+   然后在 DSH 会话中执行（需要完全权限）：
+
+   ```text
+   plugin_manager install_bundle { "target": "<克隆目录>\\bridge" }
+   ```
+
+   `install_bundle.ps1` 会把 `bridge/cordis.patch.yml` 的 skills 路径改成当前检出目录，补齐 bridge 依赖，并检查 MATLAB。
 3. 在 DSH Web GUI **新建会话 → 选择 preset「MATLAB 生物系统建模」**。
 4. 上传/给出文献路径，输入任务，例如：
-   > 阅读 `E:\matlab系统建模\tests\fixtures\literature\enzyme_kinetics\paper.md`，依据其中的实验数据构建酶动力学数学模型，完成参数估计与验证，输出中文报告。
+   > 阅读 `tests\fixtures\literature\enzyme_kinetics\paper.md`，依据其中的实验数据构建酶动力学数学模型，完成参数估计与验证，输出中文报告。
 
 Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库匹配 → 机制假设 → spec 校验 → 结构分析 → 仿真 → 拟合 → 可辨识性 → 验证 → 报告。
 
@@ -257,4 +270,8 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 - `SetNamedSecurityInfoW failed`/pwsh 执行策略属于 DSH 沙箱/主机层问题；agent 提供 preflight 提示与替代工作流（write/bma_*、`bma_artifact_import`），不能替代宿主修复。
 - `bma_cancel(hard=true)` 通过重启 MATLAB 中止不可中断的 builtin，会丢弃该次调用的部分计算；协作取消只在 Sobol/fit 等检查点生效。
 - MATLAB 长驻 RPC 会话中修改 `.m` 后需 `clear functions; rehash`（或重启）才能加载新代码。
+
+## 许可
+
+本项目以 [MIT License](LICENSE) 发布，Copyright (c) 2026 yuewu1648-spec。
 

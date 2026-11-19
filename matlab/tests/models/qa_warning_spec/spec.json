@@ -1,0 +1,70 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "name": "qa_warning_spec",
+  "kind": "ode",
+  "time": {
+    "unit": "s",
+    "start": 0,
+    "end": 10,
+    "n": 11
+  },
+  "variables": {
+    "id": "X",
+    "name": "X 浓度",
+    "unit": "uM",
+    "compartment": "cell",
+    "initial": {
+      "value": 0,
+      "note": ""
+    }
+  },
+  "parameters": {
+    "id": "k",
+    "name": "降解速率",
+    "unit": "1/s",
+    "value": {
+      "value": 1,
+      "note": ""
+    },
+    "estimate": false,
+    "bounds": [],
+    "evidence": []
+  },
+  "reactions": {
+    "id": "decay",
+    "name": "降解",
+    "stoichiometry": {
+      "X": -1
+    },
+    "rate": {
+      "kind": "mass_action",
+      "parameters": {
+        "k": "k"
+      },
+      "species": {
+        "X": 1
+      },
+      "mode": "",
+      "expression": "",
+      "inhibitor": []
+    }
+  },
+  "title": "",
+  "description": "",
+  "compartments": {
+    "id": "cell",
+    "volume": 1,
+    "unit": "L"
+  },
+  "outputs": {
+    "id": "X",
+    "name": "X 浓度",
+    "unit": "uM",
+    "expression": "X",
+    "note": ""
+  },
+  "datasets": [],
+  "assumptions": [],
+  "evidence": [],
+  "metadata": {}
+}

@@ -7,28 +7,33 @@
 | MATLAB | R2024a，默认 `C:\Program Files\MATLAB\R2024a\bin\matlab.exe` | 需要 SimBiology / Symbolic Math / Optimization / Statistics / Text Analytics / Report Generator / Curve Fitting / Global Optimization 授权 |
 | DSH | 当前 Desktop 安装 | 用于 agent 会话（preset「MATLAB 生物系统建模」） |
 | Node.js | 24.x（DSH 自带运行时亦可） | 仅 bridge（插件）需要 |
-| 本项目 | `E:\matlab系统建模` | 若移动目录，需重新安装 bundle 并更新 `bridge/cordis.patch.yml` 中的 skills 路径 |
+| 本项目 | 克隆目录（仓库根） | 移动目录后重跑 `scripts\install_bundle.ps1` 并重装 bundle；脚本会更新 `bridge/cordis.patch.yml` 中的 skills 路径 |
 
 ## 2. 安装 DSH bundle（一次）
 
-本机已完成安装（`@local/dsh-bio-matlab` → `E:\matlab系统建模\bridge`）。重装/迁移：
+克隆仓库后，在仓库根目录运行安装脚本：
 
-1. 确认 `bridge/node_modules` 存在（插件依赖 `@deepseek-ai/dsh-tools`）：
-   ```powershell
-   cd E:\matlab系统建模\bridge
-   npm install --cache ..\.tmp\npm-cache --no-audit --no-fund
-   ```
-2. 在 DSH 中安装 bundle（会写入当前 profile，需完全权限；本机 profile 为 desktop）：
-   - 对当前 DSH agent 说：`安装 bundle：E:\matlab系统建模\bridge`，或
-   - 调用 `plugin_manager install_bundle { target: "E:\\matlab系统建模\\bridge" }`
-3. 校验：`plugin_manager list_bundles` 应包含 `@local/dsh-bio-matlab`；preset 列表中应出现 **MATLAB 生物系统建模**（id `bio-matlab`，order 5）。
+```powershell
+git clone https://github.com/yuewu1648-spec/DHS-matlab.git
+cd DHS-matlab
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_bundle.ps1
+```
 
-> 卸载：`plugin_manager remove_bundle { target: "@local/dsh-bio-matlab" }`。
+脚本会：把 `bridge/cordis.patch.yml` 的 skills 绝对路径改成当前检出目录；确保 `bridge/node_modules` 有 `@deepseek-ai/dsh-tools`（缺失时执行 `npm install`）；检查 MATLAB R2024a（不在默认路径时加 `-MatlabExe <matlab.exe>`）；打印后续安装命令。
+
+然后在 DSH 中安装 bundle（会写入当前 profile，需完全权限）：
+
+- 对当前 DSH agent 说：`安装 bundle：<克隆目录>\bridge`，或
+- 调用 `plugin_manager install_bundle { target: "<克隆目录>\\bridge" }`
+
+校验：`plugin_manager list_bundles` 应包含 `@local/dsh-bio-matlab`；preset 列表中应出现 **MATLAB 生物系统建模**（id `bio-matlab`，order 5）。
+
+> 目录移动后重跑 `install_bundle.ps1` 并重装 bundle。卸载：`plugin_manager remove_bundle { target: "@local/dsh-bio-matlab" }`。
 
 ## 3. 使用 agent（推荐路径）
 
 1. DSH Web GUI → **新建会话** → 在 agent preset/seat 选择 **MATLAB 生物系统建模**。
-2. 工作目录选项目根 `E:\matlab系统建模`（或存放文献的目录；产物写到该目录 `.bma/runs/`）。
+2. 工作目录选你的研究目录（产物写到该目录 `.bma/runs/`；agent 安装目录只读，不会被写入）。
 3. 输入任务（示例）：
 
    ```text
@@ -50,7 +55,7 @@
 ## 4. 独立 MATLAB 使用（不经过 DSH）
 
 ```matlab
-cd('E:\matlab系统建模')
+cd('<克隆目录>')
 startup_bma
 demo_end_to_end                       % 完整示例：validate→simulate→fit→validate→report
 run_all_tests('Filter','test_')       % 运行 MATLAB 测试
@@ -58,7 +63,7 @@ run_all_tests('Filter','test_')       % 运行 MATLAB 测试
 
 可选：启动本地文件式 RPC 服务（供 bridge/自测使用）：
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts\matlab_batch.ps1 -Code "bma.server.start('E:/matlab系统建模/.tmp/dev-manual','manual-token')"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\matlab_batch.ps1 -Code "bma.server.start('<克隆目录>/.tmp/dev-manual','manual-token')"
 ```
 
 ## 5. 验收
@@ -76,7 +81,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\e2e\tool_layer_e2e.ps1
 ```
 
 ### C. 真实 LLM 端到端（人工，走 desktop preset）
-1. 新建会话选 **MATLAB 生物系统建模**，工作目录 `E:\matlab系统建模`。
+1. 新建会话选 **MATLAB 生物系统建模**，工作目录选克隆目录（或你的研究目录）。
 2. 投喂 `tests/fixtures/literature/enzyme_kinetics/paper.md`，任务文本可用 `tests/e2e/headless_task_prompt.md`。
 3. 验收标准（`tests/e2e/assert_e2e.ps1` 同款断言）：
    - `.bma/runs/` 下有 spec/analysis/fit/report 产物；

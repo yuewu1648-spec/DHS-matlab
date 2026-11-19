@@ -1,0 +1,15 @@
+# Line-ending policy: normalize text files to LF so a fresh clone reproduces
+# the exact bytes sealed by MANIFEST.sha256 on every platform.
+* text=auto eol=lf
+
+# Binary assets are never converted.
+*.pdf  -text
+*.docx -text
+*.png  -text
+*.mat  -text
+*.stl  -text
+
+# The literature fixtures were produced with CRLF and are pinned byte-for-byte
+# by MANIFEST.sha256; keep them verbatim instead of normalizing.
+tests/fixtures/literature/*/paper.txt  -text
+tests/fixtures/literature/*/paper.html -text

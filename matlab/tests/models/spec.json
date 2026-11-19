@@ -1,0 +1,200 @@
+{
+  "schema_version": "bma.modelSpec.v1",
+  "title": "米氏酶动力学（可逆结合 + 催化）",
+  "description": "游离酶 E 与底物 S 可逆结合为复合物 ES，ES 催化生成产物 P 并释放 E。用于演示质量作用定律组装、守恒律与参数估计。",
+  "kind": "ode",
+  "time": {
+    "unit": "s",
+    "start": 0,
+    "end": 60,
+    "n": 601
+  },
+  "compartments": {
+    "id": "cell",
+    "volume": 1,
+    "unit": "L"
+  },
+  "variables": [
+    {
+      "id": "E",
+      "name": "游离酶",
+      "unit": "uM",
+      "compartment": "cell",
+      "initial": {
+        "value": 1,
+        "note": ""
+      }
+    },
+    {
+      "id": "S",
+      "name": "底物",
+      "unit": "uM",
+      "compartment": "cell",
+      "initial": {
+        "value": 10,
+        "note": ""
+      }
+    },
+    {
+      "id": "ES",
+      "name": "酶-底物复合物",
+      "unit": "uM",
+      "compartment": "cell",
+      "initial": {
+        "value": 0,
+        "note": ""
+      }
+    },
+    {
+      "id": "P",
+      "name": "产物",
+      "unit": "uM",
+      "compartment": "cell",
+      "initial": {
+        "value": 0,
+        "note": ""
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "id": "kf",
+      "name": "结合速率常数",
+      "unit": "1/(uM*s)",
+      "value": {
+        "value": 0.5,
+        "note": ""
+      },
+      "estimate": true,
+      "bounds": [
+        0.001,
+        100
+      ],
+      "evidence": []
+    },
+    {
+      "id": "kr",
+      "name": "解离速率常数",
+      "unit": "1/s",
+      "value": {
+        "value": 0.1,
+        "note": ""
+      },
+      "estimate": true,
+      "bounds": [
+        0.0001,
+        100
+      ],
+      "evidence": []
+    },
+    {
+      "id": "kcat",
+      "name": "催化速率常数",
+      "unit": "1/s",
+      "value": {
+        "value": 2,
+        "note": ""
+      },
+      "estimate": true,
+      "bounds": [
+        0.0001,
+        1000
+      ],
+      "evidence": []
+    }
+  ],
+  "reactions": [
+    {
+      "id": "bind",
+      "name": "结合",
+      "stoichiometry": {
+        "E": -1,
+        "S": -1,
+        "ES": 1
+      },
+      "rate": {
+        "kind": "mass_action",
+        "parameters": {
+          "k": "kf"
+        },
+        "species": {
+          "E": 1,
+          "S": 1
+        },
+        "mode": "",
+        "expression": "",
+        "inhibitor": []
+      }
+    },
+    {
+      "id": "unbind",
+      "name": "解离",
+      "stoichiometry": {
+        "E": 1,
+        "S": 1,
+        "ES": -1
+      },
+      "rate": {
+        "kind": "mass_action",
+        "parameters": {
+          "k": "kr"
+        },
+        "species": {
+          "ES": 1
+        },
+        "mode": "",
+        "expression": "",
+        "inhibitor": []
+      }
+    },
+    {
+      "id": "catalyze",
+      "name": "催化",
+      "stoichiometry": {
+        "ES": -1,
+        "E": 1,
+        "P": 1
+      },
+      "rate": {
+        "kind": "mass_action",
+        "parameters": {
+          "k": "kcat"
+        },
+        "species": {
+          "ES": 1
+        },
+        "mode": "",
+        "expression": "",
+        "inhibitor": []
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "id": "P_obs",
+      "name": "产物浓度",
+      "unit": "uM",
+      "expression": "P",
+      "note": ""
+    },
+    {
+      "id": "S_obs",
+      "name": "底物浓度",
+      "unit": "uM",
+      "expression": "S",
+      "note": ""
+    }
+  ],
+  "assumptions": [
+    "充分混合、恒温恒容的单室系统",
+    "底物仅通过该酶转化为产物",
+    "酶总量守恒（E + ES = E0）"
+  ],
+  "metadata": {
+    "source_docs": [],
+    "notes": "示例模型（Lead 维护），用于契约与回归测试。"
+  },
+  "name": "",
+  "datasets": [],
+  "evidence": []
+}

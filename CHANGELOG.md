@@ -4,6 +4,22 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [SemVer 2.0](https://semver.org/lang/zh-CN/)。
 更新纪律见 `docs/VERSIONING.md`。
 
+## [0.11.1] - 2026-11-19
+
+### Added
+- `LICENSE`（MIT，Copyright (c) 2026 yuewu1648-spec）。
+- `.gitattributes`：文本文件统一 LF；`.pdf/.docx/.png/.mat/.stl` 按二进制处理；`tests/fixtures/literature/*/paper.txt|html` 保留原始 CRLF。
+
+### Changed
+- `README.md` / `docs/USAGE.md`：快速开始改为「克隆 → `scripts\install_bundle.ps1` → `plugin_manager install_bundle`」，去掉本机安装路径。
+- `scripts/install_bundle.ps1`：新增 `-MatlabExe` 参数（默认仍为 `C:\Program Files\MATLAB\R2024a\bin\matlab.exe`）。
+- `MANIFEST.sha256` 重新封版（326 个文件），使 Windows 克隆后的行尾与完整性校验一致。
+- 修复 `.gitignore` 中 `models/`、`figures/` 未锚定到仓库根的问题：此前会误伤 `matlab/tests/models/` 下 3 个测试夹具，导致完整性清单与仓库内容不一致。
+
+### Notes
+- 运行期目录 `.bma/`、`.tmp/`、`.qa/`、`tests/e2e/artifacts/`、`node_modules/` 由 `.gitignore` 排除，不进入版本库。
+- 两篇第三方论文 PDF（`tests/fixtures/upgrade/pdf/`）仅作本地测试样本，仓库保持私有。
+
 ## [0.11.0] - 2026-11-19
 
 ### Fixed（按 NatRevMolCellBiol issues）

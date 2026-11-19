@@ -1,9 +1,9 @@
-# Runtime artifacts
-.bma/
-.tmp/
-.qa/
-models/
-figures/
+# Runtime artifacts (root-level run outputs only)
+/.bma/
+/.tmp/
+/.qa/
+/models/
+/figures/
 tests/e2e/artifacts/
 bridge/node_modules/
 node_modules/
@@ -11,3 +11,12 @@ node_modules/
 *.m~
 Thumbs.db
 .DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# MATLAB codegen scratch
+slprj/
+*.slxc

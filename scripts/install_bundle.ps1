@@ -12,7 +12,8 @@
 
 param(
     [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
-    [switch]$SkipNpm
+    [switch]$SkipNpm,
+    [string]$MatlabExe = 'C:\Program Files\MATLAB\R2024a\bin\matlab.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,7 +58,7 @@ if ($SkipNpm) {
 
 # --- 3. MATLAB smoke test ---------------------------------------------------
 Write-Output '== 3/4 MATLAB R2024a'
-$matlab = 'C:\Program Files\MATLAB\R2024a\bin\matlab.exe'
+$matlab = $MatlabExe
 if (-not (Test-Path $matlab)) { throw "MATLAB not found at $matlab" }
 $code = "addpath('$($ProjectRoot -replace '\\','/')/matlab'); fprintf('matlab %s ok, bma.spec.validate=%d\n', version, exist('bma.spec.validate','file'))"
 & $matlab -batch $code 2>&1 | Where-Object { $_ -notmatch 'Unable to load ApplicationService' }
