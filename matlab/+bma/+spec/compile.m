@@ -212,6 +212,7 @@ S = zeros(nS, nR);
 fluxText = cell(1, nR);
 fluxCode = cell(1, nR);
 rateText = cell(1, nR);
+rateFns = {};
 reactions = repmat(struct('id', '', 'name', '', 'kind', '', ...
     'stoichiometry', struct(), 'flux', '', ...
     'parameter_ids', {{}}, 'species_ids', {{}}), 1, nR);
@@ -253,6 +254,12 @@ for r = 1:nR
     reactions(r).flux = rp.display;
     reactions(r).parameter_ids = rp.params_used;
     reactions(r).species_ids = rp.species_used;
+    if isfield(rp, 'function_name') && ~isempty(rp.function_name)
+        % kind="matlab"：记录外部函数，供模型卡/代码生成提示“需保持在路径上”
+        rateFns{end+1} = struct('reaction', rid, 'function', rp.function_name, ...
+            'file', charIf(getField(rp, 'function_file', ''), ''), ...
+            'unit', charIf(getField(rp, 'unit', ''), '')); %#ok<AGROW>
+    end
     fluxText{r} = rp.display;
     fluxCode{r} = rp.code;
     rateText{r} = sprintf('v_%s = %s', rid, rp.display);
@@ -446,6 +453,7 @@ m.speciesIndex = speciesIndex;
 m.outputIndex = outputIndex;
 m.S = S;
 m.reactions = reactions;
+m.rate_functions = rateFns;
 m.vfuns = vfuns;
 m.VF = VF;
 m.rhs = rhs;

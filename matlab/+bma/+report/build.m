@@ -1386,6 +1386,14 @@ switch kind
         if isfield(rate, 'expression') && ~isempty(rate.expression)
             s = char(rate.expression);
         end
+    case 'matlab'
+        if isfield(rate, 'display') && ~isempty(rate.display)
+            s = char(rate.display);
+        elseif isfield(rate, 'function') && ~isempty(rate.function)
+            s = sprintf('%s(…)', char(rate.function));
+        else
+            s = '自定义 MATLAB 函数';
+        end
 end
 end
 

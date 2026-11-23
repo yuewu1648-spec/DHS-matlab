@@ -35,6 +35,9 @@ const IDLE_SHUTDOWN_MS = idleShutdownMs()
  */
 const HEAVY_METHODS = new Set([
   'literature.ingest',
+  'blind.start',
+  'blind.note',
+  'blind.reveal',
   'model.analyze',
   'model.simulate',
   'pde.simulate',

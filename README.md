@@ -12,7 +12,7 @@
       │
       ▼
 DSH agent loop（DeepSeek + 生物建模方法论 + 质量门）
-      │  bma_* 工具（20 个）
+      │  bma_* 工具（24 个）
       ▼
 bridge（Node 插件）──文件式 JSON-RPC──► MATLAB R2024a 常驻服务
                                           ├─ +spec   规格校验/单位/量纲
@@ -47,6 +47,9 @@ bridge（Node 插件）──文件式 JSON-RPC──► MATLAB R2024a 常驻服
 4. 上传/给出文献路径，输入任务，例如：
    > 阅读 `tests\fixtures\literature\enzyme_kinetics\paper.md`，依据其中的实验数据构建酶动力学数学模型，完成参数估计与验证，输出中文报告。
 
+   盲建模示例（主文献只给摘要）：
+   > 主文献 `papers\primary.pdf` 只允许看摘要；参考文献在 `papers\refs\`（全部都要读）。请重建该文献研究的问题/目标对应的模型，建模期间不得查看主文献全文，最后再解封对照。
+
 Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库匹配 → 机制假设 → spec 校验 → 结构分析 → 仿真 → 拟合 → 可辨识性 → 验证 → 报告。
 
 无 GUI 的独立 MATLAB 用法见 `matlab/examples/demo_end_to_end.m`；纯工具层验证见 `tests/e2e/`。
@@ -58,7 +61,7 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 | `matlab/+bma/` | MATLAB 核心包：spec/model/fit/validate/plot/report/io/run/kb/server/codegen/simbiology/util |
 | `matlab/tests/` | MATLAB 单元/集成/契约测试（`run_all_tests.m`） |
 | `kb/` | 知识库：13 个机制 archetype + 12 条第一性原理 + ontology + 单位表 |
-| `bridge/` | DSH 插件包：20 个 `bma_*` 工具、MATLAB 桥、preset、skills |
+| `bridge/` | DSH 插件包：24 个 `bma_*` 工具、MATLAB 桥、preset、skills |
 | `spec/examples/` | 3 个模型规格样例 + 合成数据 + 真值 |
 | `tests/fixtures/literature/` | 3 篇原创验收文献（md/txt/html/docx/pdf）+ 数据 + 期望事实 |
 | `tests/e2e/` | 工具层 E2E、headless agent E2E、验收断言 |
@@ -77,6 +80,7 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 - **绘图**：全部使用 MATLAB 内置图形系统（figure/plot/tiledlayout/exportgraphics，200 dpi，中文字体自适应），无外部绘图依赖；报告内嵌 PNG。
 - **交付**：自包含 HTML + Markdown 报告（方程、参数证据表、假设、拟合/可辨识性、验证、图、局限、复现命令、质量门豁免）、模型卡、独立 MATLAB ODE 代码、可选 SimBiology 导出；`extra_sections` 支持 `.json/.md` 路径与 Markdown 图片内嵌；`bma_artifact_import` 把外部产物导入 `artifacts/`。
 - **文献解析**：PDF/DOCX/TXT/MD/HTML → 章节/数值事实（值+单位+上下文+位置）/表格，带字符偏移溯源；双栏/碎片分节返回 `section_confidence` 警告。
+- **BLIND-LIT 盲建模（0.15.0）**：只用主文献摘要 + 全部参考文献重建摘要提出的问题/目标；主文献全文由两层封印（run + 工作区 SHA-256 登记）阻止 ingest；逐篇参考文献笔记做逐字 quote 核验；自检台账强制多轮、伪修复拒绝、impossible/over_budget 论证；stop 后可选解封做 8 维模型对照并输出报告小节。
 - **知识库**：13 archetype（酶动力学…趋化）+ 14 原理（质量作用、守恒、量纲、QSSA、Hill、Fick、Nernst、热力学、随机性、网络基序、稳定性/Hopf、R0、MATLAB PDE 陷阱、数值收敛自检）+ 单位表 + 本体。
 
 ## 版本与工作区隔离
@@ -93,6 +97,36 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
   agent 源码零改动、越界路径被拒绝。
 - **完整性校验**：`scripts\check_agent.ps1`（版本一致性、MANIFEST、bundle 安装、MATLAB 后端、工具插件冒烟）。
 
+
+## 0.15.0（BLIND-LIT：只用摘要 + 全部参考文献的盲建模协议）
+
+- **新模式**：用户给出主文献 + 全部参考文献并要求“建模期间不得看主文献全文”时，agent 进入 BLIND-LIT：`bma_blind_start` 只抽取并返回**摘要**，把主文献全文封印；`bma_literature_ingest` 按规范路径 + SHA-256 拒绝主文献（同工作区新建 run 也被工作区级封印登记拦截）。
+- **逐篇参考文献不是口号**：每篇都要 `bma_blind_note`；每条 claim 的 `quote` 会到参考文献原文中归一化比对，转述/编造返回 `BMA_QUOTE_NOT_FOUND`；只有题录/扫描无文本才可 `citation_only` + `limited`，且必须在自检中作为证据缺口登记。`no_modeling_content` 超过 30%（或 2 篇）会阻止停止，防止形式主义。
+- **自检-修补-重建模**：`bma_blind_check action:"round"` 记录 ≥3 项检查（对齐/覆盖/结构/数值/证据…）与问题台账；`fix_kind="model"` 必须提交 hash 变化且能通过 `bma_model_validate` 的 spec，伪修复被拒绝。剩余问题只能以 `fixed` / `impossible`（需 `why_general`）/ `over_budget`（`spent_s ≥ 2×limit_s`）关闭；`freeze` 后 `stop` 才通过，并写 `blind/blind_summary.md`。
+- **可选解封对照**：`bma_blind_reveal action:"reveal"` 仅在 stop 通过且模型冻结后解封（失败回滚）；解封后可读全文/图，再用 `action:"compare"` 提交 8 维对照（question/model_class/state_variables/mechanisms/parameters/assumptions/behavior/evidence_use），写 `blind/model_comparison.md` 供报告嵌入。
+- **兼容性**：MINOR，新增 4 个工具（共 24）、`blind.*` RPC 与 `blind/` 产物；旧工具名/参数/返回不变；无 blind 协议的 run 的 ingest 行为不变。
+- **测试**：`matlab/tests/test_blind_protocol.m`（封印两层、quote 拒绝、coverage、伪修复拒绝、2× 预算、freeze/stop、reveal/compare、abstract_path、题录-only limited）；`plugin-smoke` 注册 24/24 并端到端跑 blind start/note/check + 封印拒绝。
+- 规范与数据模型见 `docs/BLIND_PROTOCOL.md`；操作流程见 skill `blind-literature-modeling`。
+
+
+## 0.14.0（原生 2D PDE 硬化：负浓度保护 + 可中断预算 + 稳态椭圆路径）
+
+- **源项保护（bug fix）**：非线性求解器会给出**负/NaN 的试探状态**，`qmax·u/(K_M+u)` 在 `u=-K_M` 处有极点 → 源项 NaN → 误差控制拒绝每步、步长坍缩，`solvepde` **永久挂起**（真实生物膜案例上复现两次 1780 s 超时）。现在负试探状态在求速率前钳位到 0（计入 `res.diagnostics.clamped_states`）；MATLAB 初始化时的 all-NaN 探针调用原样透传（若置 0 会让雅可比退化为 0、静默返回无反应场）；有限状态下仍出现非有限源项则**明确报错**、不静默置 0。同一模型修复前 >90 s 未返回、修复后 5.6 s 完成（钳位 545195 次、非有限值 0），且探针值与独立椭圆稳态解逐点一致。
+- **`max_seconds` 仍是"事后告警"**（诚实说明）：`solvepde` 既没有回调、也不能用 `setInitialConditions` 注入节点场（只接受标量/长度 N 的向量），所以进程内无法实现截止时间；`res.budget` 现在显式标注 `advisory=true, interruptible=false` 并指向硬预算方案。
+- **新增 `scripts/pde_watchdog.ps1`（真正的硬预算）**：在子 MATLAB 进程里跑同一次求解，`-DeadlineSeconds` 到点直接 `taskkill /T /F`，返回 `{status: completed|timeout, elapsed_s, result_mat, log}`；已验证 completed（17.2 s）与 timeout（5.03 s 强杀）两条路径。子进程日志走 ASCII 临时路径再拷回（`Start-Process` 重定向到非 ASCII 路径会静默失败——这也是早前"空日志"的真因）。
+- **`steady:true` 现在可用**：由 `d=1` 抛物推进改为 `d=0` 椭圆直接 `solvepde(model)`（此前报 "Specify solution times for a time-dependent problem"）。
+- **修复 `startup_bma.m`**：`fileparts` 多剥一层，root 被解析成盘符（`E:\`）并 addpath 到不存在的 `E:\matlab`；现按 `VERSION` 标记定位。
+- **测试**：新增 `matlab/tests/test_pde_nonlinear_budget.m`（未正则化 Monod 必须完成且梯度方向正确、`budget` 必须如实标注 advisory、`steady:true` 必须给出均匀 C₀ 场）。
+- 兼容性：工具名/必填参数不变，返回只增 `budget`/`diagnostics`；未给 `max_seconds` 时行为与 0.13.0 一致。
+
+
+## 0.13.0（flex-1：自定义速率 + 非零通量/Robin 边界）
+
+- **`kind:"matlab"` 自定义速率定律**：`{function, file?, arguments[], unit, display?}` 编译为 `fn(y(i),p(j),...)`，与内建速率同构，仿真/拟合/可辨识性无需改动；`unit` 为**声明值**（函数体量纲不可推导），校验发 `BMA_RATE_DECLARED_UNIT`，`m.rate_functions` 与生成代码头注释都会提示"外部 .m 需在路径上"。
+- **原生 PDE 边界**：`neumann{flux}` 支持非零通量，新增 `robin{q,g}`；`flux/q/g` 可为标量、参数 id 或按物种的 N 维向量。1D MOL 展开仍只支持零通量。
+- **归一化白名单补齐**：`+bma/+spec/normalize.m` 的 rate 字段补齐 5 个新字段（此前会被静默丢弃，导致 `function/unit` 校验必失败）。
+- 新增 `docs/FLEXIBILITY.md`：三项"灵活性上限"的成因、已落地内容、原生 PDE 拟合的可行路线（MOL 代理拟合 + 原生复核）。
+- 测试：新增 `matlab/tests/test_flex_extensions.m`；`spec`/`model_*`/`pde`/`report_build` 共 12 个文件回归全绿。
 
 ## 0.12.0（PDF 矢量插图 PyMuPDF）
 
@@ -234,7 +268,8 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 
 - [docs/DESIGN.md](docs/DESIGN.md) — 架构、模型规格、RPC 协议、模块契约、验收标准
 - [docs/USAGE.md](docs/USAGE.md) — 安装、preset 使用、故障排查、手动验收步骤
-- [docs/TOOL_REFERENCE.md](docs/TOOL_REFERENCE.md) — 19 个 bma_* 工具与 MATLAB 方法参考
+- [docs/TOOL_REFERENCE.md](docs/TOOL_REFERENCE.md) — 24 个 bma_* 工具与 MATLAB 方法参考
+- [docs/BLIND_PROTOCOL.md](docs/BLIND_PROTOCOL.md) — BLIND-LIT 盲建模协议、数据模型与停止判据
 - [docs/MODELING_METHODOLOGY.md](docs/MODELING_METHODOLOGY.md) — agent 的建模方法论与质量门
 - [docs/ACCEPTANCE.md](docs/ACCEPTANCE.md) — 验收矩阵、测试与限制
 - [docs/VERSIONING.md](docs/VERSIONING.md) — 版本语义、发布/更新流程、工作区隔离、回滚与兼容性契约
@@ -259,7 +294,8 @@ Agent 会按质量门自动执行：文献解析 → 证据抽取 → 知识库�
 | 桥接超时/取消/健康 | **11/11 PASS** | `bridge/test/resilience.test.mjs`：超时 8.9 s 内被杀且不重试、replacement 惰性启动、`bma_cancel` 后调用 `BMA_CANCELLED`、服务可复用 |
 | 集成测试（4 文件：契约/文献/拟合工具面/全链路） | **4/4 PASS** | `matlab/tests/test_integration_*.m`；3 模型 × 8 步全链路，参数恢复 R²≥0.999 |
 | 工具层 E2E（原有 15 个 `bma_*` 等价 RPC，31 项断言） | **31/31 PASS** | `tests/e2e/artifacts/tool-layer-20261114-003431/summary.md`；0.6.0 下 control server 直连复跑 |
-| 插件冒烟（19 个工具 + control/worker） | **PASS** | `bridge/test/plugin-smoke.mjs`：19/19 注册、status 报告 worker idle、2D PDE Toolbox 原生调用成功 |
+| 0.15.0 BLIND-LIT 盲建模 | **1/1 PASS** | `matlab/tests/test_blind_protocol.m`：两层封印、quote 拒绝、coverage、伪修复拒绝、2× 预算、freeze/stop、reveal/compare、abstract_path、题录-only limited |
+| 插件冒烟（24 个工具 + control/worker） | **PASS** | `bridge/test/plugin-smoke.mjs`：24/24 注册、status 报告 worker idle、2D PDE Toolbox 原生调用、blind 全生命周期（start/note/goal/round/freeze/stop/reveal/compare）与封印拒绝 |
 | DSH 插件挂载（headless profile） | **PASS**（无 "entry did not activate"） | `tests/e2e/headless.mount.patch.yml` |
 | 独立 MATLAB 全链路 demo | **PASS** | `matlab/examples/demo_end_to_end.m` |
 | 真实 LLM 端到端 | 需 DSH 会话（人工 2 分钟） | `docs/USAGE.md` §5、`tests/e2e/desktop_preset_acceptance.md` |

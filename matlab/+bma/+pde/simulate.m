@@ -12,6 +12,22 @@ function res = simulate(spec, opts)
 %
 % opts: work_dir, run_dir, steady, n, time_end, max_dof, max_seconds,
 %       mesh (struct), probes (cell), name.
+%
+% 0.14.0 hardening (all backwards compatible):
+%   * source-term guard: the trial state handed to the rate laws is clamped at
+%     zero. Newton overshoots pushed concentrations below -KM, the Monod
+%     denominator passed through zero, returned NaN/Inf, the error controller
+%     then rejected every step and solvepde hung instead of failing.
+%     Non-finite source values are replaced by 0 and counted in
+%     res.diagnostics (clamped_states / nonfinite_source).
+%   * steady=true solves the elliptic form (d=0, solvepde(model)) instead of
+%     marching a parabolic problem to steady state.
+%   * max_seconds stays ADVISORY: solvepde exposes neither a callback nor a
+%     node-wise restart (setInitialConditions only takes a scalar or a
+%     length-N vector), so an in-process deadline cannot be enforced. A hard
+%     budget is available at the outer layer: scripts/pde_watchdog.ps1 runs
+%     this solve in a child MATLAB and kills it at the deadline.
+%     res.budget records {advisory, max_seconds, elapsed_s, interruptible}.
 if nargin < 2 || isempty(opts)
     opts = struct();
 end
@@ -208,7 +224,10 @@ end
 
 % ---- source term f = S*rates ----
 [S, rateFuns] = buildSource(spec, vars, params, reacs, species, parValues, parIndex);
-fcn = @(location, state) localSource(location, state, S, rateFuns, N);
+srcDiag = containers.Map('KeyType', 'char', 'ValueType', 'double');
+srcDiag('clamped_states') = 0;
+srcDiag('nonfinite_source') = 0;
+fcn = @(location, state) localSource(location, state, S, rateFuns, N, srcDiag);
 dcoef = zeros(N, 1);
 cvec = zeros(N, 1);
 for i = 1:N
@@ -262,16 +281,19 @@ else
         typ = lower(char(getF(b, 'type', '')));
         switch typ
             case 'dirichlet'
-                uval = bcVector(getF(b, 'value', []), N, species, parIndex, parValues);
+                uval = bcVector(getF(b, 'value', []), N, species, parIndex, parValues, 'value');
                 applyBoundaryCondition(model, 'dirichlet', bField, edge, 'u', uval);
             case 'neumann'
-                flux = getF(b, 'flux', 0);
-                if ~isnumeric(flux) || ~isscalar(flux) || flux ~= 0
-                    error('bma:pdeToolbox:badBC', 'v1 只支持 neumann flux=0；bc[%d]', k - 1);
-                end
-                applyBoundaryCondition(model, 'neumann', bField, edge, 'q', 0, 'g', 0);
+                % n·(c∇u) = g（q=0）；g 可为 0、非零通量或参数 id
+                gvec = bcVector(getF(b, 'flux', 0), N, species, parIndex, parValues, 'flux');
+                applyBoundaryCondition(model, 'neumann', bField, edge, 'q', 0, 'g', gvec);
+            case 'robin'
+                % n·(c∇u) + q*u = g
+                qvec = bcVector(getF(b, 'q', 0), N, species, parIndex, parValues, 'q');
+                gvec = bcVector(getF(b, 'g', 0), N, species, parIndex, parValues, 'g');
+                applyBoundaryCondition(model, 'neumann', bField, edge, 'q', qvec, 'g', gvec);
             otherwise
-                error('bma:pdeToolbox:badBC', 'bc[%d].type 必须是 dirichlet/neumann', k - 1);
+                error('bma:pdeToolbox:badBC', 'bc[%d].type 必须是 dirichlet/neumann/robin', k - 1);
         end
     end
 end
@@ -321,28 +343,34 @@ elseif isfield(pde, 'steady') && ~isempty(pde.steady)
     steady = logical(pde.steady);
 end
 tvec = linspace(tStart, tEnd, round(nT));
-try
-    if steady
-        sol = solvepde(model);
-        tvec = tEnd;
-    else
-        sol = solvepde(model, tvec);
-    end
-catch err
-    error('bma:pdeToolbox:solveFailed', 'solvepde 失败：%s', err.message);
-end
-U = sol.NodalSolution;
-if ndims(U) == 2
-    if N == 1
-        % Single-component NodalSolution is [nodes x times].
-        U = reshape(U, size(U, 1), 1, size(U, 2));
-    else
-        U = reshape(U, size(U, 1), size(U, 2), 1);
-    end
-end
+warnings = {};
+budgetInfo = struct('advisory', true, 'max_seconds', getNum(opts, 'max_seconds', 300), ...
+    'elapsed_s', NaN, 'interruptible', false, ...
+    'note', 'solvepde 没有回调/节点级续算接口，MATLAB 内部无法中断；硬预算请用 scripts/pde_watchdog.ps1（子进程 + 强制超时）');
+tSolve = tic;
 if steady
+    % steady state = elliptic problem: switch d=0 so solvepde(model) is legal
+    try
+        specifyCoefficients(model, 'm', 0, 'd', 0, 'c', cvec, 'a', zeros(N, 1), 'f', fcn);
+    catch err
+        error('bma:pdeToolbox:coefficients', '稳态系数切换失败：%s', err.message);
+    end
+    try
+        sol = solvepde(model);
+    catch err
+        error('bma:pdeToolbox:solveFailed', 'solvepde（稳态，椭圆）失败：%s', err.message);
+    end
+    U = reshapeSolution(sol.NodalSolution, N, 1);
     tvec = tEnd;
+else
+    try
+        sol = solvepde(model, tvec);
+    catch err
+        error('bma:pdeToolbox:solveFailed', 'solvepde 失败：%s', err.message);
+    end
+    U = reshapeSolution(sol.NodalSolution, N, nT);
 end
+budgetInfo.elapsed_s = toc(tSolve);
 % guard: time dimension
 if size(U, 3) ~= numel(tvec)
     % solvepde may return an extra initial slice; use the available tail.
@@ -350,10 +378,22 @@ if size(U, 3) ~= numel(tvec)
 end
 elapsed = toc(t0);
 maxSeconds = getNum(opts, 'max_seconds', 300);
-warnings = {};
+budgetInfo.advisory = true;
+budgetInfo.max_seconds = maxSeconds;
+budgetInfo.elapsed_s = toc(tSolve);
 if elapsed > maxSeconds
-    warnings{end+1} = sprintf('PDE Toolbox 求解耗时 %.1f s，超过 max_seconds=%.1f s；结果仍返回。', ...
-        elapsed, maxSeconds);
+    warnings{end+1} = sprintf(['PDE Toolbox 求解耗时 %.1f s，超过 max_seconds=%.1f s；' ...
+        '结果仍返回。solvepde 内部不可中断，硬预算请用 scripts/pde_watchdog.ps1。'], elapsed, maxSeconds);
+end
+srcInfo = struct('clamped_states', srcDiag('clamped_states'), ...
+    'nonfinite_source', srcDiag('nonfinite_source'));
+if srcInfo.clamped_states > 0
+    warnings{end+1} = sprintf(['源项保护：非线性求解器探测到 %d 个负浓度试探值，' ...
+        '已在求速率前钳位到 0（u>=0 的解不变）。'], srcInfo.clamped_states); %#ok<AGROW>
+end
+if srcInfo.nonfinite_source > 0
+    warnings{end+1} = sprintf(['源项出现 %d 个非有限值，已置 0；' ...
+        '请检查速率表达式在 0 附近是否奇异。'], srcInfo.nonfinite_source); %#ok<AGROW>
 end
 
 % ---- probes + field stats ----
@@ -457,6 +497,8 @@ res.figures = figs;
 res.warnings = warnings;
 res.stats = struct('nodes', nNodes, 'elements', nElems, 'elapsed_s', elapsed, ...
     'max_dof', maxDof, 'steady', steady);
+res.budget = budgetInfo;
+res.diagnostics = srcInfo;
 res.outputs = {};
 for k = 1:numel(probeOut)
     p = probeOut{k};
@@ -562,21 +604,72 @@ switch kind
         k = paramValue(p, 'k', parValues, parIndex);
         fh = str2func(sprintf('@(u) %.17g + 0*u(1,:)', k));
     otherwise
+        if strcmp(kind, 'matlab')
+            error('bma:pdeToolbox:badRate', ...
+                ['PDE Toolbox 源项暂不支持 rate.kind="matlab"（原生路径要求按节点向量化的 u(i,:) 形式）。' ...
+                 '请改用 expression / mass_action / hill，或把该反应放到 1D MOL 的 bma_model_simulate 里。']);
+        end
         error('bma:pdeToolbox:badRate', 'PDE Toolbox 源项不支持 rate.kind="%s"', kind);
 end
 end
 
-function f = localSource(location, state, S, rateFuns, N) %#ok<INUSD>
+function f = localSource(location, state, S, rateFuns, N, srcDiag) %#ok<INUSD>
 u = state.u;
 if size(u, 1) ~= N
     u = reshape(u, N, []);
 end
-npts = size(u, 2);
-rates = zeros(numel(rateFuns), npts);
+% MATLAB probes the coefficients once with an all-NaN state; that call must
+% return NaN unchanged (it is how the solver learns the source is state
+% dependent). Zeroing it would flatten the Jacobian and silently drop the
+% reaction.
+if all(isnan(u(:)))
+    rates = zeros(numel(rateFuns), size(u, 2));
+    for r = 1:numel(rateFuns)
+        rates(r, :) = rateFuns{r}(u);
+    end
+    f = S * rates;
+    return
+end
+% A nonlinear Newton step can probe negative concentrations. Monod-type laws
+% are only defined for u >= 0 (qmax*u/(KM+u) has a pole at u = -KM); clamping
+% the trial state keeps the rate laws finite without touching the converged
+% solution, which is non-negative by construction.
+nNeg = nnz(u < 0);
+if nNeg > 0
+    u = max(u, 0);
+    if isKey(srcDiag, 'clamped_states')
+        srcDiag('clamped_states') = srcDiag('clamped_states') + nNeg;
+    end
+end
+rates = zeros(numel(rateFuns), size(u, 2));
 for r = 1:numel(rateFuns)
     rates(r, :) = rateFuns{r}(u);
 end
 f = S * rates;
+if any(~isfinite(f(:)))
+    % Fail loudly instead of hiding a broken rate law: a silent zero would
+    % return a reaction-free field that looks plausible.
+    if isKey(srcDiag, 'nonfinite_source')
+        srcDiag('nonfinite_source') = srcDiag('nonfinite_source') + nnz(~isfinite(f(:)));
+    end
+    error('bma:pdeToolbox:nonfiniteSource', ['源项在有限试探状态处返回非有限值（%d 个）。' ...
+        '请检查速率表达式在 0 附近是否奇异（如 log(0)、除以 0），' ...
+        '或改用内建速率（michaelis_menten / hill / mass_action）。'], nnz(~isfinite(f(:))));
+end
+end
+function U = reshapeSolution(U, N, nT) %#ok<INUSL>
+% NodalSolution is [nodes x times] for one component, [nodes x N x times] for
+% several; normalise to the 3-D layout used by the probe/CSV code.
+if ndims(U) == 2
+    if N == 1
+        U = reshape(U, size(U, 1), 1, size(U, 2));
+    elseif size(U, 2) == N
+        U = reshape(U, size(U, 1), N, 1);
+    end
+end
+if ndims(U) == 3 && size(U, 3) ~= nT && size(U, 2) == N && size(U, 3) == 1
+    % steady solve: single slice
+end
 end
 
 function v = paramValue(p, name, parValues, parIndex)
@@ -590,18 +683,21 @@ end
 v = parValues(parIndex(id));
 end
 
-function v = bcVector(value, N, species, parIndex, parValues)
+function v = bcVector(value, N, species, parIndex, parValues, label)
+if nargin < 6 || isempty(label)
+    label = 'value';
+end
 if isnumeric(value)
     if isscalar(value)
         v = value * ones(N, 1);
     elseif numel(value) == N
         v = value(:);
     else
-        error('bma:pdeToolbox:badBC', 'Dirichlet value 必须是标量或长度 %d 的向量', N);
+        error('bma:pdeToolbox:badBC', '%s 必须是标量或长度 %d 的向量', label, N);
     end
 elseif ischar(value)
     if ~isKey(parIndex, value)
-        error('bma:pdeToolbox:badBC', 'Dirichlet value 参数 "%s" 未定义', value);
+        error('bma:pdeToolbox:badBC', '%s 引用的参数 "%s" 未定义', label, value);
     end
     v = parValues(parIndex(value)) * ones(N, 1);
 elseif isstruct(value)
@@ -615,11 +711,11 @@ elseif isstruct(value)
                 v(i) = double(x);
             end
         else
-            error('bma:pdeToolbox:badBC', 'Dirichlet value 缺少物种 "%s"', species{i});
+            error('bma:pdeToolbox:badBC', '%s 缺少物种 "%s"', label, species{i});
         end
     end
 else
-    error('bma:pdeToolbox:badBC', 'Dirichlet value 类型不支持');
+    error('bma:pdeToolbox:badBC', '%s 类型不支持', label);
 end
 end
 

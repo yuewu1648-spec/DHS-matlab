@@ -481,3 +481,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\fixtures\tools\convert
 | 真实综述 PDF | `Novak_Tyson_2008...pdf` → 18 figures（17 bitmap + 1 vector_render），`figure_class=mixed` |
 | 回退 | 无 Python/PyMuPDF 时保留纯 MATLAB 位图解析器并 warning |
 | 完整套件 | **38/38 PASS，736.1 s** |
+
+### 7.24 0.15.0 BLIND-LIT 盲建模（2026-11-23）
+
+| 验收项 | 方法 | 结果 |
+|---|---|---|
+| 摘要封印 | `test_blind_protocol`：主文献含 `SECRET_PRIMARY_BODY`，start 后检查返回值/`primary_abstract.md` | **PASS**：摘要来源 section，306 字符；返回与档案均不含正文标记 |
+| 两层封印 | 本 run ingest + 新建 run ingest；按路径与 SHA-256 | **PASS**：两次均 `BMA_SEALED`；`<work_dir>/.bma/blind/seals.json` 存在 |
+| 逐字 quote | R1 两条 claim 的 quote 可定位；转述 quote 被拒 | **PASS**：2/2 found；转述报 `BMA_QUOTE_NOT_FOUND` |
+| 参考文献覆盖 | 两篇 note 后 coverage | **PASS**：read=2/2，complete=true，remaining 为空 |
+| 伪修复拒绝 | `fix_kind="model"` 但 spec hash 未变 | **PASS**：`BMA_MODEL_UNCHANGED`；真正改 spec 后接受 |
+| 预算阈值 | `over_budget` 且 spent=limit=1 | **PASS**：`BMA_ISSUE_INVALID`（要求 spent≥2×limit） |
+| 冻结/停止判据 | 未冻结 stop；freeze（spec 必须 valid）；stop | **PASS**：未冻结 `BMA_STOP_BLOCKED`；冻结 v1 后 stop 通过并写 `blind_summary.md` |
+| 解封/对照 | reveal 后读全文；8 维 compare；缺维度 | **PASS**：全文含 `SECRET_PRIMARY_BODY`；对照 8 维写 `model_comparison.md`；缺一维 `BMA_COMPARE_INVALID` |
+| 摘要兜底 | 无 Abstract 标题 | **PASS**：无 `abstract_path` 报 `BMA_ABSTRACT_NOT_FOUND`；给只含摘要文本后 `provided_file` 启动且不泄漏正文 |
+| 真实 PDF 布局 | 合成 `enzyme_kinetics/paper.pdf`；Springer 双栏 review `s00421-002-0676-3.pdf` | **PASS（严格拒绝为正确行为）**：合成 PDF 抽出 section 摘要 1360 字符；Springer 双栏 PDF 因 Abstract 被拆散/乱序而 `BMA_ABSTRACT_NOT_FOUND`，需 `abstract_path`，不返回半段或正文 |
+| 题录-only | `from_primary=true`，两篇题录；R1 citation_only | **PASS**：清单 2 条；note 为 `limited`；coverage.limited=1；stop 被 references 缺口阻止 |
+| 插件冒烟 | `bridge/test/plugin-smoke.mjs` | **PASS**：24/24 注册；blind start → note → goal → 2×round → freeze → stop → reveal → 8 维 compare 全生命周期；`bma_literature_ingest` 返回 `BMA_SEALED` |
+| 安装自检 | `scripts/check_agent.ps1` | **7/7 PASS**：VERSION 0.15.0 / package 0.15.0 / manifest 362 文件 / bundle 已安装 / MATLAB backend / 插件冒烟 / 工作区隔离 |
+| 工作区隔离 | `bridge/test/isolation.test.mjs`（check_agent 内） | **PASS**：两个独立工作区、agent 源码零改动、越界拒绝 |
+| 完整套件 | `run_all_tests`（41 文件） | **41/41 PASS，743.9 s**（含新增 `test_blind_protocol` 2.5 s） |
+| 版本 | VERSION/package/CHANGELOG/MANIFEST | **0.15.0 MINOR**；新增 4 工具 + `blind/` 产物；旧工具契约不变 |

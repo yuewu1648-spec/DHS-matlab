@@ -12,7 +12,8 @@ whenToUse: bma_* 返回 BMA_* 错误、仿真/拟合失败或结果不合理、R
 |---|---|---|
 | `BMA_SPEC_INVALID` | 规格字段/引用不合法 | 看 errors[].path 与 hint，逐项修 |
 | `BMA_UNIT_UNKNOWN` | 单位不在单位词表 | 用 kb/units.json 支持的写法：nM/uM/mM/M、s/min/h/day、1/s、1/(uM*s)、uM/min、person、cell、1、um^2/s、mV、uA/cm^2、mS/cm^2 等 |
-| `BMA_RATE_INVALID` | 速率定律参数/物种/表达式非法 | 检查 kind、参数 id 是否存在、expression 只用白名单函数与已定义 id |
+| `BMA_RATE_INVALID` | 速率定律参数/物种/表达式非法 | 检查 kind、参数 id 是否存在、expression 只用白名单函数与已定义 id；`kind="matlab"` 时检查 `function` 是否在路径上、`arguments` 是否都是已知 id |
+| `BMA_RATE_DECLARED_UNIT` | `kind="matlab"` 的通量单位是**声明值**（函数体量纲无法推导） | 报告里写 declared，不要写成“推导”；声明单位与化学计量不一致时仍会报 `BMA_UNIT_MISMATCH` |
 | `BMA_UNKNOWN_ID` | stoichiometry/species/output 引用未定义 id | 先定义 variables/parameters，再在 reactions 引用 |
 | `BMA_NOT_IMPLEMENTED` | 该 MATLAB 模块/方法未安装 | 联系维护者；先用已有方法完成当前步骤 |
 | `BMA_TIMEOUT` | MATLAB 单次调用超时 | **不要自动重试**：桥接会重启服务并返回；先 `matlab_status` 看 `busy/last_timeout`，再用 `bma_cancel`（hard=true）确认恢复；缩小 multistart/time_end/参数集后重试 |
@@ -112,3 +113,15 @@ err = norm(r1 - R(u) - eps*J*du) / max(norm(r1), realmin);
 - **写证据**：`artifacts/solver_preflight.json` 至少含 `jacobian_rel_error`、`residual_rel`、`eps`、`du_seed`、`J_source`（analytic/fd）、`u_test`、`passed`、`equation`。报告引用实际数值，不写“已收敛”。
 - **循环内**：每个接受步报告 `r_rel` 与步长；不能只报 `exitflag`/`||Δu||`。若残差卡在 1e-2 或方向导数误差 >1e-5，先修装配/边界/符号/权重，不要换 solver 掩盖。
 - **PDE Toolbox 内置 `solvepde`**：没有自定义 J，A2 用制造解/无源解析对照，A3 用残差或制造解误差；一旦自写装配或循环，A2+A3 都必须做。
+
+## 0.15.0：BLIND-LIT 盲建模错误排查
+
+- **`BMA_SEALED`**：不是 bug，是协议在保护主文献。不要重试 `bma_literature_ingest`、不要换 run 或换 work_dir 绕过。建模期间只读 `blind/primary_abstract.md`；完成 stop 后用 `bma_blind_reveal action:"reveal"` 解封。若在别的 run 里误触发，那是工作区级封印登记（`.bma/blind/seals.json`）在生效。
+- **`BMA_ABSTRACT_NOT_FOUND`**：摘要无法可靠单独提取（扫描件、无 Abstract 标题、双栏错位）。把只含摘要的 UTF-8 文本写入文件，用 `abstract_path` 传给 `bma_blind_start`；不要自己从正文截取。
+- **`BMA_QUOTE_NOT_FOUND`**：note 里的 quote 在参考文献原文中找不到。打开 `blind/refs/<id>/text.txt`（note 返回的 `verification.text_path`），逐字复制；不要转述、不要跨列拼接。若参考文献是扫描件/无文本，改 `depth:"citation_only"` + `access_limited_reason`，并把它作为证据缺口写进自检 issue。
+- **`BMA_NOTE_INVALID`**：常见原因：quote<6、claim<15、relevance.question_link<30、citation_only 缺 reason、no_modeling_content 缺 ≥80 字理由。按报错字段补。
+- **`BMA_STOP_BLOCKED`**：按返回的 reasons 全量处理：补 goal、补读/覆盖参考文献、增加自检轮次、关闭 open 问题、给 impossible 的 why_general、给 over_budget 的 2× 预算、`freeze` 模型。不要 force（没有 force）。
+- **`BMA_MODEL_UNCHANGED`**：声明 `fix_kind:"model"` 但 spec hash 没变。真正修改/重建 spec 后提交新的 `model_specs`；若只是改证据/报告，把 `fix_kind` 改成 evidence/report。
+- **`BMA_MODEL_INVALID`**：freeze/round 的 spec 未通过 `bma_model_validate`。先修 spec 到 `valid=true`，再冻结。
+- **`BMA_NOT_REVEALED`**：`compare` 之前必须先 `reveal`；`reveal` 之前必须 stop 通过且模型冻结。
+- **`BMA_NOT_STARTED`**：run 里没有 `blind/protocol.json`；先 `bma_blind_start`。`bma_blind_note/check/reveal` 必须显式传 `run_dir`，不会自动新建 run。

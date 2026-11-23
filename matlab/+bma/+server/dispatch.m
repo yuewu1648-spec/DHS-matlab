@@ -102,6 +102,49 @@ switch lower(char(method))
         result = doc;
         result.run_dir = bma.util.relPath(ctx.workDir, ctx.runDirAbs);
 
+    case 'blind.start'
+        ctx = ensureRun(ctx, params);
+        requireField(params, 'primary_path');
+        src = resolveInputPath(ctx, params.primary_path);
+        if ~isfile(src)
+            error('bma:blind:primary_not_found', 'Primary literature file not found: %s', src);
+        end
+        opts = struct();
+        optNames = {'abstract_path', 'references_dir', 'title', ...
+            'min_rounds', 'budget_seconds', 'max_references', 'max_bytes', ...
+            'from_primary', 'force'};
+        for k = 1:numel(optNames)
+            if isfield(params, optNames{k}) && ~isempty(params.(optNames{k}))
+                opts.(optNames{k}) = params.(optNames{k});
+            end
+        end
+        if isfield(params, 'references_json') && ~isempty(params.references_json)
+            opts.references_json = params.references_json;
+        end
+        result = bma.blind.start(ctx.workDir, ctx.runDirAbs, src, opts);
+        result.run_dir = bma.util.relPath(ctx.workDir, ctx.runDirAbs);
+
+    case 'blind.note'
+        requireRunDirParam(params);
+        ctx = ensureRun(ctx, params);
+        requireField(params, 'reference_id');
+        requireField(params, 'note');
+        result = bma.blind.note(ctx.workDir, ctx.runDirAbs, ...
+            char(params.reference_id), params.note, struct());
+        result.run_dir = bma.util.relPath(ctx.workDir, ctx.runDirAbs);
+
+    case 'blind.check'
+        requireRunDirParam(params);
+        ctx = ensureRun(ctx, params);
+        result = bma.blind.check(ctx.workDir, ctx.runDirAbs, params);
+        result.run_dir = bma.util.relPath(ctx.workDir, ctx.runDirAbs);
+
+    case 'blind.reveal'
+        requireRunDirParam(params);
+        ctx = ensureRun(ctx, params);
+        result = bma.blind.reveal(ctx.workDir, ctx.runDirAbs, params);
+        result.run_dir = bma.util.relPath(ctx.workDir, ctx.runDirAbs);
+
     case 'spec.validate'
         fn = requireFn('bma.spec.validate');
         spec = resolveSpec(params, ctx);
@@ -891,6 +934,15 @@ if ~isfield(params, field) || isempty(params.(field))
 end
 end
 
+function requireRunDirParam(params)
+% Blind-protocol tools must never silently create a fresh run: a typo would
+% start an empty protocol and lose the sealed inventory.
+if ~isfield(params, 'run_dir') || isempty(params.run_dir)
+    error('bma:blind:run_required', ...
+        '盲建模工具必须显式给 run_dir（用 bma_blind_start 返回的 run_dir）；不会自动新建 run。');
+end
+end
+
 function v = getFieldDefault(params, field, fallback)
 if isfield(params, field) && ~isempty(params.(field))
     v = params.(field);
@@ -1014,7 +1066,8 @@ function m = dispatchableMethods()
 m = {'server.ping', 'server.info', 'server.stop', 'server.cancel', 'dev.eval', 'test.run', ...
     'run.init', 'run.list', 'run.info', 'run.import_artifact', 'run.waive_gate', ...
     'kb.list', 'kb.search', 'kb.get', ...
-    'literature.ingest', 'spec.validate', 'model.build', 'model.analyze', ...
+    'literature.ingest', 'blind.start', 'blind.note', 'blind.check', 'blind.reveal', ...
+    'spec.validate', 'model.build', 'model.analyze', ...
     'model.simulate', 'pde.simulate', 'advanced.solve', 'model.simulate_cases', 'fit.estimate', 'fit.profile', ...
     'fit.sensitivity', 'fit.identifiability', 'validate.model_selection', ...
     'validate.cross_validation', 'validate.residuals', 'report.build', ...

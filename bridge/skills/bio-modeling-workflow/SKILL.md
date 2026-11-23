@@ -6,6 +6,8 @@ whenToUse: 开始一个新的文献建模任务、需要撰写或修改 bma.mode
 
 # 生物系统建模工作流
 
+> **BLIND-LIT 模式**：若用户要求只用主文献摘要 + 全部参考文献建模、且建模期间不得查看主文献全文/图/表，**不要**按本文 G1/G2.5 执行。加载 `blind-literature-modeling`，按 B0–B8 与 `bma_blind_*` 工具推进；本文的 spec、仿真、拟合、验证、证据规范仍然适用（只是证据只能来自摘要与参考文献）。
+
 ## 产物布局
 
 所有产物在 `<work_dir>/.bma/runs/<run_id>/`：
@@ -86,6 +88,7 @@ report/report.html|report.md|model_card.json
 - `hill`: `mode:"activation"|"repression"`, `parameters:{vmax,k,n}`, `species:{regulator}`
 - `constant`: `parameters:{k}`
 - `expression`: `expression:"beta*S*I/N"`（只允许 + - * / ^ exp log sqrt min max 与已定义 id、括号、数字）
+- `matlab`（flex-1，自定义函数）：`{function:"my_rate", file:"ext/my_rate.m", arguments:["S","k"], unit:"uM/s"}` → `my_rate(y(1),p(2))`。`unit` **必填**且是声明值（函数体量纲无法推导），校验会给 `BMA_RATE_DECLARED_UNIT` 警告，报告须写“declared”而非“推导”；`file` 会自动 addpath，函数必须留在路径上。PDE(MOL) 路径不支持。
 - `stoichiometry` 用负号表示消耗；别在同一反应重复计通量。
 
 ### 常见坑
@@ -134,7 +137,7 @@ report/report.html|report.md|model_card.json
 - **校验**：`bma_model_validate` 对 `pde.dim>=2` 走原生校验；2D 支持 `rectangle`/`circle`/`polygon`，3D 支持 `box` 或 `stl`（`domain.file`）。`pde.solver="toolbox"`。
 - **预算**：先给 `options_json:{"max_dof":50000,"max_seconds":300}`；返回 `stats.nodes/elements/elapsed_s`。超预算先增大 `mesh.hmax` 或降维；不要盲目重跑。
 - **输出**：用 `pde.probes` 给观测点，`field_stats` 给 max/min/mean/integral；CSV/PNG 自动写入 run_dir。
-- **边界**：2D 用 `edge`（1..NumEdges 或 "all"），3D 用 `face`；只支持 Dirichlet 与零通量 Neumann；非零 Neumann 不在 v1。
+- **边界**：2D 用 `edge`（1..NumEdges 或 "all"），3D 用 `face`；支持 `dirichlet{value}`、`neumann{flux}`（含**非零**通量）、`robin{q,g}`；flux/q/g 可为有限标量、参数 id 或按物种的长度 N 向量。1D MOL 展开仍只支持零通量（ghost-point 只消去了零通量情形）。
 - **不要伪装**：原生 PDE 结果不能直接喂 `bma_model_fit`/`bma_model_identifiability`；需要参数估计时降维成 1D MOL 或明确写"未做参数估计"。
 
 ```json

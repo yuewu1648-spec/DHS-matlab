@@ -231,6 +231,27 @@ for r = 1:nR
                         'Hill 指数是幂次，单位应为 "1" 或无量纲。', 'warning'); %#ok<AGROW>
                 end
             end
+        case 'matlab'
+            % 函数体量纲无法静态推导：用规格里声明的 unit 作为通量量纲，
+            % 再与化学计量要求的“物种量纲/时间”比较（这仍然是有信息的检查）。
+            unitStr = char(string(getField(rate, 'unit', '')));
+            if isempty(strtrim(unitStr))
+                issues{end+1} = makeIssue('BMA_SPEC_MISSING_FIELD', [path '.unit'], ...
+                    'kind=matlab 必须显式声明通量单位', ...
+                    '函数体内部量纲无法静态推导，请补 "unit":"uM/s"。', 'error'); %#ok<AGROW>
+            else
+                fluxDim = parseUnitSafe(unitStr, T);
+                if isempty(fluxDim)
+                    issues{end+1} = makeIssue('BMA_UNIT_UNKNOWN', [path '.unit'], ...
+                        sprintf('无法解析 matlab 速率声明的单位 "%s"', unitStr), ...
+                        '可用示例：uM/s、nM/min、1/s、1。', 'error'); %#ok<AGROW>
+                    fluxDim = nan(1, 8);
+                else
+                    issues{end+1} = makeIssue('BMA_RATE_DECLARED_UNIT', [path '.unit'], ...
+                        sprintf('kind=matlab 的通量单位 "%s" 为声明值，未做函数体量纲推导', unitStr), ...
+                        '请在模型卡/报告中标注该单位来源为 declared（声明），而非推导。', 'warning'); %#ok<AGROW>
+                end
+            end
         case 'expression'
             expr = char(string(getField(rate, 'expression', '')));
             if ~isempty(strtrim(expr))

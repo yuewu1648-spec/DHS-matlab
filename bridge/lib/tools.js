@@ -383,6 +383,203 @@ export const TOOL_SPECS = [
   },
 
   {
+    name: 'bma_blind_start',
+    description:
+      'Seal a primary paper for BLIND-LIT modeling: extract ONLY its abstract, inventory ALL references (a folder, a JSON list and/or the paper bibliography), and make bma_literature_ingest refuse the primary full text until bma_blind_reveal. Use this when the user asks to model the question/goal of a paper using only its abstract plus all references.\n\nInputs: primary_path (required); abstract_path (authoritative UTF-8 text file with only the abstract; use when extraction is unreliable); references_dir (recursive PDF/DOCX/TXT/MD/HTML); references_json (JSON array of citations or {citation,path,url,doi} objects, or a path to such a JSON file); from_primary=true to parse the citation strings of the paper bibliography (only the citation strings are surfaced; the body stays sealed).\nOptions: title, min_rounds (default 3, minimum 2), budget_seconds (0 = none), max_references (default 300), force (overwrite an existing sealed protocol).\n\nReturns: the abstract text (the only primary content exposed), reference inventory + coverage, protocol/abstract paths, warnings and next steps. The primary body, figures and tables are never persisted or returned by this tool.\n\nNote: the seal blocks bma_literature_ingest by path AND SHA-256; do not read the primary file with read/pwsh during modeling (honesty rule of the protocol).',
+    timeoutMs: 300_000,
+    method: 'blind.start',
+    parameters: {
+      primary_path: strParam('Path to the primary paper (absolute, or relative to work_dir).', true),
+      abstract_path: strParam('Optional UTF-8 text file containing ONLY the primary abstract (authoritative).'),
+      references_dir: strParam('Optional folder of reference files (scanned recursively for PDF/DOCX/TXT/MD/HTML).'),
+      references_json: jsonParam('Optional JSON array of citations or {citation,path,url,doi} objects, or a path to a JSON file.'),
+      from_primary: boolParam('Parse the citation strings from the primary paper bibliography (citation metadata only; body stays sealed).'),
+      title: strParam('Optional title override for the primary paper.'),
+      min_rounds: numParam('Minimum self-check rounds before stop, default 3 (minimum 2).'),
+      budget_seconds: numParam('Total modeling budget in seconds for over_budget accounting (0 = not declared).'),
+      max_references: numParam('Hard cap on reference count, default 300 (never truncates silently).'),
+      force: boolParam('Overwrite an existing blind protocol for this run (backs up the old protocol.json).'),
+      run_dir: strParam('Run directory. Omit to create a new run.'),
+      work_dir: strParam('Optional work directory override.'),
+    },
+    outputSchema: { type: 'object', additionalProperties: false, properties: { summary: { type: 'string', required: true } } },
+    buildParams: (a) => {
+      const p = { primary_path: a.primary_path }
+      if (a.abstract_path) p.abstract_path = a.abstract_path
+      if (a.references_dir) p.references_dir = a.references_dir
+      if (a.references_json) p.references_json = parseJsonOrStringArg(a.references_json, 'references_json', a.references_json)
+      if (a.from_primary !== undefined) p.from_primary = a.from_primary
+      if (a.title) p.title = a.title
+      if (a.min_rounds !== undefined) p.min_rounds = a.min_rounds
+      if (a.budget_seconds !== undefined) p.budget_seconds = a.budget_seconds
+      if (a.max_references !== undefined) p.max_references = a.max_references
+      if (a.force !== undefined) p.force = a.force
+      if (a.run_dir) p.run_dir = a.run_dir
+      return p
+    },
+    summarize: (r) => {
+      const cov = r.references?.coverage || {}
+      return [
+        `Blind-LIT protocol sealed: ${r.primary?.title || '?'}`,
+        `- primary: ${r.primary?.source_path || '?'} (${r.primary?.format || '?'}, ${r.primary?.bytes ?? '?'} bytes) | sha256=${String(r.primary?.sha256 || '').slice(0, 16)}...`,
+        `- abstract: source=${r.primary?.abstract_source || '?'} confidence=${r.primary?.abstract_confidence || '?'} chars=${r.primary?.abstract_chars ?? '?'} section=${r.primary?.abstract_section_id || '-'}`,
+        r.primary?.abstract_text ? `\n--- PRIMARY ABSTRACT (the only primary content you may use) ---\n${clip(r.primary.abstract_text, 5000)}` : '',
+        `- references: ${cov.total ?? 0} inventoried (read=${cov.read ?? 0}, limited=${cov.limited ?? 0}, pending=${cov.pending ?? 0}); per-reference notes are mandatory`,
+        ...listLines(r.references?.items || [], (it) => `  - ${it.id} [${it.access}/${it.status}] ${clip(it.citation || '', 150)}${it.path ? ` (${it.path})` : ''}`, 20),
+        `- protocol: ${r.protocol_path}`,
+        `- abstract dossier: ${r.abstract_path}`,
+        r.run_dir ? `- run_dir: ${r.run_dir}` : '',
+        (r.warnings || []).length ? `warnings: ${(r.warnings || []).join('; ')}` : '',
+        `next: ${(r.next_steps || []).join(' | ')}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    },
+  },
+
+  {
+    name: 'bma_blind_note',
+    description:
+      'Record one reference reading note in BLIND-LIT mode. EVERY inventoried reference needs a note. Each claim must carry a verbatim quote; the tool extracts the reference text and verifies the quote (whitespace/typographic normalization), so paraphrased or fabricated quotes are rejected with the failed quotes listed.\n\nnote_json fields: depth ("full_text"|"abstract_only"|"citation_only"); claims:[{kind:"mechanism"|"parameter"|"condition"|"method"|"negative"|"review"|"background", claim (>=15 chars), quote (>=6 chars verbatim), location?}]; relevance:{question_link (>=30 chars), modeling_use:"mechanism"|"parameter"|"constraint"|"comparison"|"background"|"none"}; optional parameters/title/year/venue/sections_read; no_modeling_content + no_modeling_content_reason (>=80 chars) when the reference genuinely has no modeling value; access_limited_reason (>=60 chars) when only a citation is available.\n\ncitation-only references (no readable file) are recorded as status=limited and must be covered by an impossible/over_budget self-check issue before stop. Returns verification counts, text path, coverage and the remaining reference ids.',
+    timeoutMs: 300_000,
+    method: 'blind.note',
+    parameters: {
+      run_dir: strParam('Run directory returned by bma_blind_start (required).', true),
+      reference_id: strParam('Reference id from the inventory (e.g. R3).', true),
+      note_json: jsonParam('The reading note as a JSON object (schema in the description).', true),
+      work_dir: strParam('Optional work directory override.'),
+    },
+    outputSchema: { type: 'object', additionalProperties: false, properties: { summary: { type: 'string', required: true } } },
+    buildParams: (a) => ({
+      run_dir: a.run_dir,
+      reference_id: a.reference_id,
+      note: parseJsonArg(a.note_json, 'note_json', {}),
+    }),
+    summarize: (r) => {
+      const v = r.verification || {}
+      const cov = r.coverage || {}
+      return [
+        `Reference note recorded: ${r.reference_id} -> ${r.status} (depth=${r.depth || '?'})`,
+        `- quote verification: ${v.status || '?'} (${v.quotes_found ?? 0}/${v.quotes_checked ?? 0} found; text ${v.text_chars ?? 0} chars)`,
+        v.text_path ? `- reference text: ${v.text_path}` : '',
+        `- coverage: read ${cov.read ?? 0}/${cov.total ?? 0}; limited ${cov.limited ?? 0}; pending ${cov.pending ?? 0}`,
+        `- remaining reference ids: ${(r.remaining_ids || []).join(', ') || 'none'}`,
+        r.note_path ? `- note: ${r.note_path}` : '',
+        (r.warnings || []).length ? `warnings: ${(r.warnings || []).join('; ')}` : '',
+        r.next_hint ? `next: ${r.next_hint}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    },
+  },
+
+  {
+    name: 'bma_blind_check',
+    description:
+      'Blind-protocol ledger + self-check loop. Actions:\n- status: coverage, rounds, issues, whether stop is allowed (no mutation).\n- goal: record the modeling question/goal from the abstract plus >=2 success criteria (question >=40 chars).\n- references: append references (references_dir / references_json / from_primary) without touching existing notes.\n- round: append a self-check round. Requires summary (>=80 chars), >=3 checks [{name, result:"pass"|"fail"|"skipped", evidence}], and issues. Any failed check must produce an issue. Issue fields: category (evidence|coverage|units|structure|parameters|identifiability|numerics|reproduction|reporting|other), severity (P0-P3), title, detail; disposition status open|fixed|impossible|over_budget. fixed needs fix+fix_kind(model|parameter|evidence|report|method)+evidence; impossible needs reason (>=80)+why_general (>=60, why it cannot be solved in general)+evidence (>=20); over_budget needs reason+evidence+budget{spent_s,limit_s} with spent_s >= 2*limit_s. A fix_kind="model" requires changed spec hashes in round.model_specs [{name,spec_path}].\n- freeze: models [{name,spec_path,role:"primary"|"alternative"}]; hashes specs; required before stop.\n- stop: enforces the criteria (goal recorded; every reference read or covered by a closed impossible/over_budget issue; rounds >= min_rounds; zero open issues; model frozen; every impossible/over_budget justified) and writes blind/blind_summary.md for the report.\n\nReturns the ledger state and next steps.',
+    timeoutMs: 300_000,
+    method: 'blind.check',
+    parameters: {
+      run_dir: strParam('Run directory with the blind protocol (required).', true),
+      action: strParam('status | goal | references | round | freeze | stop', true),
+      goal_json: jsonParam('For action=goal: {question (>=40 chars), objective?, success_criteria:[>=2], out_of_scope?:[]}.'),
+      round_json: jsonParam('For action=round: {summary, checks:[{name,result,evidence}], issues:[...], model_specs:[{name,spec_path,role?}], elapsed_seconds?}.'),
+      models_json: jsonParam('For action=freeze: [{name, spec_path, role:"primary"|"alternative"}].'),
+      references_dir: strParam('For action=references: folder to append.'),
+      references_json: jsonParam('For action=references: JSON array or JSON file path to append.'),
+      from_primary: boolParam('For action=references: also parse citation strings from the bibliography.'),
+      verdict: strParam('For action=stop: passed | stopped_with_limits.'),
+      note: strParam('For action=stop: required when verdict=stopped_with_limits (>=60 chars).'),
+      work_dir: strParam('Optional work directory override.'),
+    },
+    outputSchema: { type: 'object', additionalProperties: false, properties: { summary: { type: 'string', required: true } } },
+    buildParams: (a) => {
+      const p = { action: a.action }
+      if (a.run_dir) p.run_dir = a.run_dir
+      if (a.goal_json) p.goal = parseJsonArg(a.goal_json, 'goal_json', {})
+      if (a.round_json) p.round = parseJsonArg(a.round_json, 'round_json', {})
+      if (a.models_json) p.models = parseJsonArg(a.models_json, 'models_json', [])
+      if (a.references_dir) p.references_dir = a.references_dir
+      if (a.references_json) p.references = parseJsonOrStringArg(a.references_json, 'references_json', a.references_json)
+      if (a.from_primary !== undefined) p.from_primary = a.from_primary
+      if (a.verdict) p.verdict = a.verdict
+      if (a.note) p.note = a.note
+      return p
+    },
+    summarize: (r) => {
+      const cov = r.coverage || {}
+      const iss = r.issues || {}
+      const m = r.model || {}
+      const lines = [
+        `Blind protocol: ${r.status || '?'} (sealed=${r.sealed ?? '?'}) | ${r.primary?.title || ''}`,
+        `- goal recorded: ${r.question?.recorded ? 'yes' : 'NO'}${r.question?.question ? ` :: ${clip(r.question.question, 220)}` : ''}`,
+        `- references: read ${cov.read ?? 0}/${cov.total ?? 0}; limited ${cov.limited ?? 0}; pending ${cov.pending ?? 0}`,
+        `- self-check rounds: ${r.rounds_completed ?? 0}/${r.min_rounds ?? '?'}; issues: total ${iss.total ?? 0}, open ${iss.open ?? 0}, fixed ${iss.fixed ?? 0}, impossible ${iss.impossible ?? 0}, over_budget ${iss.over_budget ?? 0}`,
+        (iss.open_ids || []).length ? `  open ids: ${(iss.open_ids || []).join(', ')}` : '',
+        `- model: frozen=${m.frozen ?? false} v${m.current ?? 0} (${m.versions ?? 0} snapshot(s))`,
+        `- can_stop: ${r.can_stop ?? false}`,
+        ...(r.stop_reasons || []).map((x) => `  * ${x}`),
+        r.round?.number ? `- round ${r.round.number}: added [${(r.round.issues_added || []).join(', ')}], closed [${(r.round.issues_closed || []).join(', ')}], open [${(r.round.issues_open || []).join(', ')}]` : '',
+        r.round?.model_specs?.length ? `  model hashes: ${r.round.model_specs.map((x) => `${x.name}:${String(x.sha256).slice(0, 12)}`).join(', ')}` : '',
+        r.references_added?.added_count !== undefined ? `- references added: ${r.references_added.added_count} (total ${r.references_added.total})` : '',
+        r.freeze?.version ? `- frozen v${r.freeze.version}: ${r.freeze.primary_spec} sha=${String(r.freeze.primary_sha256 || '').slice(0, 16)}...` : '',
+        r.stop_result?.verdict ? `- stop verdict: ${r.stop_result.verdict}; summary: ${r.stop_result.summary_path}` : '',
+        r.protocol_path ? `- protocol: ${r.protocol_path}` : '',
+        (r.warnings || []).length ? `warnings: ${(r.warnings || []).slice(-5).join('; ')}` : '',
+        `next: ${(r.next_steps || []).join(' | ')}`,
+      ]
+      return lines.filter(Boolean).join('\n')
+    },
+  },
+
+  {
+    name: 'bma_blind_reveal',
+    description:
+      'Finish BLIND-LIT: action="reveal" lifts the primary-paper seal ONLY after the stop criteria passed and the model is frozen, then ingests the full primary text/figures for comparison. action="compare" records the frozen model vs the paper model and writes blind/model_comparison.{json,md} for the report.\n\ncomparison_json for action=compare: {dimensions:[{key, agent, paper, agreement:"match"|"partial"|"diverge"|"not_comparable", evidence, gap, follow_up}], verdict:"close"|"partial"|"diverge"|"not_comparable", summary (>=100 chars), limitations?}. All 8 dimensions are mandatory: question, model_class, state_variables, mechanisms, parameters, assumptions, behavior, evidence_use. partial/diverge dimensions need follow_up (>=10 chars).\n\nUse reveal only when the modeling + self-check are finished; reading the primary before reveal violates the protocol.',
+    timeoutMs: 600_000,
+    method: 'blind.reveal',
+    parameters: {
+      run_dir: strParam('Run directory with the blind protocol (required).', true),
+      action: strParam('reveal | compare', true),
+      comparison_json: jsonParam('For action=compare: the 8-dimension comparison object.'),
+      reason: strParam('For action=reveal: optional reason for unblinding (recorded in the protocol).'),
+      work_dir: strParam('Optional work directory override.'),
+    },
+    outputSchema: { type: 'object', additionalProperties: false, properties: { summary: { type: 'string', required: true } } },
+    buildParams: (a) => {
+      const p = { action: a.action, run_dir: a.run_dir }
+      if (a.comparison_json) p.comparison = parseJsonArg(a.comparison_json, 'comparison_json', {})
+      if (a.reason) p.reason = a.reason
+      return p
+    },
+    summarize: (r) => {
+      if (r.action === 'reveal') {
+        return [
+          `Primary paper unsealed at ${r.revealed_at}.`,
+          `- title: ${r.primary?.title || '?'} | doc: ${r.primary?.doc_id || '?'} | chars: ${r.primary?.char_count ?? '?'}`,
+          `- full text (NOW allowed): ${r.primary?.text_path || '?'}`,
+          `- sections: ${r.primary?.sections_path || '?'}`,
+          r.primary?.figures_path ? `- figures: ${r.primary.figures_path} (${r.primary.figure_count ?? '?'})` : '',
+          `- frozen model: v${r.model_version ?? '?'}`,
+          r.message ? `- ${r.message}` : '',
+          (r.warnings || []).length ? `warnings: ${(r.warnings || []).join('; ')}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n')
+      }
+      return [
+        `Model comparison recorded: ${r.verdict || '?'} (${r.dimensions ?? 0} dimensions)`,
+        `- comparison: ${r.comparison_path || '?'}`,
+        `- comparison JSON: ${r.comparison_json_path || '?'}`,
+        r.summary ? `- summary: ${clip(r.summary, 1200)}` : '',
+        `next: ${(r.next_steps || []).join(' | ')}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    },
+  },
+
+  {
     name: 'bma_model_validate',
     description:
       'Validate and normalize a bma.modelSpec.v1 JSON model specification with MATLAB. This is the mandatory quality gate before any simulation or fit. Checks: required fields and ids, unique ids, rate-law parameter/species references, stoichiometry species, unit strings (against the knowledge-base unit vocabulary), numeric value/bounds consistency, output expressions, optional evidence format. Returns structured errors with codes, JSON paths and fix hints, plus the normalized spec written to <run_dir>/models/<name>/spec.json. Loop on this tool until valid=true.\n\nInput: pass spec_path (preferred; write the JSON with the file tools) or spec_json (JSON string).',

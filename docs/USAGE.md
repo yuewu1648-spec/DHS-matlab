@@ -49,8 +49,31 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_bundle.ps1
    ```
    <work_dir>/.bma/runs/<run_id>/
      literature/...  models/<name>/spec.json|analysis.json|code/
+     blind/（仅 BLIND-LIT：protocol.json / primary_abstract.md / refs / notes / blind_summary.md）
      fits/<fit_id>/  figures/  report/report.html|report.md|model_card.json
    ```
+
+### 3.1 盲建模（BLIND-LIT，0.15.0）
+
+任务示例：
+
+```text
+主文献只允许看摘要：papers/primary.pdf。
+参考文献在 papers/refs/（全部都要看，不得抽样）。
+请只用摘要 + 参考文献重建主文献研究的问题/目标对应的模型；
+建模期间不得查看主文献全文/图/表；完成后自检-修补-重建模，
+直到剩余问题只能是原理不可解或极度过预算；最后再解封对照原文献模型。
+```
+
+Agent 会：`bma_blind_start`（只返回摘要，封印主文献）→ `bma_blind_check action:"goal"` → 逐篇 `bma_blind_note`（quote 逐字核验）→ 建模/仿真/拟合 → 多轮 `bma_blind_check action:"round"` → `freeze`/`stop` →（可选）`bma_blind_reveal` 解封并 8 维对照。
+
+手动验证（不经过 LLM）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\matlab_batch.ps1 -Filter test_blind_protocol -TimeoutSec 600
+```
+
+产物：`<run_dir>/blind/`（协议、摘要档案、参考文献缓存/笔记、自检台账、`blind_summary.md`、可选 `model_comparison.md`）。报告用 `extra_sections_json` 嵌入 `blind_summary.md` 与 `model_comparison.md`。规范见 [BLIND_PROTOCOL.md](BLIND_PROTOCOL.md)。
 
 ## 4. 独立 MATLAB 使用（不经过 DSH）
 

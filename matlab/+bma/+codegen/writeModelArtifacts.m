@@ -175,6 +175,15 @@ lines{end+1} = '% 反应速率：';
 for r = 1:m.n_reactions
     lines{end+1} = ['%   ' m.rateText{r}]; %#ok<AGROW>
 end
+if isfield(m, 'rate_functions') && ~isempty(m.rate_functions)
+    lines{end+1} = '%';
+    lines{end+1} = '% 外部速率函数（kind="matlab"）：运行前必须保持在 MATLAB 路径上';
+    for k = 1:numel(m.rate_functions)
+        rf = m.rate_functions{k};
+        lines{end+1} = sprintf('%%   %s -> %s (unit=%s)', ...
+            rf.reaction, getfield(rf, 'function'), rf.unit); %#ok<AGROW,SFLD>
+    end
+end
 lines{end+1} = '%';
 lines{end+1} = ['    dydt = zeros(' num2str(nS) ', 1);'];
 for i = 1:nS

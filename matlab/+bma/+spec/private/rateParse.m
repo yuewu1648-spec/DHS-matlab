@@ -54,14 +54,16 @@ switch kind
         r = parseConstant(r, paramsDef, ctx);
     case 'expression'
         r = parseExpressionRate(r, rate, ctx);
+    case 'matlab'
+        r = parseMatlabRate(r, rate, ctx);
     otherwise
         if isempty(kind)
             r.issues{end+1} = mkIssue('BMA_RATE_INVALID', '缺少速率定律 kind 字段', ...
-                'v1 支持的 kind：mass_action / michaelis_menten / hill / constant / expression。', 'kind');
+                supportedKindsHint(), 'kind');
         else
             r.issues{end+1} = mkIssue('BMA_RATE_INVALID', ...
                 sprintf('不支持的速率定律 kind="%s"', kind), ...
-                'v1 支持的 kind：mass_action / michaelis_menten / hill / constant / expression。', 'kind');
+                supportedKindsHint(), 'kind');
         end
 end
 r.params_used = uniqueNonEmpty(r.params_used);
@@ -340,6 +342,121 @@ catch err
     [codeId, msg, hint] = mapExprError(err);
     r.issues{end+1} = mkIssue(codeId, msg, hint, 'expression');
 end
+end
+
+function r = parseMatlabRate(r, rate, ctx)
+%PARSEMATLABRATE 自定义 MATLAB 函数速率（kind="matlab"）。
+%
+% 规格：
+%   {"kind":"matlab",
+%    "function":"my_rate",        % 函数名（不是文件名）
+%    "file":"ext/my_rate.m",      % 可选；相对路径按 pwd / 规格目录解析
+%    "arguments":["S","k"],       % 按形参顺序：物种 id / 参数 id / 有限数值
+%    "unit":"uM/s",               % 必填：声明通量单位（函数体无法静态推导量纲）
+%    "display":"k*S^1.5"}         % 可选：人类可读公式
+%
+% 生成的代码形如 my_rate(y(1),p(2))，与内建速率定律走同一条编译链，
+% 因此仿真 / 拟合 / 可辨识性 / 敏感性无需改动。函数文件必须在路径上；
+% 给了 file 时本函数会把其所在目录加入路径，并在 function_file 里回报，
+% 由 bma.spec.compile 收集进 m.rate_functions 供模型卡记录。
+fn = getField(rate, 'function', '');
+if isempty(fn) || ~(ischar(fn) || (isstring(fn) && isscalar(fn)))
+    r.issues{end+1} = mkIssue('BMA_RATE_INVALID', 'matlab 速率缺少 function 字段', ...
+        '写成 {"kind":"matlab","function":"my_rate","arguments":["S","k"],"unit":"uM/s"}。', 'function');
+    return
+end
+fn = strtrim(char(fn));
+if isempty(regexp(fn, '^[A-Za-z]\w*$', 'once'))
+    r.issues{end+1} = mkIssue('BMA_RATE_INVALID', ...
+        sprintf('function 必须是合法 MATLAB 函数名，收到 "%s"', fn), ...
+        '函数名不要带 .m 或路径；文件位置请放在 file 字段。', 'function');
+    return
+end
+unitStr = getField(rate, 'unit', '');
+if isempty(unitStr) || ~(ischar(unitStr) || (isstring(unitStr) && isscalar(unitStr)))
+    r.issues{end+1} = mkIssue('BMA_SPEC_MISSING_FIELD', 'matlab 速率缺少 unit', ...
+        '函数体内部量纲无法静态推导，必须显式声明通量单位，例如 "unit":"uM/s"。', 'unit');
+    return
+end
+r.unit = strtrim(char(unitStr));
+
+% 可选：定位函数文件并把目录挂上路径
+resolvedFile = '';
+fileField = getField(rate, 'file', '');
+if ~isempty(fileField)
+    fileField = char(fileField);
+    candidates = {fileField};
+    if isfield(ctx, 'specDir') && ~isempty(ctx.specDir) && ~isAbsPath(fileField)
+        candidates{end+1} = fullfile(char(ctx.specDir), fileField);
+    end
+    for k = 1:numel(candidates)
+        c = candidates{k};
+        if ~isAbsPath(c)
+            c = fullfile(pwd, c);
+        end
+        if exist(c, 'file') == 2
+            resolvedFile = c;
+            break
+        end
+    end
+    if isempty(resolvedFile)
+        r.issues{end+1} = mkIssue('BMA_RATE_INVALID', ...
+            sprintf('找不到速率函数文件 "%s"', fileField), ...
+            'file 可用绝对路径，或相对当前工作目录/规格目录的路径。', 'file');
+        return
+    end
+    addpath(fileparts(resolvedFile));
+end
+if exist(fn, 'file') ~= 2
+    r.issues{end+1} = mkIssue('BMA_RATE_INVALID', ...
+        sprintf('速率函数 "%s" 不在 MATLAB 路径上', fn), ...
+        '把 .m 放到工作目录 ext/ 下并用 file 指向它，或先 addpath 再校验。', 'function');
+    return
+end
+
+args = getField(rate, 'arguments', {});
+if ischar(args)
+    args = {args};
+end
+if ~iscell(args)
+    r.issues{end+1} = mkIssue('BMA_RATE_INVALID', 'arguments 必须是 id 字符串数组', ...
+        '按函数形参顺序写，例如 ["S","I","vmax"]；物种/参数写 id，常量可直接写数值。', 'arguments');
+    return
+end
+codes = cell(1, numel(args));
+disps = cell(1, numel(args));
+for k = 1:numel(args)
+    [ref, iss] = makeRef(args{k}, ctx, 'any', sprintf('arguments[%d]', k-1));
+    if ~isempty(iss)
+        r.issues{end+1} = iss;
+        return
+    end
+    codes{k} = ref.code;
+    disps{k} = ref.display;
+    if isKey(ctx.paramIndex, ref.id)
+        r.params_used{end+1} = ref.id; %#ok<AGROW>
+    elseif isKey(ctx.speciesIndex, ref.id)
+        r.species_used{end+1} = ref.id; %#ok<AGROW>
+    end
+end
+r.code = sprintf('%s(%s)', fn, strjoin(codes, ', '));
+dispStr = getField(rate, 'display', '');
+if (ischar(dispStr) || (isstring(dispStr) && isscalar(dispStr))) && ~isempty(strtrim(char(dispStr)))
+    r.display = strtrim(char(dispStr));
+else
+    r.display = sprintf('%s(%s)', fn, strjoin(disps, ', '));
+end
+r.function_name = fn;
+r.function_file = resolvedFile;
+end
+
+function tf = isAbsPath(p)
+tf = ~isempty(regexp(p, '^([A-Za-z]:[\\/]|\\\\|/)', 'once'));
+end
+
+function h = supportedKindsHint()
+h = ['v1 支持的 kind：mass_action / michaelis_menten / hill / constant / expression；' ...
+     '需要任意速率形式时用 kind="matlab"（自定义函数，unit 必填）。'];
 end
 
 % =========================================================================

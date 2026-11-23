@@ -98,14 +98,24 @@ else
     bc = itemize(getF(pde, 'bc', []));
     for k = 1:numel(bc)
         typ = lower(char(getF(bc{k}, 'type', '')));
-        if ~any(strcmp(typ, {'dirichlet', 'neumann'}))
+        if ~any(strcmp(typ, {'dirichlet', 'neumann', 'robin'}))
             errors{end+1} = issue('BMA_PDE_INVALID', sprintf('pde.bc[%d].type', k-1), ...
-                '必须是 dirichlet/neumann');
+                '必须是 dirichlet/neumann/robin');
         elseif strcmp(typ, 'neumann')
+            % n·(c∇u) = flux；flux=0 为零通量，非零有限值/参数 id 为给定通量
             flux = getF(bc{k}, 'flux', 0);
-            if ~isnumeric(flux) || ~isscalar(flux) || flux ~= 0
+            if ~isScaling(flux)
                 errors{end+1} = issue('BMA_PDE_INVALID', sprintf('pde.bc[%d].flux', k-1), ...
-                    'v1 只支持 flux=0');
+                    'flux 必须是有限数值或参数 id');
+            end
+        elseif strcmp(typ, 'robin')
+            % n·(c∇u) + q*u = g
+            for f = {'q', 'g'}
+                v = getF(bc{k}, f{1}, 0);
+                if ~isScaling(v)
+                    errors{end+1} = issue('BMA_PDE_INVALID', sprintf('pde.bc[%d].%s', k-1, f{1}), ...
+                        sprintf('%s 必须是有限数值或参数 id', f{1}));
+                end
             end
         end
     end
@@ -139,6 +149,11 @@ end
 function e = issue(code, path, message)
 e = struct('code', code, 'path', path, 'message', message, ...
     'hint', '检查 pde 子树；原生 2D 见 docs/DESIGN.md §3.3。', 'severity', 'error');
+end
+
+function tf = isScaling(x)
+% 边界系数：有限数值标量，或参数 id 字符串
+tf = (isnumeric(x) && isscalar(x) && isfinite(x)) || (ischar(x) && ~isempty(strtrim(x)));
 end
 
 function items = itemize(x)

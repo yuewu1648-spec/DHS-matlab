@@ -4,6 +4,85 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [SemVer 2.0](https://semver.org/lang/zh-CN/)。
 更新纪律见 `docs/VERSIONING.md`。
 
+## [0.15.0] - 2026-11-23
+
+### Added（BLIND-LIT：只用摘要 + 全部参考文献的盲建模）
+- **4 个新工具 + `blind.*` RPC**：`bma_blind_start`（`blind.start`）、`bma_blind_note`（`blind.note`）、`bma_blind_check`（`blind.check`）、`bma_blind_reveal`（`blind.reveal`）。工具面 20 → 24，属 MINOR 向后兼容扩展；旧工具名/必填参数/返回不变。
+- **主文献封印（两层）**：`bma_blind_start` 只抽取并返回摘要，写 `blind/primary_abstract.md`；`bma.io.ingest` 在读取前调用 `bma.blind.enforceSeal`，按规范路径 + SHA-256 拒绝主文献（`BMA_SEALED`）。除 run 级 `blind/protocol.json` 外，新增工作区级 `<work_dir>/.bma/blind/seals.json`，新建 run 也不能绕过。`reveal` 前全文永不落盘。
+- **摘要提取兜底**：`abstract_path` 外部摘要优先；否则 sectionized Abstract/Summary → 行锚点 → 行内标记（带 confidence/warning）；都不可靠时 `BMA_ABSTRACT_NOT_FOUND`，不猜、不返回正文。
+- **参考文献清单**：`references_dir` 递归扫描 PDF/DOCX/TXT/MD/HTML；`references_json` 清单；`from_primary=true` 只从主文献 References 抽题录字符串（正文/参考文献章节原文不暴露）。主文献按路径 + SHA-256 从清单剔除。
+- **逐篇笔记 + quote 硬核验**：`bma_blind_note` 抽取参考文献文本到 `blind/refs/<id>/text.txt`（SHA-256 缓存），把每条 claim 的 `quote` 归一化（大小写/空白/弯引号/破折号/软连字符）后做子串匹配；失败 `BMA_QUOTE_NOT_FOUND` 并列出失败项。只有题录/无文本可 `citation_only` + `access_limited_reason`，status=`limited`，必须在自检中登记证据缺口。
+- **防形式主义**：`no_modeling_content` 需 ≥80 字理由；coverage 统计比例，`evaluateStop` 对超过 30%（或 2 篇）的情况阻止 stop。
+- **自检台账**：`bma_blind_check` 支持 `status/goal/references/round/freeze/stop`。round 要求 summary≥80、≥3 checks（name/result/evidence）；问题分类 category/severity/status；`fixed` 需 fix/fix_kind/evidence；`impossible` 需 reason≥80 + why_general≥60 + evidence≥20；`over_budget` 需 spent_s ≥ 2×limit_s；`fix_kind="model"` 必须提交 hash 变化且 `bma.spec.validate` 通过的 spec（`BMA_MODEL_UNCHANGED` / `BMA_MODEL_INVALID`）。
+- **停止判据**：goal 记录；参考文献 read 或由 impossible/over_budget 的 `covers_references` 覆盖；rounds ≥ min_rounds（默认 3）；无 open 问题；关闭论证齐全；模型已 `freeze`。否则 `BMA_STOP_BLOCKED` + 全部原因；通过后写 `blind/blind_summary.md`。
+- **可选解封 + 8 维对照**：`bma_blind_reveal action:"reveal"` 仅在 stop 通过且模型冻结后解封并 ingest 全文，失败回滚封印；`action:"compare"` 校验 8 维（question/model_class/state_variables/mechanisms/parameters/assumptions/behavior/evidence_use），写 `blind/model_comparison.json|md`。
+- **persona / skills**：preset 新增“盲文献建模模式（BLIND-LIT）”硬规则与 B0–B8；新增 skill `blind-literature-modeling`；`bio-modeling-workflow` / `bio-model-report` 增加盲建模衔接；任务列表纪律增加 B0–B8 整表。
+- **复用工具**：新增 `bma.util.sha256File`（JVM SHA-256），`bma.run.importArtifact` 改为调用它（行为不变）。
+
+### Tests
+- 新增 `matlab/tests/test_blind_protocol.m`：摘要不泄漏正文、两层封印、转述 quote 拒绝、coverage、伪修复拒绝（hash 未变）、over_budget 2× 阈值、未冻结 stop 拒绝、freeze/stop、reveal 后全文可读、8 维 compare + 缺维拒绝、无 Abstract 时 abstract_path 兜底、from_primary 题录-only limited。
+- `bridge/test/plugin-smoke.mjs`：注册 24/24 工具；端到端跑 `bma_blind_start` → `bma_literature_ingest` 被 `BMA_SEALED` 拒绝 → `bma_blind_note` quote 核验 → goal → 2 轮 round → freeze → stop → reveal → 8 维 compare。
+- 全量 MATLAB 套件见 `docs/ACCEPTANCE.md` §7.24；`check_agent.ps1`（版本/manifest/bundle/MATLAB/插件冒烟）与 `check_isolation.ps1` 全绿。
+
+### Docs
+- 新增 `docs/BLIND_PROTOCOL.md`（数据模型、封印语义、工具/停止判据、诚实性边界）；更新 `docs/TOOL_REFERENCE.md`（24 工具、blind 小节、错误码）、`docs/DESIGN.md`、`docs/VERSIONING.md` §6、`docs/MODELING_METHODOLOGY.md` §8、`docs/USAGE.md`、`README.md`。
+
+### Compatibility
+- MINOR：`bma.modelSpec.v1` 不变；旧工具签名与 `summary` 字段不变；无 blind 协议的 run 的 ingest 行为不变；`blind/` 与 `.bma/blind/seals.json` 为新增产物。`bma_blind_*` 的 run_dir 必须显式给出（不自动新建），避免误建空协议。
+
+
+## [0.14.0] - 2026-11-22
+
+### Fixed
+- **原生 2D PDE 永久挂起**（`+bma/+pde/simulate.m`）: 非线性求解器给出的试探状态可能是负值或 NaN;
+  `qmax·u/(K_M+u)` 在 `u=-K_M` 处有极点, 一但返回 NaN, 误差控制器拒绝每一步、步长坍缩, `solvepde`
+  不再返回且不报错. 真实案例(Stewart 2016 Case 4B, Monod 葡萄糖消耗)复现两次 1780 s RPC 超时.
+  现在: 速率按 `u>=0` 求值(负试探状态钳位, 计入 `res.diagnostics.clamped_states`);
+  初始化时 MATLAB 的 all-NaN 探针调用**原样透传**(若把它置 0, 雅可比退化为 0, 会静默返回
+  无反应的均匀场——调试中实际出现过); 若有限状态仍产生非有限源项则**明确报错**
+  `bma:pdeToolbox:nonfiniteSource`, 不再静默置 0.
+  同一模型: 修复前 >90 s 未返回; 修复后 5.6 s 完成, 共钳位 545195 个负试探值, 非有限值 0.
+- **`startup_bma.m` 根目录解析**: `fileparts` 多剥一层, root 被解析成盘符 `E:\` 并 addpath 到不存在的
+  `E:\matlab`; 现在按 `VERSION` 标记定位, 兼容"放在仓库根"与"低一层"两种布局.
+
+### Added
+- **硬预算看门狗 `scripts/pde_watchdog.ps1`**: 在子 MATLAB 进程里执行同一次 `bma.pde.simulate`,
+  `-DeadlineSeconds` 到点用 `taskkill /T /F` 强制终止, 返回
+  `{status: completed|timeout, elapsed_s, result_mat, log}`; 结果以 `guarded_result.mat` 落盘。
+  支持 `-OptionsFile`(JSON 文件) 以避免 Windows 命令行对 JSON 引号的剥离。
+  已实测: completed 17.2 s / timeout 5.03 s 强杀。子进程日志经 ASCII 临时路径中转
+  (`Start-Process` 重定向到非 ASCII 路径会静默失败, 这是此前"空日志"的真因)。
+- 返回结构新增 `res.budget`(advisory/max_seconds/elapsed_s/interruptible/note) 与
+  `res.diagnostics`(clamped_states/nonfinite_source) (只增字段). 真实 2D 案例端到端复核:
+  钳位 517366 次后探针值与独立椭圆稳态解逐点一致 (97.46/79.93/73.95 vs 97.46/79.93/73.94).
+- 新增回归测试 `matlab/tests/test_pde_nonlinear_budget.m`: 未正则化 Monod 必须完成且梯度方向正确、
+  `budget` 必须如实标注 advisory、`steady:true` 必须给出均匀 C0 场.
+
+### Changed
+- `max_seconds` 语义**不变**(仍是求解后告警): `solvepde` 没有回调, `setInitialConditions` 只接受
+  标量或长度 N 的向量(不能注入节点场), 因此进程内无法强制截止时间; `res.budget` 如实标注
+  `advisory=true, interruptible=false`. 早前尝试的"分块续算"方案经实测不可行(MATLAB 无法注入节点场续算)已移除.
+- 文档: `docs/TOOL_REFERENCE.md`(工具表/原生 PDE 小节)、`docs/VERSIONING.md` §6 兼容性契约、
+  `README.md` 增补本节.
+
+## [0.13.0] - 2026-11-22
+
+### Added（flex-1：灵活性扩展）
+- **`kind:"matlab"` 自定义速率定律**（`+bma/+spec/private/rateParse.m`）：`{function, file?, arguments[], unit, display?}`
+  编译为 `fn(y(i), p(j), ...)`，与内建速率同构（`m.vfuns` / `m.rhs`），仿真/拟合/可辨识性/敏感性无需改动：
+  - `unit` **必填**（函数体量纲无法静态推导），并产生 `BMA_RATE_DECLARED_UNIT` 警告；声明单位仍与化学计量要求的量纲比对；
+  - `file` 自动 `addpath`，函数缺失报 `BMA_RATE_INVALID`；
+  - `m.rate_functions` 记录 `{reaction,function,file,unit}`，代码生成在头注释里提示“必须保持在路径上”；
+  - `+bma/+spec/normalize.m` 的 rate 白名单补齐 `function/file/arguments/unit/display`（否则字段会被归一化静默丢弃）。
+- **非零 Neumann 与非零 Robin 边界**（原生 PDE）：`neumann{flux}` 支持非零通量，新增 `robin{q,g}`；
+  `flux/q/g` 可为有限标量、参数 id 或按物种的 N 维向量。
+- `docs/FLEXIBILITY.md`：记录三项限制的真实成因、本次落地内容、原生 PDE 拟合的可行路线与优先级。
+
+### Tests
+- 新增 `matlab/tests/test_flex_extensions.m`：自定义速率与解析解一致（`2·exp(-0.3·5)`，相对误差 < 1e-6）、
+  缺 unit / 函数缺失的报错码、声明单位警告、代码生成提示、非零 Neumann 实际求解（probe 0 → 0.01604）、Robin 校验。
+- 回归：`spec` / `model_*` / `pde` / `report_build` 共 12 个测试文件全部通过（0 失败）。
+
 ## [0.12.0] - 2026-11-19
 
 ### Added

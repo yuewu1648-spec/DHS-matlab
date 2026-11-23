@@ -328,6 +328,25 @@ end
 r.species = species;
 r.mode = charIf(getField(raw, 'mode', ''), '');
 r.expression = charIf(getField(raw, 'expression', ''), '');
+% kind="matlab"：自定义函数速率（function/file/arguments/unit/display）
+r.unit = charIf(getField(raw, 'unit', ''), '');
+r.display = charIf(getField(raw, 'display', ''), '');
+fn = getField(raw, 'function', '');
+if ischar(fn) || (isstring(fn) && isscalar(fn))
+    r.('function') = char(fn);
+end
+r.file = charIf(getField(raw, 'file', ''), '');
+args = getField(raw, 'arguments', {});
+if ischar(args) || (isstring(args) && all(isscalar(args)))
+    args = cellstr(args);
+elseif isnumeric(args)
+    args = num2cell(args(:).');
+end
+if iscell(args)
+    r.arguments = reshape(args, 1, []);
+else
+    r.arguments = {};
+end
 inh = getField(raw, 'inhibitor', []);
 if isstruct(inh)
     i2 = struct();

@@ -144,6 +144,11 @@ E:\matlab系统建模\
 | `hill` | `parameters:{vmax,k,n}`, `species:{regulator:R}`, `mode:"activation"|"repression"` | activation: `Vmax*R^n/(k^n+R^n)`；repression: `Vmax*k^n/(k^n+R^n)` |
 | `constant` | `parameters:{k}` | `v = k` |
 | `expression` | `expression:"..."` | 允许变量/参数/compartment id 与 `+ - * / ^ exp log sqrt min max`；禁止任意函数调用 |
+| `matlab`（flex-1） | `function:"my_rate"`, `file?`, `arguments:[ids...]`, `unit`, `display?` | `v = my_rate(arg1, arg2, ...)`；`unit` 为**声明值**（函数体量纲不可推导），校验发 `BMA_RATE_DECLARED_UNIT` 警告 |
+
+`kind:"matlab"` 的编译产物与内建速率同构（`m.vfuns{k}` / `m.rhs`），因此仿真、拟合、
+可辨识性、敏感性无需改动；`m.rate_functions` 记录 `{reaction,function,file,unit}`。
+限制：PDE(MOL) 展开与原生 PDE 源项均不支持（前者需要解析式组装刚度矩阵，后者的 `f` 回调要求按节点向量化）。
 
 `reactions[]` 另需：`{id, name, stoichiometry:{<species_id>: 系数(可负)}}`。
 
@@ -442,6 +447,10 @@ time,P_obs
 | `bma_model_validate_fit` | `{fit_result_path, data_csv, output_map, run_dir, k?}` | 交叉验证 + 残差诊断 |
 | `bma_report_build` | `{run_dir, title, spec_path, fit_result_path?, analysis_path?, references?, extra_sections?}` | 报告 HTML/MD 路径、使用的图、模型卡路径 |
 | `bma_codegen` | `{spec | spec_path, run_dir, simbiology?}` | 生成的 .m 路径 + 函数名 +（可选）SimBiology 导出结果 |
+| `bma_blind_start` | `{primary_path, abstract_path?, references_dir?, references_json?, from_primary?, min_rounds?, budget_seconds?, run_dir?}` | 仅摘要 + 参考文献清单/coverage + 协议路径；主文献正文永不返回 |
+| `bma_blind_note` | `{run_dir, reference_id, note_json}` | 逐字 quote 核验结果、coverage、剩余文献 id |
+| `bma_blind_check` | `{run_dir, action, goal_json?/round_json?/models_json?/references_*?}` | goal/coverage/轮次/问题台账/can_stop/冻结与停止结果 |
+| `bma_blind_reveal` | `{run_dir, action (reveal / compare), comparison_json?}` | 解封后的全文 doc/路径；8 维模型对照 md/json |
 
 通用规则（写进工具描述）：
 - `work_dir` 缺省为当前会话工作目录；所有路径支持相对 `work_dir`。
@@ -460,6 +469,7 @@ time,P_obs
    ├─ run.json
    ├─ literature/<doc_id>/text.txt|sections.json|numbers.json|tables.json
    ├─ models/<name>/spec.json|normalized.json|analysis.json|code/<name>_ode.m
+   ├─ blind/                     # BLIND-LIT：protocol.json / primary_abstract.md / refs / notes / blind_summary.md
    ├─ data/*.csv
    ├─ fits/<fit_id>/fit.json|params.csv|predictions.csv|residuals.csv|profile_<p>.csv|figures/*.png
    ├─ figures/*.png
@@ -494,11 +504,13 @@ Persona 必须包含（详见 `docs/MODELING_METHODOLOGY.md`）：
 1. 身份：生物系统建模专家，同时具备数学/物理/化学生物学功底；输出中文报告，spec/代码英文标识符。
 2. 强制工作流（质量门）：
    `文献解析 → 证据与实体抽取 → 知识库检索（模态/机制匹配）→ 机制假设与建模假设 → 模型规格 v1 → 校验（必过）→ 仿真 → 参数确定/估计 → 可辨识性 → 验证/证伪 → 模型选择 → 导出与报告`
+   若用户要求 BLIND-LIT（只用摘要 + 全部参考文献，建模期间不读主文献全文），改用 B0–B8：封印/摘要 → 目标 → 逐篇参考笔记 → 建模 → 多轮自检 → 冻结停止 → 可选解封对照 → 报告（见 `docs/BLIND_PROTOCOL.md`）。
 3. 硬规则：参数必须有来源或显式标 `assumed`；单位必须齐全；先最小机制模型再扩展；每个结论必须可回溯到 section/quote；不得编造文献内容；拟合失败要报告并给替代方案；报告必须列出假设与局限。
 4. 工具使用指引：何时用哪个工具；`work_dir` 约定；大输出用 read/CSV；图用 present。
 
 Skills（`bridge/skills/`，按需加载）：
 - `bio-modeling-workflow`：完整建模方法论 + 证据表模板 + spec 编写规范 + 常见错误码修复。
+- `blind-literature-modeling`：BLIND-LIT 盲建模协议（摘要封印、逐篇参考文献 quote 核验、自检停止判据、解封对照）。
 - `model-fit-identifiability`：参数估计、多起点、剖面似然、敏感性、可辨识性判读。
 - `bio-model-report`：报告结构、断言与局限、医学/生物学表达规范。
 - `matlab-modeling-troubleshooting`：校验错误、求解失败、刚性、单位错误的排查路径。
@@ -540,6 +552,7 @@ Skills（`bridge/skills/`，按需加载）：
    - **降级路径（无 LLM）**：工具层 E2E `tests/e2e/tool_layer_e2e.ps1` 覆盖原有 15 个 `bma_*` 等价 RPC 方法；0.5.0 新增的 `bma_cancel`/`bma_artifact_import`/`bma_gate_waive` 由 `bridge/test/resilience.test.mjs` 与 `matlab/tests/test_upgrade_050.m` 覆盖。MATLAB 测试全绿 + 工具层 E2E 通过作为无 LLM 环境的验收证据。
    - 插件挂载验证：`dsh --profile headless --patch tests/e2e/headless.mount.patch.yml` 应无 "entry did not activate" 警告（本次已通过；仅剩凭据错误）。
 7. **独立 MATLAB 使用**：`matlab/examples/demo_end_to_end.m` 不依赖 DSH，在 MATLAB 中完成一次建模全流程。
+8. **BLIND-LIT**：`matlab/tests/test_blind_protocol.m` 覆盖摘要封印（本 run + 新 run）、逐字 quote 校验、coverage、goal/round 校验、fix_kind=model 的 hash 变化、over_budget 2× 阈值、freeze/stop、reveal/compare、abstract_path 兜底与题录-only limited；`bridge/test/plugin-smoke.mjs` 注册 24 工具并端到端跑 blind start/note/check + 封印拒绝。
 
 ---
 

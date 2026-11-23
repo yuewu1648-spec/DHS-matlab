@@ -69,6 +69,9 @@ else
     runDirAbs = bma.util.absPath(workDir, runDir);
 end
 
+% ---- 盲建模封印：建模期间不得 ingest 主文献全文 ---------------------------
+bma.blind.enforceSeal(runDirAbs, srcAbs);
+
 % ---- 格式与文本 -----------------------------------------------------------
 fmt = bma.io.internal.detectFormat(srcAbs);
 if ~fmt.supported

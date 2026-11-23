@@ -37,6 +37,14 @@ whenToUse: 模型与拟合/验证已完成、准备生成报告并向用户交�
 - **一张图只出现一次**：`bma_report_build` 0.8.5 已按内容哈希去重；仍要检查 `figures_used`/warnings，避免同一图既在 extra section 又在 §11。经典图与文献原图对照时，用并排表而不是重复贴同一张图。
 - 优先展示 2–4 张与机制结论最相关的复现对照图；其余放报告附录。
 
+## BLIND-LIT 盲建模报告（0.15.0，若有 blind 协议）
+
+- 盲建模 run 的 `extra_sections_json` **必须**包含 `blind/blind_summary.md`；若已解封对照，再包含 `blind/model_comparison.md`。
+- “局限”必须具体写：建模只用了主文献摘要 + 参考文献；主文献全文/图/表未参与建模；哪些参考文献 `limited`（题录/无全文）；哪些问题以 `impossible`/`over_budget` 关闭；模型对摘要问题的预测边界。
+- 不得声称复现了主文献的图或结果；解封后才看到的机制/数值，若修正了模型，必须标注“解封后修正”，不能写成盲建模时已知。
+- 解封对照至少覆盖 8 维：question / model_class / state_variables / mechanisms / parameters / assumptions / behavior / evidence_use；`partial`/`diverge` 维度给 follow_up。
+- 报告仍需普通参数证据表；盲建模中来自参考文献的 quote 要写清来源（文献 id + location），`assumed`/`fitted` 不得伪装成 measured。
+
 ## 调用方式
 
 ```

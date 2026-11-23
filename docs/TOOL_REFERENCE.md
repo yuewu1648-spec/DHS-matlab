@@ -1,6 +1,6 @@
 # 工具参考（bma_* ↔ MATLAB RPC）
 
-DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂结构用 JSON 字符串（`*_json`）传递；`work_dir` 默认会话工作目录。所有工具都声明了自带超时（30s–40min）。
+DSH agent 通过 24 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂结构用 JSON 字符串（`*_json`）传递；`work_dir` 默认会话工作目录。所有工具都声明了自带超时（30s–40min）。
 
 ## 文件式 JSON-RPC 协议（bridge ↔ MATLAB）
 
@@ -8,7 +8,7 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 - 请求：`{schema:"bma.rpc.v1", id, token, method, params, work_dir, run_dir?, timeout_s}`
 - 响应：`{schema,id,ok:true,elapsed_ms,result}` 或 `{ok:false,error:{code,message,details,stack}}`
 - 无网络端口；MATLAB 服务由 bridge 自动启动（`matlab -batch "…bma.server.start(...)"`），单线程串行处理。
-- 错误码：`BMA_SPEC_INVALID`、`BMA_UNIT_UNKNOWN`、`BMA_RATE_INVALID`、`BMA_UNKNOWN_ID`、`BMA_NOT_IMPLEMENTED`、`BMA_TIMEOUT`、`BMA_SERVER_ABSENT`、`BMA_SERVER_EXITED`、`BMA_AUTH`、`BMA_INTERNAL`。
+- 错误码：`BMA_SPEC_INVALID`、`BMA_UNIT_UNKNOWN`、`BMA_RATE_INVALID`、`BMA_UNKNOWN_ID`、`BMA_NOT_IMPLEMENTED`、`BMA_TIMEOUT`、`BMA_SERVER_ABSENT`、`BMA_SERVER_EXITED`、`BMA_AUTH`、`BMA_INTERNAL`；盲建模另加 `BMA_SEALED`、`BMA_NOT_STARTED`、`BMA_ALREADY_STARTED`、`BMA_ABSTRACT_NOT_FOUND`、`BMA_REFERENCE_UNKNOWN`、`BMA_NOTE_INVALID`、`BMA_QUOTE_NOT_FOUND`、`BMA_STOP_BLOCKED`、`BMA_MODEL_UNCHANGED`、`BMA_MODEL_INVALID`、`BMA_NOT_FROZEN`、`BMA_NOT_REVEALED`、`BMA_COMPARE_INVALID`。
 
 ## 工具一览
 
@@ -21,7 +21,7 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 | 5 | `bma_model_validate` | `spec.validate` | 模型规格质量门 | `spec_path` 或 `spec_json`, `run_dir?` | valid、errors(code/path/message/hint)、normalized spec 路径 |
 | 6 | `bma_model_analyze` | `model.analyze` | 守恒律/稳态/稳定性/量纲 | `spec_path, options_json?, run_dir?`（options: substitute_guards/symbolic=auto\|on\|off/symbolic_max_states/symbolic_max_score/numeric_budget_seconds/multistart） | conservation_laws、steady_states（稳定性/特征值）、symbolic_skipped/reason、analysis_mode、guard_substitution、analysis_path |
 | 7 | `bma_model_simulate` | `model.simulate` | ODE/MOL 仿真；2D 原生 spec 自动路由 PDE Toolbox | `spec_path, options_json?, run_dir?`（options: time_end/n/solver/outputs/include_series） | states+outputs 时间序列 CSV、outputs_final、图 `timeseries_<sim_id>.png`、warnings |
-| 8 | `bma_pde_simulate` | `pde.simulate` | 原生 2D/3D PDE Toolbox（不转 ODE） | `spec_path, options_json?, run_dir?`（options: steady/n/time_end/max_dof/max_seconds/mesh/probes） | mesh nodes/elements、probes、field_stats、PDE CSV/PNG、预算/警告 |
+| 8 | `bma_pde_simulate` | `pde.simulate` | 原生 2D/3D PDE Toolbox（不转 ODE） | `spec_path, options_json?, run_dir?`（options: steady/n/time_end/max_dof/max_seconds/mesh/probes；硬预算用 scripts/pde_watchdog.ps1） | mesh nodes/elements、probes、field_stats、PDE CSV/PNG、`budget`/`diagnostics`、预算/警告 |
 | 9 | `bma_model_simulate_cases` | `model.simulate_cases` | 情景/参数扫描对比 | `spec_path, cases_json, run_dir?` | 每 case 摘要 + `comparison_figure`（cases_<id>.png）|
 | 10 | `bma_model_fit` | `fit.estimate` | 参数估计（多起点有界最小二乘） | `spec_path, data_csv, output_map_json, options_json?, run_dir?` | 参数值±CI、R²/RMSE/AICc/BIC、预测/残差 CSV、fit 路径 |
 | 11 | `bma_model_identifiability` | `fit.identifiability` | 结构/实用可辨识性、相关矩阵、剖面似然 | `spec_path, data_csv?, output_map_json?, options_json?` | 秩/相关/条件数/不可辨识组合 |
@@ -33,6 +33,11 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 | 17 | `bma_cancel` | `server.cancel`（桥接实现） | 取消当前重任务/恢复 heavy worker | `work_dir?, hard?, grace_seconds?` | worker/control 的 cancelled/killed/restarts_on_next_call/method、health（busy/queue/timeout） |
 | 18 | `bma_artifact_import` | `run.import_artifact` | 把 run_dir 外产物导入 `artifacts/` 并登记 SHA-256 | `source_path, run_dir?, name?, kind?, recursive?` | imported、artifacts、artifacts.json、warnings |
 | 19 | `bma_gate_waive` | `run.waive_gate` | 显式记录质量门豁免 | `gate, reason, substitute?, evidence?, run_dir?` | gates.json、count、duplicate |
+| 20 | `bma_advanced_solve` | `advanced.solve` | 系统辨识/符号解/SDE/SSA | `method, problem_json/equations...` | 方法结果、路径、warnings |
+| 21 | `bma_blind_start` | `blind.start` | 封印主文献：只抽摘要 + 建全部参考文献清单 | `primary_path, abstract_path?, references_dir?, references_json?, from_primary?, min_rounds?, budget_seconds?, max_references?, force?, run_dir?` | 摘要全文、清单/coverage、协议/摘要路径；正文不落盘 |
+| 22 | `bma_blind_note` | `blind.note` | 逐篇参考文献笔记 + 逐字 quote 核验 | `run_dir, reference_id, note_json` | verification（quotes found/checked、text path）、coverage、remaining_ids |
+| 23 | `bma_blind_check` | `blind.check` | 盲建模台账：goal/references/round/freeze/stop | `run_dir, action, goal_json?/round_json?/models_json?/references_dir?/references_json?/from_primary?/verdict?/note?` | coverage、rounds、issues、can_stop+reasons、freeze/stop 结果、summary_path |
+| 24 | `bma_blind_reveal` | `blind.reveal` | stop 后解封主文献 + 8 维模型对照 | `run_dir, action`（reveal / compare）, `comparison_json?, reason?` | 全文 doc/路径（reveal）；model_comparison.md/json（compare） |
 
 ## 其他 RPC 方法（内部/开发）
 
@@ -52,7 +57,7 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 - 顶层：`schema_version, name, title, kind:"ode"|"pde", time{unit,start,end,n}, variables[], parameters[], reactions[], outputs[], assumptions[], metadata`
 - 变量：`{id, name, unit, initial:{value|param|expression}}`；参数：`{id, name, unit, value:{value}, estimate, bounds?, evidence?}`
 - 反应：`{id, stoichiometry:{species:系数}, rate:{kind, parameters, species, mode?, expression?}}`
-- 速率 kind：`mass_action` / `michaelis_menten`（含 inhibitor）/ `hill`（activation|repression）/ `constant` / `expression`
+- 速率 kind：`mass_action` / `michaelis_menten`（含 inhibitor）/ `hill`（activation|repression）/ `constant` / `expression` / `matlab`（自定义函数：`{function, file?, arguments, unit}`；unit 为声明值）
 - 输出：`{id, name, unit, expression}`；PDE 额外支持 `C[i]` / `max(C)` / `min(C)` / `mean(C)` / `mean_over_domain(C)` / `integral(C)`
 - PDE（0.7.0）：`pde:{dim:1, domain:{geometry:slab|cylinder|sphere, extent:{value,unit}, grid:{type:"uniform",n}, approximation,zones?}, diffusion:[{species,coeff}], bc:[x0,x1], discretization?}`；`x0` 左/深层、`x1` 右/体相；`De` 单位 length²/time
 - 原生 PDE（0.8.0，`bma_pde_simulate`）：`pde:{dim:2|3, solver:"toolbox", domain:{geometry:rectangle|circle|polygon|box|stl, size|radius|points|file, mesh:{hmax,hgrad}}, diffusion, bc:[{edge|face,type,value|flux}], probes:[{id,species,x,y,z?}]}`；预算 `options_json.max_dof/max_seconds`
@@ -109,9 +114,10 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
 ## 0.8.0 原生 PDE Toolbox
 
 - `bma_pde_simulate`：`kind:"pde"` + `pde.dim=2|3` + `pde.solver="toolbox"`，直接 PDE Toolbox，不转 ODE。2D 几何 `rectangle`/`circle`/`polygon`；3D `box`/`stl`。
+- **0.14.0 硬化**：① 源项保护——非线性求解器给出的负试探状态在求速率前钳位到 0（计数 `res.diagnostics.clamped_states`）；初始化 all-NaN 探针调用原样透传；有限状态下出现非有限源项则报 `bma:pdeToolbox:nonfiniteSource`（不静默置 0）。Monod 类模型此前会因 `u=-K_M` 极点返回 NaN 而**永久挂起**；② `max_seconds` 仍是**事后告警**：`solvepde` 没有回调、`setInitialConditions` 也不能注入节点场（只接受标量/长度 N 的向量），进程内无法中断——`res.budget` 显式标注 `advisory=true, interruptible=false`；硬预算请用 `scripts/pde_watchdog.ps1`（子进程 + `taskkill /T /F`，返回 `{status, elapsed_s, result_mat, log}`）；③ `steady:true` 改为椭圆（`d=0`）直接求解，不再抛物推进。
 - 校验：`bma_model_validate` 对 `pde.dim>=2` 自动路由到原生校验（不再要求 MOL 1D）。
-- 网格：`pde.mesh.hmax/hgrad`；预算：`options_json.max_dof`/`max_seconds`；超 `max_dof` 明确拒绝。
-- 边界：2D `edge`、3D `face`，编号或 `"all"`；只支持 Dirichlet 与零通量 Neumann。
+- 网格：`pde.mesh.hmax/hgrad`；预算：`options_json.max_dof`/`max_seconds`（0.14.0 起 `res.budget` 如实标注 advisory，硬预算见 `scripts/pde_watchdog.ps1`）；超 `max_dof` 明确拒绝。
+- 边界：2D `edge`、3D `face`，编号或 `"all"`；支持 `dirichlet{value}`、`neumann{flux}`（含非零通量）、`robin{q,g}`；flux/q/g 可是有限标量、参数 id 或按物种的 N 维向量。1D MOL 展开仍只支持零通量 Neumann。
 - 输出：`pde.probes`（最近节点时间序列）、`field_stats`（max/min/mean/integral）、CSV/PNG；返回 `stats.nodes/elements/elapsed_s`。
 - 决策：1D / 需要 fit/identifiability/analyze → MOL；真正 2D/3D / 不规则几何 / 场输出且预算允许 → 原生 PDE。原生结果不能直接拟合。
 
@@ -181,3 +187,28 @@ DSH agent 通过 19 个 `bma_*` 工具调用 MATLAB。工具参数中的复杂�
   - PyMuPDF 不可用 → 纯 MATLAB 位图解析器回退并 warning。
 - 环境：DSH 自带 Python 运行时含 PyMuPDF；MATLAB 通过 `pyenv`/`DSH_PYTHON`/`BMA_PYTHON`/DSH runtime 路径查找解释器。
 - 测试：`test_io_figures` 的 `vector_figure.pdf` 产出 890×723 `vector_render`。
+
+## 0.15.0 BLIND-LIT 盲建模
+
+四个新工具 + `blind.*` RPC 方法；完整数据模型/停止判据见 `docs/BLIND_PROTOCOL.md`。
+
+- `bma_blind_start {primary_path, abstract_path?, references_dir?, references_json?, from_primary?, min_rounds=3, budget_seconds=0, max_references=300, force?, run_dir?}`
+  - 只抽取并返回主文献**摘要**；写 `blind/primary_abstract.md`（唯一可读的主文献内容）。
+  - 参考文献可来自目录（递归）、JSON 清单、或主文献 References 题录；目录/清单按规范路径 + SHA-256 排除主文献。
+  - 写 run 级协议与**工作区级** `<work_dir>/.bma/blind/seals.json`；`bma_literature_ingest` 对封印主文献返回 `BMA_SEALED`（新建 run 也拦截）。
+- `bma_blind_note {run_dir, reference_id, note_json}`
+  - `note_json` 核心：`depth`、`claims[{kind,claim,quote,location}]`、`relevance{question_link,modeling_use}`；可选 parameters/title/year/venue/sections_read。
+  - 抽取参考文献全文到 `blind/refs/<id>/text.txt`（SHA-256 缓存），逐条 quote 归一化比对；失败 `BMA_QUOTE_NOT_FOUND`。题录-only → `depth:"citation_only"` + `access_limited_reason`，status=`limited`。
+  - 返回 verification（quotes_found/checked、text_path）、coverage（read/limited/pending/no_modeling）、remaining_ids。
+- `bma_blind_check {run_dir, action}`
+  - `status`：只读；返回 coverage、rounds、issues、can_stop + 未满足原因、下一步。
+  - `goal`：`{question≥40, objective?, success_criteria[≥2], out_of_scope?}`。
+  - `references`：追加 `references_dir` / `references` / `from_primary`，保留已有笔记与 id。
+  - `round`：`{summary≥80, checks[≥3,{name,result,evidence}], issues[...], model_specs[...], elapsed_seconds?}`；新问题自动 `I<n>`；`fixed` 需 fix/fix_kind/evidence；`impossible` 需 reason/why_general/evidence；`over_budget` 需 budget 且 spent≥2×limit；`fix_kind=model` 必须有 hash 变化的 spec（且 spec 必须 validate 通过）。
+  - `freeze`：`models[{name,spec_path,role}]`，逐 spec `bma.spec.validate`，记录版本与 SHA-256。
+  - `stop`：强制判据（goal/coverage/rounds/no-open/closed 论证/frozen），写 `blind/blind_summary.md`；不满足返回 `BMA_STOP_BLOCKED` + 原因列表。
+- `bma_blind_reveal {run_dir, action}`
+  - `reveal`：仅 stop 通过 + 已冻结时解封；先写未封印状态（含工作区登记）再 ingest 全文；失败回滚。返回全文 doc/路径/图数。
+  - `compare`：8 维（question/model_class/state_variables/mechanisms/parameters/assumptions/behavior/evidence_use）齐全，每维 `agent/paper/agreement/evidence/gap/follow_up`，顶层 `verdict/summary≥100/limitations?`；写 `blind/model_comparison.json|md`。
+- 内部：`bma.util.sha256File`（JVM SHA-256；artifact import 复用）；`bma.io.ingest` 在读取前调用 `bma.blind.enforceSeal`。
+- 诚实性边界：通用 `read`/`pwsh` 无法被工具层监控；协议要求 agent 声明未读取全文，报告局限中写明。
